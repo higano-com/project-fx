@@ -275,7 +275,7 @@ async function fetchSeries(symbol){
   try{ r = await fetch("api/series?symbol="+encodeURIComponent(symbol), { cache:"no-store" }); }
   catch(e){ throw { kind:"network" }; }
   let j = null; try{ j = await r.json(); }catch(e){}
-  if(!r.ok || !j || !Array.isArray(j.values)) throw { kind:(j && j.error) || "bad_response", code:j && j.code, detail:j && j.message, keyLength:j && j.keyLength, keyId:j && j.keyId };
+  if(!r.ok || !j || !Array.isArray(j.values)) throw { kind:(j && j.error) || "bad_response", code:j && j.code, detail:j && j.message, keyLength:j && j.keyLength, keyId:j && j.keyId, symbol };
   return j.values;   // [時刻(ms), 始値, 高値, 安値, 終値] の配列
 }
 function buildLive(g, s, f){
@@ -287,26 +287,29 @@ function buildLive(g, s, f){
     const done = last[0] + 3600e3 <= now ? v : v.slice(0,-1);   // 判断は確定した足だけで行う
     return { done, live:{ price:last[4], t:last[0] } };
   };
-  const G = split(g), Sv = split(s), F = split(f);
-  const sMap = new Map(Sv.done.map(x=>[x[0],x]));
-  const both = G.done.filter(x=>sMap.has(x[0]));   // 金と銀の両方がある時間だけ使う
+  const G = split(g), Sv = s ? split(s) : null, F = split(f);
+  const sMap = Sv ? new Map(Sv.done.map(x=>[x[0],x])) : null;
+  const both = sMap ? G.done.filter(x=>sMap.has(x[0])) : G.done;   // 銀もあるときは、金と銀の両方がある時間だけ使う
   if(both.length < WARMUP + 100) throw { kind:"short" };
   const n = both.length;
   const mk = () => ({ t:new Float64Array(n), o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n) });
-  const gold = mk(), silver = mk(), fx = new Float64Array(n);
+  const gold = mk(), silver = Sv ? mk() : null, fx = new Float64Array(n);
   let k = 0, lastFx = F.done.length ? F.done[0][4] : F.live.price;
   for(let i=0;i<n;i++){
-    const a = both[i], b = sMap.get(a[0]);
-    gold.t[i]=silver.t[i]=a[0];
-    gold.o[i]=a[1]; gold.h[i]=a[2]; gold.l[i]=a[3]; gold.c[i]=a[4];
-    silver.o[i]=b[1]; silver.h[i]=b[2]; silver.l[i]=b[3]; silver.c[i]=b[4];
+    const a = both[i];
+    gold.t[i]=a[0]; gold.o[i]=a[1]; gold.h[i]=a[2]; gold.l[i]=a[3]; gold.c[i]=a[4];
+    if(silver){ const b = sMap.get(a[0]); silver.t[i]=a[0]; silver.o[i]=b[1]; silver.h[i]=b[2]; silver.l[i]=b[3]; silver.c[i]=b[4]; }
     while(k < F.done.length && F.done[k][0] <= a[0]){ lastFx = F.done[k][4]; k++; }
     fx[i] = lastFx;
   }
-  return { data:{ gold, silver, fx }, live:{ gold:G.live, silver:Sv.live, fx:F.live } };
+  return { data:{ gold, silver, fx }, live:{ gold:G.live, silver:Sv ? Sv.live : null, fx:F.live } };
 }
+let SILVER_OFF = null;   // 銀を受け取れなかった理由（Twelve Data の無料プランでは銀が取れない等）
+function activeSyms(){ return DATA.silver ? ["gold","silver"] : ["gold"]; }
 async function loadLive(){
-  const [g,s,f] = await Promise.all(["XAU/USD","XAG/USD","USD/JPY"].map(fetchSeries));
+  // 金とドル円は必須。銀は受け取れなくても、金だけで動かす
+  const [g,f,s] = await Promise.all([ fetchSeries("XAU/USD"), fetchSeries("USD/JPY"), fetchSeries("XAG/USD").catch(e=>{ SILVER_OFF=e; return null; }) ]);
+  if(s) SILVER_OFF = null;
   const b = buildLive(g,s,f);
   DATA = b.data; LIVE = b.live; TOTAL = DATA.gold.c.length; FETCHED_AT = Date.now();
   for(const k in CACHE) delete CACHE[k];
@@ -316,6 +319,7 @@ function errText(e){
   if(e.kind==="no_key") return "APIキーがまだ設定されていません（Cloudflare の設定を確認してください）";
   if(e.kind==="upstream" && e.code===429) return "Twelve Data の無料枠の回数を使い切りました。しばらく待つか、明日また開いてください";
   if(e.kind==="upstream" && e.code===401) return "APIキーが正しくないようです（Cloudflare に入れたキーを確認してください" + (typeof e.keyLength==="number" ? `。今入っているキーは${e.keyLength}文字。正しいキーは32文字です` : "") + (e.keyId ? `。識別番号 ${e.keyId}` : "") + "）" + (e.detail ? `［Twelve Data：${String(e.detail).slice(0,70)}］` : "");
+  if(e.kind==="upstream" && /plan|upgrad/i.test(e.detail||"")) return `${e.symbol||"この銘柄"} は Twelve Data の無料プランでは受け取れません（有料の Grow プラン以上が必要）`;
   if(e.kind==="network") return "インターネットに接続できませんでした";
   if(e.kind==="short") return "データの本数が足りません";
   return "データを受け取れませんでした" + (e.detail ? "（" + String(e.detail).slice(0,80) + "）" : "");
@@ -453,7 +457,7 @@ function stats(trades, capital){
 function backtest(p, cfg, from, to){
   const acct = newAcct(cfg), pending = {};
   for(let i=from;i<to;i++){
-    for(const sym of ["gold","silver"]){
+    for(const sym of activeSyms()){
       const D=DATA[sym], c=cfg.cost[sym];
       if(pending[sym]){
         const pd=pending[sym]; pending[sym]=null;
@@ -532,7 +536,7 @@ let toastTimer;
 function toast(msg){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el); } el.textContent=msg; el.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.hidden=true;},2600); }
 function unreal(pos){ const h=S.cfg.cost[pos.sym].spread/2, px=midNow(pos.sym)-pos.dir*h; return { px, pnl:(px-pos.entry)*pos.dir*pos.qty*fxNow() }; }
 function modeNotice(extra){
-  if(MODE==="live") return LOAD_ERR ? "" : `<div class="notice live"><b>本物の価格（Twelve Data・1時間足）で表示中。</b>GMOクリック証券の価格とは少しずれます。${extra||""}</div>`;
+  if(MODE==="live") return LOAD_ERR ? "" : `<div class="notice live"><b>本物の価格（Twelve Data・1時間足）で表示中。</b>GMOクリック証券の価格とは少しずれます。${SILVER_OFF?"銀は今のプランでは受け取れないため、金だけで判断・検証しています。":""}${extra||""}</div>`;
   return `${LOAD_ERR?`<div class="stop"><b>本物の価格を読み込めませんでした。</b>${esc(errText(LOAD_ERR))}。代わりにサンプルデータで表示しています。</div>`:""}<div class="notice"><b>サンプルデータで表示中。</b>価格はプログラムが作った架空の値動きで、実際の相場とは関係ありません。${extra||""}</div>`;
 }
 
@@ -660,7 +664,13 @@ function acctSummary(){
     <div><div class="k">最高値からの減り（上限 ${cfg.maxDDPct}％）</div><div class="v">${ddPct.toFixed(2)}％</div><div class="meter"><span class="${ddUse>=80?"hot":""}" style="width:${ddUse}%"></span></div></div>
   </div>`;
 }
+function viewSilverOff(){
+  return `${modeNotice()}<section class="card"><h2>銀スポットは表示できません</h2>
+    <p>${esc(errText(SILVER_OFF))}。</p>
+    <p class="note">金スポットは本物の価格で使えます。上の「金スポット」を選んでください。銀も使いたい場合は、Twelve Data の有料プランにするか、銀だけ別のデータ提供元を使う方法があります。</p></section>`;
+}
 function viewSignal(){
+  if(!DATA[S.sym]) return viewSilverOff();
   const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
   const d = currentDecision(sym), label = { buy:"買い候補", sell:"売り候補", wait:"見送り" }[d.verdict];
   let why;
@@ -766,7 +776,7 @@ function viewStats(){
     <p class="note">取引コスト＝スプレッド（買値と売値の差）＋損切り時の価格のずれ＋保有日数分の費用。すべて損益から差し引き済みです。</p></section>
   <section class="card"><h2>銘柄別</h2>
     <div class="scroll-x"><table class="cmp"><thead><tr><th></th><th>回数</th><th>勝率</th><th>純損益</th><th>コスト</th></tr></thead><tbody>
-    ${["gold","silver"].map(s=>{ const b=by(s); return `<tr><td>${SYMS[s].name}</td><td>${b.n}</td><td>${b.n?pct(b.winRate,0):"—"}</td><td class="${cls(b.net)}">${yen(b.net,true)}</td><td>${yen(b.cost)}</td></tr>`; }).join("")}
+    ${activeSyms().map(s=>{ const b=by(s); return `<tr><td>${SYMS[s].name}</td><td>${b.n}</td><td>${b.n?pct(b.winRate,0):"—"}</td><td class="${cls(b.net)}">${yen(b.net,true)}</td><td>${yen(b.cost)}</td></tr>`; }).join("")}
     </tbody></table></div></section>`;
 }
 function pstr(p){ return `短期${p.fast}・長期${p.slow}・損切り×${p.slMult}・利確×${p.rr}`; }
@@ -821,7 +831,7 @@ function viewCfg(){
   return `
   <section class="card"><h2>データの出どころ</h2>
     ${MODE==="live"
-      ? `<p><span class="badge-sample live">本物の価格</span> Twelve Data（金 XAU/USD・銀 XAG/USD・ドル円 USD/JPY、1時間足）。確定した足 ${DATA.gold.c.length.toLocaleString()}本を読み込み済み。</p><p class="note">個人で使う無料プランのため、このページを他の人に見せたり公開したりしないでください。GMOクリック証券の画面からデータを取り込むことはしません。</p>`
+      ? `<p><span class="badge-sample live">本物の価格</span> Twelve Data（金 XAU/USD${DATA.silver?"・銀 XAG/USD":""}・ドル円 USD/JPY、1時間足）。確定した足 ${DATA.gold.c.length.toLocaleString()}本を読み込み済み。</p>${SILVER_OFF?`<p class="note">銀：${esc(errText(SILVER_OFF))}</p>`:""}<p class="note">個人で使う無料プランのため、このページを他の人に見せたり公開したりしないでください。GMOクリック証券の画面からデータを取り込むことはしません。</p>`
       : `<p><span class="badge-sample">サンプルデータ</span> プログラムが作った架空の値動き（1時間足）です。</p>${LOAD_ERR?`<p class="note">本物の価格を読めなかった理由：${esc(errText(LOAD_ERR))}</p>`:`<p class="note">Cloudflare に置いて APIキーを設定すると、自動で本物の価格（Twelve Data）に切り替わります。GMOクリック証券の画面からデータを取り込むことはしません。</p>`}`}
     <p class="note">サンプルと本物の価格では、仮想取引の記録を別々に保存しています。</p></section>
   <section class="card"><h2>資金管理のルール</h2>
@@ -875,7 +885,7 @@ function render(){
 }
 function drawAll(){
   const cp=$("#cv-price");
-  if(cp){
+  if(cp && DATA[S.sym]){
     const d=currentDecision(S.sym), lines=[];
     const ref = d.verdict==="wait";
     lines.push({v:d.lv.entry,kind:"entry",label:"エントリー",ref},{v:d.lv.tp,kind:"tp",label:"利確",ref},{v:d.lv.sl,kind:"sl",label:"損切り",ref});
