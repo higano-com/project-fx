@@ -9,6 +9,7 @@
 ## いまの状態
 
 - 価格データは **Twelve Data（無料プラン）** に決定 → 候補の比較は [docs/data-sources.md](docs/data-sources.md)
+- **今は金スポットだけ**を本物の価格で使います。銀（XAG/USD）は Twelve Data の無料プランでは取れないため、次の段階（24時間監視）で、無料の「今の価格」を1時間ごとに記録して値動きをためる予定です
 - Cloudflare に置いて APIキーを設定すると本物の価格で動きます → 手順は [docs/setup-cloudflare.md](docs/setup-cloudflare.md)
 - 設定前や、読み込みに失敗したときは、**サンプルデータ（架空の値動き）** で動き、画面にそう表示します
 
