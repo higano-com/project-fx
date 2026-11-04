@@ -5,4 +5,4 @@
 - データは非公開リポジトリの中だけで使います（個人利用。外部に公開・配布しない）
 - 必要な設定：GitHub の Settings → Secrets and variables → Actions に `TWELVEDATA_API_KEY`
 
-依頼日：2026-11-05（初回）
+依頼日：2026-11-05（初回・Secrets 設定後）
