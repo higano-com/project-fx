@@ -4,7 +4,7 @@ self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (_) {}
   e.waitUntil((async () => {
-    await self.registration.showNotification(d.title || "金銀シグナル検証", { body: d.body || "", tag: d.tag || "signal", icon: "icon-192.png", badge: "icon-192.png", data: { url: d.url || "/" } });
+    await self.registration.showNotification(d.title || "シグナル通知", { body: d.body || "", tag: d.tag || "signal", icon: "icon-192.png", badge: "icon-192.png", data: { url: d.url || "/" } });
     try { if (self.navigator && self.navigator.setAppBadge) await self.navigator.setAppBadge(1); } catch (_) {}
   })());
 });

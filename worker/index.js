@@ -57,8 +57,8 @@ async function check(env, force) {
   if (!force && last.barT === sig.barT && last.side === sig.side) return { ...sig, skipped: true };
   const word = sig.side === "buy" ? "買い" : "売り";
   const sgn = sig.side === "buy" ? ["−", "＋"] : ["＋", "−"];
-  const ver = st.version ? `（設定 ${new Date(st.version + 9 * 3600e3).getUTCMonth() + 1}/${new Date(st.version + 9 * 3600e3).getUTCDate()}版）` : "（設定は初期値）";
-  const msg = { title: `金 ${word}${ver}`, body: `数量 ${sig.qty.toFixed(1)} ／ 損切り 入る${sgn[0]}${Math.abs(sig.entry - sig.sl).toFixed(1)}ドル ／ 利確 入る${sgn[1]}${Math.abs(sig.tp - sig.entry).toFixed(1)}ドル（目安の入る価格 ${fmt(sig.entry)}）`, tag: "signal", url: "/" };
+  // 通知の文字は「シグナル通知」だけ（ほかの人が見ても中身が分からないように）。中身はアプリを開いて見る
+  const msg = { title: "シグナル通知", body: "", tag: "signal", url: "/" };
   const sent = await pushAll(env, msg);
   await d.put("last", { barT: sig.barT, side: sig.side, at: Date.now(), msg });
   return { ...sig, sent };
@@ -98,7 +98,7 @@ export default {
       const lastTest = (await d.get("lastTest")) || 0;
       if (Date.now() - lastTest < 30e3) return json({ error: "too_soon" }, 429);
       await d.put("lastTest", Date.now());
-      return json({ sent: await pushAll(env, { title: "金銀シグナル検証", body: "テストの通知です。届いていれば準備完了です。", tag: "test", url: "/" }) });
+      return json({ sent: await pushAll(env, { title: "シグナル通知", body: "", tag: "test", url: "/" }) });
     }
     if (path === "/check") return json(await check(env, false));
     return json({ error: "not_found" }, 404);
