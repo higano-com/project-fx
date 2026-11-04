@@ -7,24 +7,13 @@
 <style>
 /* 画面の考え方：一番上に「今の価格」と「判断」を大きく。説明は「くわしく」を開いたときだけ。文字は大きく、押す場所も大きく。 */
 :root{
-  --bg:#F2F3F5; --surface:#FFFFFF; --sunk:#E8EAEE; --ink:#14171C; --muted:#5F6772; --line:#E0E3E8;
-  --gold:#98720F; --gold-soft:#F6EDD3; --silver:#566573; --silver-soft:#E5EAEF;
-  --buy:#11804A; --buy-soft:#E0F3E8; --sell:#C23A2C; --sell-soft:#FBE6E3; --wait:#5F6772; --wait-soft:#ECEEF2;
-  --warn:#8A5A00; --warn-soft:#FDF0CF;
+  --bg:#000000; --surface:#111317; --sunk:#1D2026; --ink:#F3F5F8; --muted:#8C949F; --line:#242830;
+  --gold:#E2B754; --gold-soft:#2F2815; --silver:#B6C2CE; --silver-soft:#232A31;
+  --buy:#FF5A4E; --buy-soft:#3A1411; --sell:#3DA2FF; --sell-soft:#0D2236; --wait:#8C949F; --wait-soft:#1A1D22;
+  --warn:#F2C14E; --warn-soft:#2E250D; --ok:#3FD68D;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D0F12; --surface:#171A1F; --sunk:#21252C; --ink:#EEF0F3; --muted:#9BA3AE; --line:#272C34;
-  --gold:#E2B754; --gold-soft:#2F2815; --silver:#B6C2CE; --silver-soft:#232A31;
-  --buy:#3FD68D; --buy-soft:#11301F; --sell:#FF6C5F; --sell-soft:#3A1916; --wait:#A9B1BC; --wait-soft:#22262D;
-  --warn:#F2C14E; --warn-soft:#33290F; color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#0D0F12; --surface:#171A1F; --sunk:#21252C; --ink:#EEF0F3; --muted:#9BA3AE; --line:#272C34;
-  --gold:#E2B754; --gold-soft:#2F2815; --silver:#B6C2CE; --silver-soft:#232A31;
-  --buy:#3FD68D; --buy-soft:#11301F; --sell:#FF6C5F; --sell-soft:#3A1916; --wait:#A9B1BC; --wait-soft:#22262D;
-  --warn:#F2C14E; --warn-soft:#33290F; color-scheme:dark;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
@@ -50,7 +39,7 @@ header.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
 .metal button[data-sym="silver"][aria-pressed="true"]{color:var(--silver)}
 .status{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;white-space:nowrap;color:var(--warn)}
 .status::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
-.status.live{color:var(--buy)}
+.status.live{color:var(--ok)}
 
 main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .view{display:flex;flex-direction:column;gap:12px}
@@ -63,7 +52,7 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 /* 細い帯の知らせ（サンプル・停止中など） */
 .banner{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
 .banner.warn{background:var(--warn-soft)} .banner.warn b{color:var(--warn)}
-.banner.stop{background:var(--sell-soft)} .banner.stop b{color:var(--sell)}
+.banner.stop{background:var(--warn-soft)} .banner.stop b{color:var(--warn)}
 
 /* いちばん上：価格と判断 */
 .hero{padding:0;overflow:hidden}
@@ -87,7 +76,7 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .btn:active{transform:translateY(1px)}
 .btn.primary{background:var(--ink);color:var(--surface)}
 .btn.buy{background:var(--buy);color:#fff} .btn.sell{background:var(--sell);color:#fff}
-.btn.danger{background:var(--sell-soft);color:var(--sell)}
+.btn.danger{background:var(--warn-soft);color:var(--warn)}
 .btn.small{min-height:38px;padding:8px 12px;font-size:14px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .btn.block{width:100%;min-height:54px;font-size:17px}
@@ -102,6 +91,32 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .lvrow .v small{display:block;font-size:13px;font-weight:500}
 .lvrow.tp .k{color:var(--buy)} .lvrow.sl .k{color:var(--sell)}
 
+/* 売値・買値（GMOの画面と同じ並び：左が売、右が買） */
+.quotes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.q{border-radius:16px;padding:12px 10px;text-align:center}
+.q.sell{background:var(--sell-soft)} .q.buy{background:var(--buy-soft)}
+.q .k{font-size:14px;font-weight:700} .q.sell .k{color:var(--sell)} .q.buy .k{color:var(--buy)}
+.q .v{font-family:var(--f-num);font-size:clamp(22px,7vw,30px);font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.qsub{display:flex;justify-content:center;gap:14px;font-size:13px;color:var(--muted);font-family:var(--f-num)}
+/* 注文の内容 */
+.ticket{border-radius:18px;overflow:hidden;background:var(--surface)}
+.ticket .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
+.ticket.buy .head{background:var(--buy)} .ticket.sell .head{background:var(--sell)} .ticket.wait .head{background:var(--sunk)}
+.ticket .act{font-size:32px;font-weight:800;line-height:1.1;color:#fff}
+.ticket.wait .act{color:var(--ink)}
+.ticket .act small{display:block;font-size:13px;font-weight:700;opacity:.85}
+.ticket .body{padding:4px 16px 16px}
+.trow{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:4px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.trow:first-child{border-top:0}
+.trow .k{font-size:15px;color:var(--muted);font-weight:700;white-space:nowrap}
+.trow .v{font-family:var(--f-num);font-size:30px;font-weight:600;text-align:right;letter-spacing:-.02em;line-height:1.15}
+.trow .s{grid-column:2;text-align:right;font-family:var(--f-num);font-size:14px;margin-top:-2px}
+.ticket .wait-msg{font-size:15px;color:var(--muted);padding:8px 0 2px}
+.ticket .dots i{border-color:rgb(255 255 255 / .7)} .ticket.wait .dots i{border-color:var(--muted)}
+.ticket.buy .dots i.on, .ticket.sell .dots i.on{background:#fff}
+.ticket.wait .dots i.on{background:var(--ink)}
+.ticket .dots span{color:inherit}
+.ticket.buy .dots, .ticket.sell .dots{color:#fff}
 /* チャート */
 .chart-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chips{display:flex;gap:6px}
@@ -176,7 +191,7 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 .seg2{display:flex;background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
 .seg2 button{flex:1;border:0;background:transparent;padding:10px 6px;border-radius:9px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted)}
 .seg2 button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
-.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--sell-soft);border-radius:12px;padding:12px}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--warn-soft);border-radius:12px;padding:12px}
 .confirm span{flex:1;min-width:160px;font-size:14px}
 
 /* 下のタブ */
@@ -782,29 +797,28 @@ function levelsHtml(sym, d){
 }
 function viewSignal(){
   if(!DATA[S.sym]) return viewSilverOff();
-  const sym=S.sym, D=DATA[sym], i=S.nowIdx, px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
-  const d = currentDecision(sym), word = { buy:"買い候補", sell:"売り候補", wait:"見送り" }[d.verdict];
-  const okN = d.checks.filter(x=>x.ok).length, all = d.checks.length;
-  let why;
-  if(d.verdict!=="wait") why = "条件がすべてそろいました。";
-  else if(d.sig.side!=="wait") why = `条件はそろいましたが、資金管理のルールで見送ります（${esc(d.blocks[0]||"")}）。`;
-  else why = `${d.lean==="buy"?"買い":"売り"}の条件が、${all}つのうち${okN}つそろっています。`;
+  const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
+  const d = currentDecision(sym), okN = d.checks.filter(x=>x.ok).length, all = d.checks.length;
+  const lv=d.lv, tpU=Math.abs(lv.tp-lv.entry), pnlTp=d.sz.qty*tpU*fxNow(), pnlSl=d.sz.risk;
+  const dots = `<span class="dots" aria-label="そろった条件 ${okN}／${all}">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}／${all}</span></span>`;
+  const act = { buy:"買い", sell:"売り", wait:"待ち" }[d.verdict];
+  const rows = `
+      <div class="trow"><div class="k">入る</div><div class="v">${fp(sym,lv.entry)}</div></div>
+      <div class="trow"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="s down">−${yen(pnlSl)}</div></div>
+      <div class="trow"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="s up">＋${yen(pnlTp)}</div></div>
+      <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div></div>`;
   const p = curParams(S.cfg), others = S.acct.positions.filter(x=>x.sym===sym);
   return `${banners()}
-  <section class="card hero" aria-label="価格と判断">
-    <div class="price-area">
-      <div class="label">${SYMS[sym].name}・今の価格（1オンスあたりドル）</div>
-      <div class="price">${fp(sym,px)}</div>
-      <div class="chg ${cls(chg)}">${chg>=0?"＋":"−"}${fp(sym,Math.abs(chg))}（${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％）<small>この24時間</small></div>
-    </div>
-    <div class="decision ${d.verdict}">
-      <div class="word">${word}</div>
-      <div class="why">${why}</div>
-      <div class="dots" aria-label="そろった条件の数">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}／${all}</span></div>
-      ${d.verdict!=="wait"?`<button class="btn block ${d.verdict}" data-act="open">仮想取引に記録する</button>`:""}
-    </div>
+  <section class="quotes" aria-label="今の値段">
+    <div class="q sell"><div class="k">売</div><div class="v">${fp(sym,px-c.spread/2)}</div></div>
+    <div class="q buy"><div class="k">買</div><div class="v">${fp(sym,px+c.spread/2)}</div></div>
   </section>
-  ${d.verdict!=="wait"?`<section class="card"><h2>候補価格</h2>${levelsHtml(sym,d)}<p class="note">練習用の記録です。実際の注文は出ません。</p></section>`:""}
+  <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span></div>
+  <section class="ticket ${d.verdict}" aria-label="判断">
+    <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"資金管理のルールで見送り":"条件がそろうまで注文しない"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
+    ${d.verdict!=="wait"?`<div class="body">${rows}
+      <button class="btn block ${d.verdict}" style="margin-top:8px" data-act="open">仮想取引に記録</button></div>`:""}
+  </section>
   <section class="card" aria-label="チャート">
     <div class="chart-head">
       <div class="chips">${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}</div>
@@ -812,12 +826,12 @@ function viewSignal(){
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
-  <details class="more"><summary>判断の理由<small>${okN}／${all}つそろっている</small></summary><div class="in">
+  <details class="more"><summary>理由<small>${okN}／${all}</small></summary><div class="in">
     <ul class="checks">${d.checks.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
-    ${d.blocks.length?`<h3>資金管理のルール</h3><ul class="checks">${d.blocks.map(b=>`<li class="ng"><span class="mk">×</span><span>${esc(b)}</span></li>`).join("")}</ul>`:""}
-    <p class="note">ルール：${RULES[S.cfg.rule].name}。損切り幅は、ふだんの1時間の値動きの${p.slMult}倍。利確幅は、損切り幅の${p.rr}倍。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`設定は毎月、直近3か月の値動きで自動で見直しています（最終：${fd(S.cfg.auto.at)}）。`:""}円への換算はドル円${fxNow().toFixed(2)}円。</p>
+    ${d.blocks.length?`<ul class="checks">${d.blocks.map(b=>`<li class="ng"><span class="mk">×</span><span>${esc(b)}</span></li>`).join("")}</ul>`:""}
+    <p class="note">${RULES[S.cfg.rule].name}。損切り幅＝ふだんの値動き×${p.slMult}、利確幅＝損切り幅×${p.rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`毎月自動で見直し（最終 ${fd(S.cfg.auto.at)}）。`:""}数量はGMOの取引数量（1＝1オンス）。</p>
   </div></details>
-  ${d.verdict==="wait"?`<details class="more"><summary>もし条件がそろったら（参考）</summary><div class="in">${levelsHtml(sym,d)}</div></details>`:""}
+  ${d.verdict==="wait"?`<details class="more"><summary>そろったときの目安<small>${d.lean==="buy"?"買い":"売り"}</small></summary><div class="in"><div class="ticket ${d.lean}" style="background:transparent"><div class="body" style="padding:0">${rows}</div></div></div></details>`:""}
   ${others.length?`<section class="card"><h2>保有中</h2>${posList(others)}</section>`:""}
   ${clockBar()}`;
 }
