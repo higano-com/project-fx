@@ -34,6 +34,15 @@ await p.evaluate(() => { LIVE.gold = { price: DATA.gold.c[S.nowIdx] - 5 * base("
 check("急落の知らせが出る", ((await p.textContent(".spike").catch(() => "")) || "").includes("急落"));
 await p.reload(); await p.waitForSelector(".ticket"); await p.waitForTimeout(300);
 
+// 1c. チャートの足の長さを切り替えられる
+const tfs = await p.$$eval('[data-act="tf"]', b => b.map(x => x.textContent.trim()).join("・"));
+check("チャートの足の長さは6つ", tfs === "3分・1時間・4時間・日足・週足・月足", tfs);
+for (const tf of ["3m", "4h", "1d", "1w", "1M", "1h"]) {
+  await p.click(`[data-act="tf"][data-tf="${tf}"]`); await p.waitForTimeout(400);
+  const ok = await p.evaluate(tf => { const s = tfSeries(tf); return tf === "1h" ? true : (s && typeof s === "object" && s.c.length > 3); }, tf);
+  check(`チャート：${tf} を表示できる`, ok);
+}
+
 // 2. 約2分ごとの価格の更新
 await p.evaluate(() => refreshPrice()); await p.waitForTimeout(300);
 const after = num(await p.textContent(".q.buy .v"));

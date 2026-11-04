@@ -5,7 +5,9 @@
 // ・価格を読むだけです。注文に関わる処理はありません。
 
 const ALLOWED = new Set(["XAU/USD", "XAG/USD", "USD/JPY"]);
-const CACHE_SECONDS = 1800;   // 1時間ごとの値動きは30分ためる（今の価格は /api/price で短い間隔で取る）
+const CACHE_SECONDS = 1800;
+// 足の長さ：1時間足（判断用）、1日足（日足・週足・月足のチャート用）、1分足（3分足のチャート用）
+const INTERVALS = { "1h": 1800, "1day": 21600, "1min": 180 };   // ためておく秒数   // 1時間ごとの値動きは30分ためる（今の価格は /api/price で短い間隔で取る）
 
 function json(body, status = 200, extra = {}) {
   return new Response(JSON.stringify(body), {
@@ -17,17 +19,19 @@ function json(body, status = 200, extra = {}) {
 export async function onRequestGet({ request, env, waitUntil }) {
   const symbol = new URL(request.url).searchParams.get("symbol") || "";
   if (!ALLOWED.has(symbol)) return json({ error: "bad_symbol" }, 400);
+  const interval = new URL(request.url).searchParams.get("interval") || "1h";
+  if (!INTERVALS[interval]) return json({ error: "bad_interval" }, 400);
   // 貼り付け時に紛れ込みやすい空白・改行・見えない文字を取り除く（キーは英数字だけ）
   const apiKey = String(env.TWELVEDATA_API_KEY || "").replace(/[^A-Za-z0-9]/g, "");
   if (!apiKey) return json({ error: "no_key" }, 500);
 
   const cache = caches.default;
-  const cacheKey = new Request("https://pfx-cache.internal/series/" + encodeURIComponent(symbol));
+  const cacheKey = new Request("https://pfx-cache.internal/series/" + interval + "/" + encodeURIComponent(symbol));
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   const api = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(symbol) +
-    "&interval=1h&outputsize=5000&timezone=UTC&order=asc&apikey=" + apiKey;
+    "&interval=" + interval + "&outputsize=5000&timezone=UTC&order=asc&apikey=" + apiKey;
   let data;
   try {
     const r = await fetch(api);
@@ -46,7 +50,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const values = data.values
     .map(v => [Date.parse(v.datetime.replace(" ", "T") + "Z"), +v.open, +v.high, +v.low, +v.close])
     .filter(v => v.every(Number.isFinite));
-  const res = json({ symbol, fetchedAt: Date.now(), values }, 200, { "cache-control": "public, max-age=" + CACHE_SECONDS });
+  const res = json({ symbol, fetchedAt: Date.now(), values }, 200, { "cache-control": "public, max-age=" + INTERVALS[interval] });
   waitUntil(cache.put(cacheKey, res.clone()));
   return res;
 }

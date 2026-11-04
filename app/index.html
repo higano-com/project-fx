@@ -157,6 +157,9 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 /* チャート */
 .chart-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chips{display:flex;gap:6px}
+.chips.tfs{flex-wrap:nowrap;overflow-x:auto;gap:5px;width:100%;scrollbar-width:none}
+.chips.tfs::-webkit-scrollbar{display:none}
+.chips.tfs .chip{padding:6px 11px;white-space:nowrap;flex:0 0 auto}
 .chip{border:0;background:var(--sunk);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-left:auto}
@@ -705,6 +708,7 @@ function initState(){
   if(saved && SYMS[saved.sym]) S.sym = saved.sym;
   if(saved && ["signal","stats","cfg"].includes(saved.tab)) S.tab = saved.tab;
   if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
+  if(saved && TFS.some(x=>x[0]===saved.tf)) S.tf = saved.tf;
   if(saved && saved.notifyOn) S.notifyOn = true;
   if(saved && saved.notifyToken) S.notifyToken = saved.notifyToken;
   if(!S.acct){
@@ -713,7 +717,7 @@ function initState(){
     if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,curParams(S.cfg),S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
   }
 }
-function save(){ store.set({ cfgVer:CFG_VER, notifyOn:!!S.notifyOn, notifyToken:S.notifyToken||"", cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
+function save(){ store.set({ cfgVer:CFG_VER, notifyOn:!!S.notifyOn, notifyToken:S.notifyToken||"", cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range, tf:S.tf||"1h" }); }
 
 /* ---------- 表示の補助 ---------- */
 const $ = s => document.querySelector(s);
@@ -758,16 +762,65 @@ function currentDecision(sym){
   const verdict = sig.side!=="wait" && blocks.length===0 ? sig.side : "wait";
   return { sig, lean, lv, sz, blocks, verdict, checks, safety, okN: checks.filter(x=>x.ok).length + safety.filter(x=>x.ok).length };
 }
+/* ---------- チャートの足の長さ（3分・1時間・4時間・日・週・月） ---------- */
+const TFS = [["3m","3分",100],["1h","1時間",72],["4h","4時間",90],["1d","日足",120],["1w","週足",104],["1M","月足",120]];
+const TFC = {};   // 受け取った足の並び（1分足・1日足）
+function aggregate(t,o,h,l,c,key){
+  const out={t:[],o:[],h:[],l:[],c:[]}; let k=null;
+  for(let i=0;i<t.length;i++){
+    const b=key(t[i]);
+    if(b!==k){ out.t.push(t[i]); out.o.push(o[i]); out.h.push(h[i]); out.l.push(l[i]); out.c.push(c[i]); k=b; }
+    else { const j=out.t.length-1; out.h[j]=Math.max(out.h[j],h[i]); out.l[j]=Math.min(out.l[j],l[i]); out.c[j]=c[i]; }
+  }
+  return out;
+}
+const jst = t => new Date(t+9*3600e3);
+const weekKey = t => { const d=jst(t), wd=(d.getUTCDay()+6)%7; return Math.floor((t+9*3600e3)/86400e3) - wd; };
+const monthKey = t => { const d=jst(t); return d.getUTCFullYear()*12+d.getUTCMonth(); };
+async function loadTF(kind){
+  if(TFC[kind] && TFC[kind].busy) return;
+  TFC[kind] = { ...(TFC[kind]||{}), busy:true };
+  try{
+    const r = await fetch(`api/series?symbol=XAU%2FUSD&interval=${kind}`, { cache:"no-store" });
+    const j = await r.json(); if(!r.ok || !Array.isArray(j.values)) throw 0;
+    const v=[...j.values].sort((a,b)=>a[0]-b[0]);
+    TFC[kind] = { t:v.map(x=>x[0]), o:v.map(x=>x[1]), h:v.map(x=>x[2]), l:v.map(x=>x[3]), c:v.map(x=>x[4]), at:Date.now() };
+  }catch(e){ TFC[kind] = { err:true, at:Date.now() }; }
+  if(S.tab==="signal") drawAll();
+}
+/* 選んだ足の長さの並びを返す（null＝読み込み中、"none"＝使えない） */
+function tfSeries(tf){
+  if(tf==="1h") return null;
+  const D=DATA.gold, n=S.nowIdx+1, sl=a=>Array.from(a).slice(0,n);
+  let src;
+  if(tf==="4h") src = aggregate(sl(D.t),sl(D.o),sl(D.h),sl(D.l),sl(D.c), t=>Math.floor(t/(4*3600e3)));
+  else if(tf==="3m"){
+    if(MODE!=="live") return "none";
+    const m=TFC["1min"]; if(!m || (Date.now()-m.at>180e3 && !m.busy)) loadTF("1min");
+    if(!m || !m.t) return m&&m.err ? "none" : "wait";
+    src = aggregate(m.t,m.o,m.h,m.l,m.c, t=>Math.floor(t/180e3));
+  } else {
+    let d;
+    if(MODE==="live"){ const m=TFC["1day"]; if(!m || (Date.now()-m.at>6*3600e3 && !m.busy)) loadTF("1day"); if(!m || !m.t) return m&&m.err ? "none" : "wait"; d=m; }
+    else d = aggregate(sl(D.t),sl(D.o),sl(D.h),sl(D.l),sl(D.c), t=>Math.floor((t+9*3600e3)/86400e3));
+    src = tf==="1d" ? { t:[...d.t], o:[...d.o], h:[...d.h], l:[...d.l], c:[...d.c] } : aggregate(d.t,d.o,d.h,d.l,d.c, tf==="1w"?weekKey:monthKey);
+  }
+  // 最後の足に今の価格を反映
+  const L=src.c.length-1, px=midNow("gold");
+  if(L>=0 && MODE==="live"){ src.c[L]=px; src.h[L]=Math.max(src.h[L],px); src.l[L]=Math.min(src.l[L],px); }
+  src.tf=tf; return src;
+}
+
 /* ---------- 描画：ローソク足チャート ---------- */
 function setupCanvas(cv){
   const r = cv.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
   cv.width = Math.max(1,Math.round(r.width*dpr)); cv.height = Math.max(1,Math.round(r.height*dpr));
   const g = cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); return { g, w:r.width, h:r.height };
 }
-function drawCandles(cv, sym, endIdx, n, lines){
-  const { g, w, h } = setupCanvas(cv), D=DATA[sym], p=S.cfg.params;
-  const isI = S.cfg.rule==="ichimoku", I = isI ? ichi(sym) : null;
-  const ef = isI ? I.ten : emaOf(sym,p.fast), es = isI ? I.top : emaOf(sym,p.slow), eb = isI ? I.bot : null;
+function drawCandles(cv, sym, endIdx, n, lines, src){
+  const { g, w, h } = setupCanvas(cv), D=src||DATA[sym], p=S.cfg.params, ind=!src;
+  const isI = ind && S.cfg.rule==="ichimoku", I = isI ? ichi(sym) : null;
+  const ef = !ind ? null : isI ? I.ten : emaOf(sym,p.fast), es = !ind ? null : isI ? I.top : emaOf(sym,p.slow), eb = isI ? I.bot : null;
   const s = Math.max(0,endIdx-n+1), padR=74, padB=22, padT=10, cw=w-padR, ch=h-padB-padT;
   // 縦の範囲はろうそくと横線で決める（雲で縮まないように）
   let lo=Infinity, hi=-Infinity;
@@ -783,7 +836,15 @@ function drawCandles(cv, sym, endIdx, n, lines){
   for(let v=Math.ceil(lo/tick)*tick; v<hi; v+=tick){ const yy=y(v); g.strokeStyle=line; g.lineWidth=1; g.beginPath(); g.moveTo(0,Math.round(yy)+.5); g.lineTo(cw,Math.round(yy)+.5); g.stroke(); g.fillStyle=muted; g.fillText(Math.round(v).toLocaleString("en-US"),cw+8,yy); }
   // 日付・時刻（下）
   g.textAlign="center"; g.textBaseline="alphabetic"; g.fillStyle=muted;
-  for(let i=s;i<=endIdx;i++){
+  if(src){
+    // 別の足の長さ：4つほど等しい間かくで日付・時刻を出す
+    const every=Math.max(1,Math.ceil(n/4));
+    for(let i=endIdx-Math.floor(every/2);i>=s;i-=every){
+      const j=new Date(D.t[i]+9*3600e3), M=j.getUTCMonth()+1, d=j.getUTCDate(), hh=j.getUTCHours(), mm=String(j.getUTCMinutes()).padStart(2,"0");
+      const lab = src.tf==="3m" ? `${hh}:${mm}` : src.tf==="4h" ? `${M}/${d}` : src.tf==="1M" ? `${j.getUTCFullYear()}/${M}` : src.tf==="1w" ? `${String(j.getUTCFullYear()).slice(2)}/${M}/${d}` : `${M}/${d}`;
+      if(x(i)>16 && x(i)<cw-16) g.fillText(lab, x(i), h-6);
+    }
+  } else for(let i=s;i<=endIdx;i++){
     const j=new Date(D.t[i]+9*3600e3), hr=j.getUTCHours();
     const mark = n<=24 ? (hr%6===0) : (hr===0 || (i>s && new Date(D.t[i-1]+9*3600e3).getUTCDate()!==j.getUTCDate() && hr<3));
     if(mark && x(i)>16 && x(i)<cw-16){ g.fillText(n<=24 ? hr+"時" : (j.getUTCMonth()+1)+"/"+j.getUTCDate(), x(i), h-6); }
@@ -791,7 +852,7 @@ function drawCandles(cv, sym, endIdx, n, lines){
   g.save(); g.beginPath(); g.rect(0,padT,cw,ch); g.clip();
   if(MODE==="sample"){ g.save(); g.fillStyle=muted; g.globalAlpha=.10; g.font="700 "+Math.min(22,w/14)+"px "+css("--f-body"); g.textAlign="center"; g.textBaseline="middle"; g.fillText("サンプル", cw/2, padT+ch/2); g.restore(); }
   // 雲（うすい帯）と転換線
-  if(isI){
+  if(isI && ind){
     g.save(); g.globalAlpha=.13; g.fillStyle=css("--silver"); g.beginPath();
     for(let i=s;i<=endIdx;i++){ const yy=y(es[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); }
     for(let i=endIdx;i>=s;i--) g.lineTo(x(i),y(eb[i]));
@@ -806,7 +867,7 @@ function drawCandles(cv, sym, endIdx, n, lines){
     g.fillRect(xx-bw/2, y(Math.max(o,c)), bw, Math.max(1,Math.abs(y(o)-y(c))));
   }
   const plot = (arr,col,wd,al=1) => { g.save(); g.globalAlpha=al; g.strokeStyle=col; g.lineWidth=wd; g.beginPath(); for(let i=s;i<=endIdx;i++){ const yy=y(arr[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); } g.stroke(); g.restore(); };
-  if(isI) plot(ef, gold, 1.5, .9); else { plot(ef, gold, 1.5, .9); plot(es, muted, 1.2, .8); }
+  if(ind){ if(isI) plot(ef, gold, 1.5, .9); else { plot(ef, gold, 1.5, .9); plot(es, muted, 1.2, .8); } }
   // 横線（入る＝白、利確＝赤、損切り＝青）
   for(const L of lines){
     const yy=y(L.v), col = L.kind==="tp"?up : L.kind==="sl"?dn : ink;
@@ -992,8 +1053,8 @@ function viewSignal(){
   ${others.length?`<section class="card"><h2>練習で保有中</h2>${posList(others)}</section>`:""}
   <section class="card" aria-label="チャート">
     <div class="chart-head">
-      <div class="chips">${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}</div>
-      <div class="legend"><span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>もみ合いの範囲</span></div>
+      <div class="chips tfs">${TFS.map(([k,l])=>`<button class="chip" data-act="tf" data-tf="${k}" aria-pressed="${(S.tf||"1h")===k}">${l}</button>`).join("")}</div>
+      ${(S.tf||"1h")==="1h"?`<div class="legend"><span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>もみ合いの範囲</span></div>`:`<div class="legend"><span>判断は1時間足で行っています</span></div>`}
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
@@ -1236,7 +1297,10 @@ function drawAll(){
     const ref = d.verdict==="wait";
     lines.push({v:d.lv.entry,kind:"entry",label:"エントリー",ref},{v:d.lv.tp,kind:"tp",label:"利確",ref},{v:d.lv.sl,kind:"sl",label:"損切り",ref});
     for(const p of S.acct.positions.filter(p=>p.sym===S.sym)) lines.push({v:p.entry,kind:"entry",label:"保有中"},{v:p.tp,kind:"tp",label:"保有の利確"},{v:p.sl,kind:"sl",label:"保有の損切り"});
-    drawCandles(cp, S.sym, S.nowIdx, S.range, lines);
+    const tf=S.tf||"1h", src=tfSeries(tf);
+    if(tf==="1h") drawCandles(cp, S.sym, S.nowIdx, 72, lines);
+    else if(src && typeof src==="object"){ const n=TFS.find(x=>x[0]===tf)[2]; drawCandles(cp, S.sym, src.c.length-1, Math.min(n, src.c.length), lines, src); }
+    else { const { g, w, h } = setupCanvas(cp); g.clearRect(0,0,w,h); g.fillStyle=css("--muted"); g.font="14px "+css("--f-body"); g.textAlign="center"; g.fillText(src==="none" ? (MODE==="live"?"この足の長さは今は表示できません":"サンプルでは3分足は表示できません") : "読み込んでいます…", w/2, h/2); }
   }
   const ce=$("#cv-eq");
   if(ce){
@@ -1360,6 +1424,7 @@ document.addEventListener("click", e=>{
   if(act==="adv") advance(+b.dataset.n);
   else if(act==="refresh"){ b.disabled=true; b.textContent="更新中…"; refreshLive(true); }
   else if(act==="range"){ S.range=+b.dataset.n; save(); render(); }
+  else if(act==="tf"){ S.tf=b.dataset.tf; save(); render(); }
   else if(act==="open"){
     const d=currentDecision(S.sym);
     if(d.verdict==="wait") return;
