@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-04T17:55:06.122Z",
+  "fetchedAt": "2026-11-04T18:00:13.727Z",
   "source": "Twelve Data (1h, UTC)",
   "XAU/USD": {
     "bars": 43164,
@@ -8,9 +8,9 @@
     "note": "これより前のデータはありません"
   },
   "USD/JPY": {
-    "bars": 0,
-    "from": null,
-    "to": null,
-    "note": "You have run out of API credits for the current minute. 9 API credits were used, with the current limit being 8. Wait for the next minute or consider switching to a higher tier plan at https://twelved"
+    "bars": 44175,
+    "from": "2020-01-29 03:00",
+    "to": "2026-11-04 17:00",
+    "note": "これより前のデータはありません"
   }
 }
