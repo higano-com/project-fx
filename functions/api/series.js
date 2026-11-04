@@ -17,7 +17,9 @@ function json(body, status = 200, extra = {}) {
 export async function onRequestGet({ request, env, waitUntil }) {
   const symbol = new URL(request.url).searchParams.get("symbol") || "";
   if (!ALLOWED.has(symbol)) return json({ error: "bad_symbol" }, 400);
-  if (!env.TWELVEDATA_API_KEY) return json({ error: "no_key" }, 500);
+  // 貼り付け時に紛れ込みやすい空白・改行・見えない文字を取り除く（キーは英数字だけ）
+  const apiKey = String(env.TWELVEDATA_API_KEY || "").replace(/[^A-Za-z0-9]/g, "");
+  if (!apiKey) return json({ error: "no_key" }, 500);
 
   const cache = caches.default;
   const cacheKey = new Request("https://pfx-cache.internal/series/" + encodeURIComponent(symbol));
@@ -25,7 +27,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   if (hit) return hit;
 
   const api = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(symbol) +
-    "&interval=1h&outputsize=5000&timezone=UTC&order=asc&apikey=" + encodeURIComponent(env.TWELVEDATA_API_KEY);
+    "&interval=1h&outputsize=5000&timezone=UTC&order=asc&apikey=" + apiKey;
   let data;
   try {
     const r = await fetch(api);
@@ -34,7 +36,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     return json({ error: "upstream", message: "Twelve Data に接続できませんでした" }, 502);
   }
   if (!data || data.status !== "ok" || !Array.isArray(data.values)) {
-    const msg = String((data && data.message) || "").replace(env.TWELVEDATA_API_KEY, "***");
+    const msg = String((data && data.message) || "").split(apiKey).join("***");
     return json({ error: "upstream", code: data && data.code, message: msg }, 502);
   }
 
