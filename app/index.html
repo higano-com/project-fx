@@ -639,11 +639,21 @@ function scoreCombos(cfg, from, to, minN){
 function autoTune(force){
   const cfg=S.cfg, month=new Date(Date.now()+9*3600e3).toISOString().slice(0,7);
   if(MODE!=="live" || !cfg.auto.on || (!force && cfg.auto.month===month && cfg.auto.rule===cfg.rule)) return false;
-  const end=TOTAL, from=Math.max(WARMUP, DATA.gold.t.findIndex(t=>t>=DATA.gold.t[end-1]-91*86400e3));
-  const res=scoreCombos(cfg, from, end, 5), best=res.reduce((a,b)=> b.score>a.score ? b : a);
-  if(!isFinite(best.score)) return false;
+  // 1週間ずつずらした4回分（それぞれ直近3か月）の点の平均で選ぶ（見直しの日による当たり外れを減らす。検証でばらつきが半分に）
+  const T=DATA.gold.t, end=TOTAL, idxAt=ms=>{ const k=T.findIndex(t=>t>=ms); return k<0?end:k; };
+  const sum=new Map(), cnt=new Map(); let res=null;
+  for(let k=0;k<4;k++){
+    const e=idxAt(T[end-1]-k*7*86400e3+1), f=Math.max(WARMUP, idxAt(T[end-1]-k*7*86400e3-91*86400e3));
+    if(e-f<200) continue;
+    const r=scoreCombos(cfg, f, e, 5); if(k===0) res=r;
+    for(const x of r){ const key=x.idx.join(","); if(!isFinite(x.score)) continue; sum.set(key,(sum.get(key)||0)+x.score); cnt.set(key,(cnt.get(key)||0)+1); }
+  }
+  if(!res) return false;
+  const looks=Math.max(...cnt.values(), 0);
+  let best=null; for(const x of res){ const key=x.idx.join(","); if(cnt.get(key)!==looks) continue; x.score=sum.get(key)/looks; if(!best || x.score>best.score) best=x; }
+  if(!best || !isFinite(best.score)) return false;
   cfg[RULES[cfg.rule].pk] = clone(best.p);
-  cfg.auto = { ...cfg.auto, month, rule:cfg.rule, at:Date.now(), trades:best.st.n, net:best.st.net, from:DATA.gold.t[from], to:DATA.gold.t[end-1] };
+  cfg.auto = { ...cfg.auto, month, rule:cfg.rule, at:Date.now(), trades:best.st.n, net:best.st.net, from:T[Math.max(WARMUP, idxAt(T[end-1]-91*86400e3))], to:T[end-1] };
   return true;
 }
 function runValidation(cfg){
