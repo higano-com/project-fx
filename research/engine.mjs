@@ -243,7 +243,7 @@ export function gridList(grid) {
 export const COST = { spread: 0.80, slip: 0.10, swapLong: 85, swapShort: -83 };   // GMO 金スポット（2026/11/04 の画面）
 const RISK = 10000;   // R を計算するための仮の金額（円）
 function rollovers(t0, t1) { const day = 86400e3, off = 22 * 3600e3; return Math.max(0, Math.floor((t1 - off) / day) - Math.floor((t0 - off) / day)); }
-export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120 } = {}) {
+export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, flat = null } = {}) {
   const trades = []; let pos = null, pend = null;
   const h = COST.spread / 2;
   for (let i = from; i < to; i++) {
@@ -251,6 +251,12 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120 }
       const entry = B.o[i] + pend.dir * h, qty = RISK / ((pend.stop + COST.slip) * B.fx[i]);
       pos = { i, t: B.t[i], dir: pend.dir, entry, sl: entry - pend.dir * pend.stop, tp: entry + pend.dir * pend.stop * pend.rr, qty, stopFrac: pend.stop / entry, regime: B.regime[pend.i] };
       pend = null;
+    }
+    if (pos && flat && flat[i] && i > pos.i) {   // 発表の前に決済（その足の始値で）
+      const px = B.o[i] - pos.dir * h, days = rollovers(pos.t, B.t[i]);
+      const swap = (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.qty * days;
+      trades.push({ t: pos.t, t1: B.t[i], dir: pos.dir, R: ((px - pos.entry) * pos.dir * pos.qty * B.fx[i] - swap) / RISK, why: "発表前に決済", regime: pos.regime, stopFrac: pos.stopFrac, hours: i - pos.i });
+      pos = null;
     }
     if (pos) {
       let px = null, why = null;
