@@ -65,6 +65,48 @@ function addIndicators(B) {
   B.atr = atr(B, 14);
   B.atrAvg = sma(B.atr, 100);
   B.regime = regimes(B);
+  addOscillators(B);
+}
+
+/* 金でよく使われる指標 */
+function addOscillators(B) {
+  const n = B.n, hh14 = B.hh(14), ll14 = B.ll(14);
+  // ストキャスティクス（14本、平均3本）
+  const k = new Float64Array(n); for (let i = 0; i < n; i++) { const r = hh14[i] - ll14[i]; k[i] = r > 0 ? (B.c[i] - ll14[i]) / r * 100 : 50; }
+  B.stK = k; B.stD = sma(k, 3);
+  // 移動平均の収束と拡散（12・26・9）
+  const e12 = ema(B.c, 12), e26 = ema(B.c, 26), m = new Float64Array(n); for (let i = 0; i < n; i++) m[i] = e12[i] - e26[i];
+  B.macd = m; B.macdSig = ema(m, 9);
+  // ボリンジャーバンド（20本）
+  const mid = sma(B.c, 20), sd = new Float64Array(n);
+  for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = Math.max(0, i - 19); j <= i; j++) { s += (B.c[j] - mid[i]) ** 2; c++; } sd[i] = Math.sqrt(s / c); }
+  B.bbMid = mid; B.bbSd = sd;
+  const width = new Float64Array(n); for (let i = 0; i < n; i++) width[i] = 4 * sd[i] / mid[i];
+  B.bbWidth = width; B.bbWidthAvg = sma(width, 200);
+  // トレンドの強さ（14本）
+  const adx = new Float64Array(n); let trS = 0, pS = 0, mS = 0, ax = 0;
+  for (let i = 1; i < n; i++) {
+    const up = B.h[i] - B.h[i - 1], dn = B.l[i - 1] - B.l[i];
+    const pdm = up > dn && up > 0 ? up : 0, mdm = dn > up && dn > 0 ? dn : 0;
+    const tr = Math.max(B.h[i] - B.l[i], Math.abs(B.h[i] - B.c[i - 1]), Math.abs(B.l[i] - B.c[i - 1]));
+    trS = trS - trS / 14 + tr; pS = pS - pS / 14 + pdm; mS = mS - mS / 14 + mdm;
+    const pdi = trS ? 100 * pS / trS : 0, mdi = trS ? 100 * mS / trS : 0, dx = pdi + mdi ? 100 * Math.abs(pdi - mdi) / (pdi + mdi) : 0;
+    ax = i < 28 ? dx : (ax * 13 + dx) / 14; adx[i] = ax;
+  }
+  B.adx = adx;
+  // 商品チャネル指数（20本）
+  const tp = new Float64Array(n); for (let i = 0; i < n; i++) tp[i] = (B.h[i] + B.l[i] + B.c[i]) / 3;
+  const tpm = sma(tp, 20), cci = new Float64Array(n);
+  for (let i = 0; i < n; i++) { let md = 0, c = 0; for (let j = Math.max(0, i - 19); j <= i; j++) { md += Math.abs(tp[j] - tpm[i]); c++; } md /= c; cci[i] = md ? (tp[i] - tpm[i]) / (0.015 * md) : 0; }
+  B.cci = cci;
+  // 一目均衡表（9・26・52、雲は26本前に計算した値）
+  const h9 = B.hh(9), l9 = B.ll(9), h26 = B.hh(26), l26 = B.ll(26), h52 = B.hh(52), l52 = B.ll(52);
+  const ten = new Float64Array(n), kij = new Float64Array(n), cloudTop = new Float64Array(n), cloudBot = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    ten[i] = (h9[i] + l9[i]) / 2; kij[i] = (h26[i] + l26[i]) / 2;
+    const j = i - 26; if (j >= 0) { const a = ((h9[j] + l9[j]) / 2 + (h26[j] + l26[j]) / 2) / 2, b = (h52[j] + l52[j]) / 2; cloudTop[i] = Math.max(a, b); cloudBot[i] = Math.min(a, b); }
+  }
+  B.ten = ten; B.kij = kij; B.cloudTop = cloudTop; B.cloudBot = cloudBot;
 }
 
 /* 相場のパターン（取引を始めた時点で、それまでの値動きから決める。先の値動きは見ない） */
@@ -130,6 +172,62 @@ export const STRATEGIES = {
       const es = B.ema(50), c = B.c[i], o = B.o[i], r = B.rsi[i], a = B.atr[i];
       if (r <= p.lo && c < es[i] - p.k * a && c > o) return { dir: 1, stop: p.slMult * a, rr: p.rr };
       if (r >= 100 - p.lo && c > es[i] + p.k * a && c < o) return { dir: -1, stop: p.slMult * a, rr: p.rr };
+      return null;
+    }
+  },
+  // ストキャスティクス：流れの方向に、売られすぎ（買われすぎ）から戻ったら乗る
+  stoch: {
+    name: "ストキャスティクス（流れの方向に）",
+    grid: { slow: [50, 100, 150], lv: [20, 30], slMult: [1, 1.5, 2], rr: [1.5, 2, 3] },
+    fn(B, i, p) {
+      const es = B.ema(p.slow), a = B.atr[i];
+      const crossUp = B.stK[i - 1] <= B.stD[i - 1] && B.stK[i] > B.stD[i], crossDn = B.stK[i - 1] >= B.stD[i - 1] && B.stK[i] < B.stD[i];
+      if (es[i] > es[i - 24] && crossUp && B.stK[i - 1] < p.lv) return { dir: 1, stop: p.slMult * a, rr: p.rr };
+      if (es[i] < es[i - 24] && crossDn && B.stK[i - 1] > 100 - p.lv) return { dir: -1, stop: p.slMult * a, rr: p.rr };
+      return null;
+    }
+  },
+  // 移動平均の収束と拡散：流れの方向に、線が交わったら乗る
+  macd: {
+    name: "移動平均の収束と拡散（流れの方向に）",
+    grid: { slow: [50, 100, 150], slMult: [1, 1.5, 2], rr: [1.5, 2, 3] },
+    fn(B, i, p) {
+      const es = B.ema(p.slow), a = B.atr[i], m = B.macd, s = B.macdSig;
+      if (es[i] > es[i - 24] && m[i - 1] <= s[i - 1] && m[i] > s[i]) return { dir: 1, stop: p.slMult * a, rr: p.rr };
+      if (es[i] < es[i - 24] && m[i - 1] >= s[i - 1] && m[i] < s[i]) return { dir: -1, stop: p.slMult * a, rr: p.rr };
+      return null;
+    }
+  },
+  // ボリンジャーバンド：帯の外に飛び出したら、その方向に乗る
+  bollinger: {
+    name: "ボリンジャーバンドの外に出たら乗る",
+    grid: { k: [2, 2.5, 3], slMult: [1, 1.5, 2], rr: [1.5, 2, 3] },
+    fn(B, i, p) {
+      const up = B.bbMid[i] + p.k * B.bbSd[i], lo = B.bbMid[i] - p.k * B.bbSd[i], upP = B.bbMid[i - 1] + p.k * B.bbSd[i - 1], loP = B.bbMid[i - 1] - p.k * B.bbSd[i - 1], a = B.atr[i];
+      if (B.c[i] > up && B.c[i - 1] <= upP) return { dir: 1, stop: p.slMult * a, rr: p.rr };
+      if (B.c[i] < lo && B.c[i - 1] >= loP) return { dir: -1, stop: p.slMult * a, rr: p.rr };
+      return null;
+    }
+  },
+  // 一目均衡表：雲の上に抜けて、転換線が基準線より上なら買い（逆なら売り）
+  ichimoku: {
+    name: "一目均衡表（雲抜け）",
+    grid: { slMult: [1, 1.5, 2, 2.5], rr: [1.5, 2, 3] },
+    fn(B, i, p) {
+      const a = B.atr[i];
+      if (B.c[i] > B.cloudTop[i] && B.c[i - 1] <= B.cloudTop[i - 1] && B.ten[i] > B.kij[i]) return { dir: 1, stop: p.slMult * a, rr: p.rr };
+      if (B.c[i] < B.cloudBot[i] && B.c[i - 1] >= B.cloudBot[i - 1] && B.ten[i] < B.kij[i]) return { dir: -1, stop: p.slMult * a, rr: p.rr };
+      return null;
+    }
+  },
+  // 商品チャネル指数：流れの方向に、行き過ぎから戻ったら乗る
+  cci: {
+    name: "商品チャネル指数（流れの方向に）",
+    grid: { slow: [50, 100, 150], lv: [100, 150], slMult: [1, 1.5, 2], rr: [1.5, 2, 3] },
+    fn(B, i, p) {
+      const es = B.ema(p.slow), a = B.atr[i];
+      if (es[i] > es[i - 24] && B.cci[i - 1] < -p.lv && B.cci[i] >= -p.lv) return { dir: 1, stop: p.slMult * a, rr: p.rr };
+      if (es[i] < es[i - 24] && B.cci[i - 1] > p.lv && B.cci[i] <= p.lv) return { dir: -1, stop: p.slMult * a, rr: p.rr };
       return null;
     }
   },
