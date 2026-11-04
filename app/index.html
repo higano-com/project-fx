@@ -110,8 +110,15 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .simout{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline;background:var(--sunk);border-radius:12px;padding:12px}
 .simout .k{font-size:13px;color:var(--muted)} .simout .v{font-family:var(--f-num);font-size:16px;text-align:right}
 .simout .v.big2{font-size:28px;font-weight:600}
+/* 価格と判断を1枚に */
+.panel{background:var(--surface);border-radius:18px;overflow:hidden}
+.panel .quotes{padding:10px 10px 0}
+.panel .qsub{padding:8px 10px 10px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec + .sec{border-top:1px solid var(--line);padding-top:14px}
+.linkbtn{border:0;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer;padding:6px 0;align-self:center}
 /* 注文の内容 */
-.ticket{border-radius:18px;overflow:hidden;background:var(--surface)}
+.ticket{overflow:hidden;background:var(--surface)}
 .ticket .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px}
 .ticket.buy .head{background:var(--buy)} .ticket.sell .head{background:var(--sell)} .ticket.wait .head{background:var(--sunk)}
 .ticket .act{font-size:22px;font-weight:800;line-height:1.2;color:#fff}
@@ -152,8 +159,8 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 .checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
 .checks li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:14px;align-items:start}
 .checks .mk{font-weight:700;text-align:center;border-radius:50%;font-size:12px;line-height:20px;height:20px;width:20px;margin-top:1px}
-.checks .ok .mk{background:var(--buy-soft);color:var(--buy)}
-.checks .ng .mk{background:var(--sell-soft);color:var(--sell)}
+.checks .ok .mk{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.checks .ng .mk{background:var(--sunk);color:var(--muted)}
 .checks .ng{color:var(--muted)}
 
 /* 大きな数字のます目 */
@@ -217,7 +224,7 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 .field input[type="date"]{font-size:15px;text-align:left}
 /* 下のタブ */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-nav.tabs .in{display:grid;grid-template-columns:repeat(4,1fr);max-width:640px;margin:0 auto}
+nav.tabs .in{display:grid;grid-template-columns:repeat(3,1fr);max-width:640px;margin:0 auto}
 nav.tabs button{border:0;background:transparent;padding:9px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);cursor:pointer}
 nav.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
@@ -242,7 +249,6 @@ footer.disc{font-size:12px;color:var(--muted);line-height:1.7;text-align:center;
 
 <nav class="tabs" aria-label="画面の切り替え"><div class="in">
   <button type="button" data-tab="signal"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>判断</button>
-  <button type="button" data-tab="trade"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 3v3M16 3v3"/></svg>取引</button>
   <button type="button" data-tab="stats"><svg viewBox="0 0 24 24"><path d="M5 20V11"/><path d="M12 20V5"/><path d="M19 20v-6"/></svg>成績</button>
   <button type="button" data-tab="cfg"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>設定</button>
 </div></nav>
@@ -662,7 +668,7 @@ function initState(){
   if(saved && saved.acct && Array.isArray(saved.acct.trades)) S.acct = saved.acct;
   if(MODE==="sample" && saved && typeof saved.nowIdx==="number" && saved.nowIdx>=WARMUP && saved.nowIdx<TOTAL) S.nowIdx = saved.nowIdx;
   if(saved && SYMS[saved.sym]) S.sym = saved.sym;
-  if(saved && ["signal","trade","stats","cfg"].includes(saved.tab)) S.tab = saved.tab;
+  if(saved && ["signal","stats","cfg"].includes(saved.tab)) S.tab = saved.tab;
   if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
   if(saved && saved.notifyOn) S.notifyOn = true;
   if(!S.acct){
@@ -893,7 +899,7 @@ function levelsHtml(sym, d){
 function viewSignal(){
   if(!DATA[S.sym]) return viewSilverOff();
   const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
-  const d = currentDecision(sym), all10 = [...d.checks, ...d.safety], okN = d.okN, all = all10.length;
+  const d = currentDecision(sym), all = d.checks.length + d.safety.length, okN = d.okN;
   const lv=d.lv, tpU=Math.abs(lv.tp-lv.entry), pnlTp=d.sz.qty*tpU*fxNow(), pnlSl=d.sz.risk;
   const dots = `<span class="dots" aria-label="そろった条件 ${okN}／${all}">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<b class="gap"></b>${d.safety.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}/${all}</span></span>`;
   const act = { buy:"買い", sell:"売り", wait:"待ち" }[d.verdict];
@@ -902,35 +908,34 @@ function viewSignal(){
       <div class="trow"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="s down">−${yen(pnlSl)}</div></div>
       <div class="trow"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="s up">＋${yen(pnlTp)}</div></div>
       <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div></div>`;
-  const p = curParams(S.cfg), others = S.acct.positions.filter(x=>x.sym===sym);
+  const others = S.acct.positions.filter(x=>x.sym===sym);
+  const list = arr => `<ul class="checks">${arr.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>`;
   return `${banners()}
-  <section class="quotes" aria-label="今の値段">
-    <div class="q sell"><div class="k">売</div><div class="v">${fp(sym,px-c.spread/2)}</div></div>
-    <div class="q buy"><div class="k">買</div><div class="v">${fp(sym,px+c.spread/2)}</div></div>
+  <section class="panel" aria-label="今の値段と判断">
+    <div class="quotes">
+      <div class="q sell"><div class="k">売</div><div class="v">${fp(sym,px-c.spread/2)}</div></div>
+      <div class="q buy"><div class="k">買</div><div class="v">${fp(sym,px+c.spread/2)}</div></div>
+    </div>
+    <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span>${stamp()}</div>
+    <div class="ticket ${d.verdict}">
+      <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"安全確認で見送り":"条件待ち"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
+      ${d.verdict!=="wait"?`<div class="body">${rows}<button class="linkbtn" data-act="open">練習として記録する</button></div>`:""}
+    </div>
   </section>
-  <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span>${stamp()}</div>
-  <section class="ticket ${d.verdict}" aria-label="判断">
-    <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"安全確認で見送り":"条件待ち"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
-    ${d.verdict!=="wait"?`<div class="body">${rows}
-      <button class="btn block ${d.verdict}" style="margin-top:8px" data-act="open">仮想取引に記録</button></div>`:""}
-  </section>
+  ${others.length?`<section class="card"><h2>練習で保有中</h2>${posList(others)}</section>`:""}
   <section class="card" aria-label="チャート">
     <div class="chart-head">
       <div class="chips">${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}</div>
-      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>もみ合いの範囲</span>`:`<span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>大きな流れ</span>`}</div>
+      <div class="legend"><span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>もみ合いの範囲</span></div>
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
-  <details class="more"><summary>10の条件<small>${okN}／${all}</small></summary><div class="in">
-    <h3>売買の条件（${d.lean==="buy"?"買い":"売り"}）</h3>
-    <ul class="checks">${d.checks.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
-    <h3>安全の確認</h3>
-    <ul class="checks">${d.safety.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
+  <details class="more" id="detail-box"${S.detailOpen?" open":""}><summary>くわしく<small>条件・目安・試算</small></summary><div class="in">
+    <div class="sec"><h3>売買の条件（${d.lean==="buy"?"買い":"売り"}）</h3>${list(d.checks)}<h3>安全の確認</h3>${list(d.safety)}</div>
+    ${d.verdict==="wait"?`<div class="sec"><h3>条件がそろったときの目安（${d.lean==="buy"?"買い":"売り"}）</h3><div>${rows}</div></div>`:""}
+    <div class="sec"><h3>試算</h3>${simHtml(sym,d)}</div>
     <p class="note">入る・損切り・利確の価格と数量は、アプリが自動で決めています（毎月見直し${S.cfg.auto.at?`・最終 ${fd(S.cfg.auto.at)}`:""}）。数量はGMOの取引数量（1＝1オンス）です。</p>
-  </div></details>
-  ${d.verdict==="wait"?`<details class="more"><summary>そろったときの目安<small>${d.lean==="buy"?"買い":"売り"}</small></summary><div class="in"><div class="ticket ${d.lean}" style="background:transparent"><div class="body" style="padding:0">${rows}</div></div></div></details>`:""}
-  <details class="more" id="sim-box"${S.simOpen?" open":""}><summary>試算<small>数量と価格で損益を計算</small></summary><div class="in">${simHtml(sym,d)}</div></details>
-  ${others.length?`<section class="card"><h2>保有中</h2>${posList(others)}</section>`:""}`;
+  </div></details>`;
 }
 function posList(list){
   if(!list.length) return `<div class="empty">今は持っていません</div>`;
@@ -991,44 +996,39 @@ function goalCard(){
   const g=goalInfo(), cfg=S.cfg;
   if(!(g.amount>0)) return `<section class="card"><h2>目標</h2><p class="note">「設定」で、期限と目標の利益を入れてください。</p></section>`;
   const reach = g.expect!=null && g.profit + g.expect >= g.amount;
+  const tile = (k,v,c="") => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
   return `<section class="card">
-    <div class="sub">目標：${cfg.goal.deadline.replace(/-/g,"/")}までに ＋${yen(g.amount)}</div>
+    <div class="sub">${cfg.goal.deadline.replace(/-/g,"/")}までに ＋${yen(g.amount)}</div>
     <div class="big ${cls(g.profit)}">${yen(g.profit,true)}</div>
     <div class="goalbar"><span style="width:${g.pct}%"></span></div>
-    <div class="kvs">
-      <div class="k">あと</div><div class="v">${yen(g.remain)}</div>
-      <div class="k">残りの取引できる日</div><div class="v">${g.days}日<span class="sub">（カレンダーで${g.calDays}日）</span></div>
-      <div class="k">取引日1日あたり必要</div><div class="v">${yen(g.perDay)}</div>
-      ${g.pace!=null?`<div class="k">今のペースの目安（取引日1日）</div><div class="v ${cls(g.pace)}">${yen(g.pace,true)}</div>`:""}
+    <div class="tiles">
+      ${tile("あと", yen(g.remain))}
+      ${tile("取引できる日", g.days+"日")}
+      ${tile("1日に必要", yen(g.perDay))}
+      ${g.pace!=null?tile("今のペース（1日）", yen(g.pace,true), cls(g.pace)):tile("今のペース","—")}
     </div>
-    ${g.pace!=null?`<div class="pace ${reach?"ok":"ng"}">${reach?"今のペースなら届く見込み（目安）":`今のペースだと期限までに約${yen(Math.max(0,g.profit+g.expect),true)}（目安）`}</div>`:""}
-    <p class="note">1回にかける金額は増やしません。目標を追いかけてかける額を増やすと、資金が大きく減る確率が上がるためです。「今のペース」は直近3か月の検証の結果で、約束ではありません。取引できる日は、土日・12月25日・1月1日を除いた目安です。</p>
+    ${g.pace!=null?`<div class="pace ${reach?"ok":"ng"}">${reach?"今のペースなら届く見込み":`今のペースだと期限までに約${yen(Math.max(0,g.profit+g.expect),true)}`}（目安）</div>`:""}
+    <p class="note">1回にかける金額は、目標に合わせて増やしません。土日・12/25・1/1は取引できない日として数えています。</p>
   </section>`;
 }
 function viewStats(){
-  const a=S.acct, st=stats(a.trades,S.cfg.capital), by = s => stats(a.trades.filter(t=>t.sym===s), 0);
+  const a=S.acct, st=stats(a.trades,S.cfg.capital);
   const tile = (k,v,c="") => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
   return `${banners()}
   ${goalCard()}
-  <section class="card">
-    <div class="sub">仮想取引の損益（コストを引いた後）</div>
-    <div class="big ${cls(st.net)}">${yen(st.net,true)}</div>
-    <div class="sub">${st.n}回の取引${st.n?`・勝率${pct(st.winRate,0)}`:""}</div>
+  ${a.trades.length||a.positions.length?`<section class="card">
+    <h2>練習の記録</h2>
+    <div class="tiles">
+      ${tile("損益（コスト込み）", yen(st.net,true), cls(st.net))}
+      ${tile("回数・勝率", `${st.n}回・${st.n?pct(st.winRate,0):"—"}`)}
+      ${tile("利益÷損失", !st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"損失なし")}
+      ${tile("一番大きな落ち込み", yen(st.mdd))}
+    </div>
     <div class="chart-box short"><canvas id="cv-eq" aria-label="資金の移り変わり"></canvas></div>
-    <p class="note">赤い点線は「ここまで減ったら停止」の目安（最初の資金の−${S.cfg.maxDDPct}％）です。</p>
-  </section>
-  <section class="card"><div class="tiles">
-    ${tile("利益÷損失", !st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"損失なし")}
-    ${tile("一番大きな落ち込み", yen(st.mdd))}
-    ${tile("平均の利益", st.wins?yen(st.avgWin,true):"—", "up")}
-    ${tile("平均の損失", st.n-st.wins?"−"+yen(st.avgLoss):"—", "down")}
-    ${tile("取引コストの合計", yen(st.cost))}
-    ${tile("取引の回数", st.n+"回")}
-  </div><p class="note">「利益÷損失」が1より大きければ、コストを引いてもプラスです。</p></section>
-  <details class="more"><summary>銘柄ごと</summary><div class="in"><div class="scroll-x"><table class="cmp"><thead><tr><th></th><th>回数</th><th>勝率</th><th>損益</th><th>コスト</th></tr></thead><tbody>
-    ${activeSyms().map(s=>{ const b=by(s); return `<tr><td>${SYMS[s].name}</td><td>${b.n}</td><td>${b.n?pct(b.winRate,0):"—"}</td><td class="${cls(b.net)}">${yen(b.net,true)}</td><td>${yen(b.cost)}</td></tr>`; }).join("")}
-  </tbody></table></div></div></details>
-  <footer class="disc">ここに出る成績は、将来の成績を約束するものではありません。</footer>`;
+    ${a.positions.length?`<h3>保有中</h3>${posList(a.positions)}`:""}
+    <details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${a.trades.length}件</small></summary><div class="in">${tradeList(a.trades,30)}</div></details>
+  </section>`:`<p class="note" style="text-align:center">判断の画面で「練習として記録する」を押すと、ここに練習の成績が出ます。</p>`}
+  <footer class="disc">成績や目安は、将来の成績を約束するものではありません。</footer>`;
 }
 function pstr(p){ return p.fast!=null ? `短い平均線${p.fast}・長い平均線${p.slow}・損切り${p.slMult}倍・利確${p.rr}倍` : `損切り${p.slMult}倍・利確${p.rr}倍・損切り幅の下限${p.minStop}ドル`; }
 function viewBT(){
@@ -1127,7 +1127,7 @@ function viewCfg(){
   </section>`;
 }
 function footer(){
-  return S.tab==="signal"||S.tab==="trade" ? `<footer class="disc">練習・検証のためのアプリです。実際の注文はできません。利益を約束するものではありません。</footer>` : "";
+  return S.tab==="signal" ? `<footer class="disc">練習・検証のためのアプリです。実際の注文はできません。利益を約束するものではありません。</footer>` : "";
 }
 
 /* ---------- 画面の更新 ---------- */
@@ -1259,12 +1259,12 @@ async function refreshLive(manual){
 document.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
   if(b.dataset.sym){ S.sym=b.dataset.sym; S.sim=null; save(); render(); return; }
-  if(b.dataset.simdir){ S.sim={ dir:+b.dataset.simdir, qty:(S.sim&&S.sim.qty) }; if(S.sim.qty==null) delete S.sim.qty; S.simOpen=true; render(); return; }
+  if(b.dataset.simdir){ S.sim={ dir:+b.dataset.simdir, qty:(S.sim&&S.sim.qty) }; if(S.sim.qty==null) delete S.sim.qty; S.detailOpen=true; render(); return; }
   if(b.dataset.simset){
     const d=currentDecision(S.sym), st=simState(S.sym,d), w=b.dataset.simset, px=midNow(S.sym), h=S.cfg.cost[S.sym].spread/2;
     if(w==="reset") S.sim=null;
     else S.sim={ ...(S.sim||{}), dir:st.dir, target: w==="sl"?d.lv.sl : w==="tp"?d.lv.tp : px - st.dir*h };
-    S.simOpen=true; render(); return;
+    S.detailOpen=true; render(); return;
   }
   if(b.dataset.tab){ S.tab=b.dataset.tab; S.ui={}; save(); render(); window.scrollTo(0,0); return; }
   const act=b.dataset.act; if(!act) return;
@@ -1315,10 +1315,10 @@ document.addEventListener("input", e=>{
   const el=e.target; if(!el.dataset || !el.dataset.sim) return;
   const v=parseFloat(el.value); if(!isFinite(v)) return;
   const d=currentDecision(S.sym), st=simState(S.sym,d);
-  S.sim={ ...st, [el.dataset.sim]:v }; S.simOpen=true;
+  S.sim={ ...st, [el.dataset.sim]:v }; S.detailOpen=true;
   const out=$("#sim-out"); if(out) out.innerHTML=simOut(S.sym, S.sim);
 });
-document.addEventListener("toggle", e=>{ if(e.target && e.target.id==="sim-box") S.simOpen=e.target.open; }, true);
+document.addEventListener("toggle", e=>{ if(e.target && e.target.id==="detail-box") S.detailOpen=e.target.open; }, true);
 let rz; window.addEventListener("resize", ()=>{ clearTimeout(rz); rz=setTimeout(drawAll,120); });
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); }catch(e){}
 new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
