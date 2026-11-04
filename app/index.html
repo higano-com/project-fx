@@ -62,6 +62,9 @@ main .wrap{display:flex;flex-direction:column;gap:14px}
 
 .notice{background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:10px;padding:10px 12px;font-size:13px}
 .notice b{color:var(--warn)}
+.notice.live{background:var(--buy-soft);border-color:color-mix(in srgb,var(--buy) 35%,transparent)}
+.notice.live b{color:var(--buy)}
+.badge-sample.live{color:var(--buy);background:var(--buy-soft);border-color:color-mix(in srgb,var(--buy) 35%,transparent)}
 .stop{background:var(--sell-soft);border:1px solid color-mix(in srgb,var(--sell) 40%,transparent);border-radius:10px;padding:10px 12px;font-size:13.5px}
 .stop b{color:var(--sell)}
 
@@ -166,7 +169,7 @@ footer.disc{font-size:11.5px;color:var(--muted);line-height:1.7}
 <header class="top">
   <div class="wrap">
     <div class="brand">金銀シグナル検証</div>
-    <span class="badge-sample">サンプルデータ</span>
+    <span class="badge-sample" id="mode-badge">サンプルデータ</span>
     <div class="seg" role="group" aria-label="銘柄">
       <button type="button" data-sym="gold" aria-pressed="true">金スポット <small>XAU/USD</small></button>
       <button type="button" data-sym="silver" aria-pressed="false">銀スポット <small>XAG/USD</small></button>
@@ -193,9 +196,9 @@ footer.disc{font-size:11.5px;color:var(--muted);line-height:1.7}
 
 /* ---------- 保存（この端末のブラウザ内だけ） ---------- */
 const KEY = "kinGinKensho.v1";
-const store = {
-  get(){ try{ const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; }catch(e){ return null; } },
-  set(v){ try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){} }
+const store = {   // サンプル用と本物データ用で、記録を分けて保存します
+  get(){ try{ const s = localStorage.getItem(KEY+"."+MODE); return s ? JSON.parse(s) : null; }catch(e){ return null; } },
+  set(v){ try{ localStorage.setItem(KEY+"."+MODE, JSON.stringify(v)); }catch(e){} }
 };
 
 /* ---------- 銘柄と初期設定 ---------- */
@@ -227,7 +230,12 @@ function mergeCfg(saved){
 }
 
 /* ---------- サンプル価格の生成（毎回同じ値動きになる架空データ） ---------- */
-const HIST = 9000, FUT = 1500, TOTAL = HIST + FUT;   // 1時間足
+const HIST = 9000, FUT = 1500;   // サンプルの1時間足の本数
+let TOTAL = HIST + FUT;
+let MODE = "sample";   // "sample"＝架空データ / "live"＝Twelve Data の本物のデータ
+let LIVE = null;       // 最新価格（まだ確定していない今の1時間足）
+let LOAD_ERR = null;   // 本物のデータを読めなかった理由
+let FETCHED_AT = 0;
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function genData(){
   const rnd = mulberry32(20261104);
@@ -256,9 +264,62 @@ function genData(){
     Sv.o[i]=os; Sv.h[i]=hs; Sv.l[i]=lsw; Sv.c[i]=Math.exp(ls);
     t += 3600e3;
   }
-  return { gold:G, silver:Sv };
+  return { gold:G, silver:Sv, fx:null };
 }
-const DATA = genData();
+let DATA = genData();
+
+/* ---------- 本物のデータ（Twelve Data）を中継役 /api/series から受け取る ---------- */
+const CAN_LIVE = !!document.querySelector('meta[name="pfx-live"]');  // Cloudflare に置いたときだけ true
+async function fetchSeries(symbol){
+  let r;
+  try{ r = await fetch("api/series?symbol="+encodeURIComponent(symbol), { cache:"no-store" }); }
+  catch(e){ throw { kind:"network" }; }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok || !j || !Array.isArray(j.values)) throw { kind:(j && j.error) || "bad_response", code:j && j.code, detail:j && j.message };
+  return j.values;   // [時刻(ms), 始値, 高値, 安値, 終値] の配列
+}
+function buildLive(g, s, f){
+  const now = Date.now();
+  const split = v => {
+    v = [...v].sort((a,b)=>a[0]-b[0]);
+    if(!v.length) throw { kind:"empty" };
+    const last = v[v.length-1];
+    const done = last[0] + 3600e3 <= now ? v : v.slice(0,-1);   // 判断は確定した足だけで行う
+    return { done, live:{ price:last[4], t:last[0] } };
+  };
+  const G = split(g), Sv = split(s), F = split(f);
+  const sMap = new Map(Sv.done.map(x=>[x[0],x]));
+  const both = G.done.filter(x=>sMap.has(x[0]));   // 金と銀の両方がある時間だけ使う
+  if(both.length < WARMUP + 100) throw { kind:"short" };
+  const n = both.length;
+  const mk = () => ({ t:new Float64Array(n), o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n) });
+  const gold = mk(), silver = mk(), fx = new Float64Array(n);
+  let k = 0, lastFx = F.done.length ? F.done[0][4] : F.live.price;
+  for(let i=0;i<n;i++){
+    const a = both[i], b = sMap.get(a[0]);
+    gold.t[i]=silver.t[i]=a[0];
+    gold.o[i]=a[1]; gold.h[i]=a[2]; gold.l[i]=a[3]; gold.c[i]=a[4];
+    silver.o[i]=b[1]; silver.h[i]=b[2]; silver.l[i]=b[3]; silver.c[i]=b[4];
+    while(k < F.done.length && F.done[k][0] <= a[0]){ lastFx = F.done[k][4]; k++; }
+    fx[i] = lastFx;
+  }
+  return { data:{ gold, silver, fx }, live:{ gold:G.live, silver:Sv.live, fx:F.live } };
+}
+async function loadLive(){
+  const [g,s,f] = await Promise.all(["XAU/USD","XAG/USD","USD/JPY"].map(fetchSeries));
+  const b = buildLive(g,s,f);
+  DATA = b.data; LIVE = b.live; TOTAL = DATA.gold.c.length; FETCHED_AT = Date.now();
+  for(const k in CACHE) delete CACHE[k];
+}
+function errText(e){
+  if(!e) return "";
+  if(e.kind==="no_key") return "APIキーがまだ設定されていません（Cloudflare の設定を確認してください）";
+  if(e.kind==="upstream" && e.code===429) return "Twelve Data の無料枠の回数を使い切りました。しばらく待つか、明日また開いてください";
+  if(e.kind==="upstream" && e.code===401) return "APIキーが正しくないようです（Cloudflare に入れたキーを確認してください）";
+  if(e.kind==="network") return "インターネットに接続できませんでした";
+  if(e.kind==="short") return "データの本数が足りません";
+  return "データを受け取れませんでした" + (e.detail ? "（" + String(e.detail).slice(0,80) + "）" : "");
+}
 
 /* ---------- 指標（平均線・RSI・値動きの大きさ） ---------- */
 function ema(a,n){ const k=2/(n+1), o=new Float64Array(a.length); o[0]=a[0]; for(let i=1;i<a.length;i++) o[i]=a[i]*k+o[i-1]*(1-k); return o; }
@@ -273,6 +334,10 @@ function atr(D,n){ const o=new Float64Array(D.c.length); let a=D.h[0]-D.l[0]; o[
 function sma(a,n){ const o=new Float64Array(a.length); let s=0; for(let i=0;i<a.length;i++){ s+=a[i]; if(i>=n) s-=a[i-n]; o[i]=s/Math.min(i+1,n); } return o; }
 const CACHE = {};
 function emaOf(sym,n){ const k=sym+":e"+n; return CACHE[k] || (CACHE[k]=ema(DATA[sym].c,n)); }
+function fxAt(i){ return MODE==="live" ? DATA.fx[i] : S.cfg.usdjpy; }          // その時点のドル円
+function fxNow(){ return MODE==="live" ? LIVE.fx.price : S.cfg.usdjpy; }
+function midNow(sym){ return MODE==="live" ? LIVE[sym].price : DATA[sym].c[S.nowIdx]; }  // 今の価格（売値と買値の中間）
+function tNow(){ return MODE==="live" ? Date.now() : DATA.gold.t[S.nowIdx]; }
 function base(sym){ const k=sym+":b"; if(!CACHE[k]){ const a=atr(DATA[sym],14); CACHE[k]={ rsi:rsi(DATA[sym].c,14), atr:a, atrAvg:sma(a,100) }; } return CACHE[k]; }
 
 /* ---------- 売買判断のルール ----------
@@ -313,8 +378,8 @@ function levels(side, mid, stopDist, p, spread){
   const dir = side==="buy" ? 1 : -1, entry = mid + dir*spread/2;
   return { dir, entry, sl: entry - dir*stopDist, tp: entry + dir*stopDist*p.rr };
 }
-function sizeFor(sym, stopDist, cfg){
-  const c = cfg.cost[sym], perUnit = (stopDist + c.slip) * cfg.usdjpy;
+function sizeFor(sym, stopDist, cfg, rate){
+  const c = cfg.cost[sym], perUnit = (stopDist + c.slip) * rate;
   const q = Math.floor(cfg.riskPerTrade / perUnit / c.step + 1e-9) * c.step;
   const qty = Math.max(0, +q.toFixed(4));
   return { qty, risk: qty*perUnit, perUnit };
@@ -356,13 +421,13 @@ function checkExit(pos, D, j, c){
   }
   return null;
 }
-function closePos(acct, cfg, pos, price, t, why){
+function closePos(acct, cfg, pos, price, t, why, rate){
   const c = cfg.cost[pos.sym];
   const days = Math.floor((t - pos.t)/86400e3);
   const swap = c.swap * pos.qty * days;
-  const gross = (price - pos.entry) * pos.dir * pos.qty * cfg.usdjpy;
+  const gross = (price - pos.entry) * pos.dir * pos.qty * rate;
   const net = gross - swap;
-  const cost = (c.spread + (why==="損切り" ? c.slip : 0)) * pos.qty * cfg.usdjpy + swap;
+  const cost = (c.spread + (why==="損切り" ? c.slip : 0)) * pos.qty * rate + swap;
   acct.positions = acct.positions.filter(x=>x!==pos);
   const tr = { id:pos.id, sym:pos.sym, dir:pos.dir, qty:pos.qty, entry:pos.entry, exit:price, sl:pos.sl, tp:pos.tp, t:pos.t, exitT:t, why, net, cost };
   acct.trades.push(tr);
@@ -392,18 +457,18 @@ function backtest(p, cfg, from, to){
       const D=DATA[sym], c=cfg.cost[sym];
       if(pending[sym]){
         const pd=pending[sym]; pending[sym]=null;
-        const lv=levels(pd.side, D.o[i], pd.stopDist, p, c.spread), sz=sizeFor(sym,pd.stopDist,cfg);
+        const lv=levels(pd.side, D.o[i], pd.stopDist, p, c.spread), sz=sizeFor(sym,pd.stopDist,cfg,fxAt(i));
         if(sz.qty>0 && riskBlocks(acct,cfg,sym,sz.risk,D.t[i]).length===0) openPos(acct,sym,lv,sz,D.t[i]);
       }
       const pos = acct.positions.find(x=>x.sym===sym);
-      if(pos){ const ex=checkExit(pos,D,i,c); if(ex) closePos(acct,cfg,pos,ex.price,D.t[i],ex.why); }
+      if(pos){ const ex=checkExit(pos,D,i,c); if(ex) closePos(acct,cfg,pos,ex.price,D.t[i],ex.why,fxAt(i)); }
       if(i<to-1 && !acct.halted && !acct.positions.some(x=>x.sym===sym)){
         const s=signalAt(sym,i,p,cfg,false);
         if(s.side!=="wait") pending[sym]={ side:s.side, stopDist:s.stopDist };
       }
     }
   }
-  for(const pos of [...acct.positions]){ const D=DATA[pos.sym], h=cfg.cost[pos.sym].spread/2; closePos(acct,cfg,pos,D.c[to-1]-pos.dir*h,D.t[to-1],"期間終了"); }
+  for(const pos of [...acct.positions]){ const D=DATA[pos.sym], h=cfg.cost[pos.sym].spread/2; closePos(acct,cfg,pos,D.c[to-1]-pos.dir*h,D.t[to-1],"期間終了",fxAt(to-1)); }
   return { acct, st:stats(acct.trades,cfg.capital), from, to };
 }
 const GRID = { fast:[10,20,30], slow:[50,100,150], slMult:[1,1.5,2], rr:[1.5,2,2.5] };
@@ -427,27 +492,27 @@ function runValidation(cfg){
   const robustTune = backtest(robust.p, cfg, WARMUP, split), robustConf = backtest(robust.p, cfg, split, end);
   const bestConf = backtest(best.p, cfg, split, end);
   const curTune = backtest(cfg.params, cfg, WARMUP, split), curConf = backtest(cfg.params, cfg, split, end);
-  return { at:Date.now(), nowIdx:S.nowIdx, split, end, combos:res.length,
+  return { at:Date.now(), nowIdx:S.nowIdx, split, end, combos:res.length, startT:DATA.gold.t[WARMUP], splitT:DATA.gold.t[split], endT:DATA.gold.t[end-1],
     robust:{ p:robust.p, tune:robustTune.st, conf:robustConf.st, tuneTrades:robustTune.acct.trades, confTrades:robustConf.acct.trades, tuneHalt:robustTune.acct.halted, confHalt:robustConf.acct.halted },
     best:{ p:best.p, tune:best.st, conf:bestConf.st },
     cur:{ p:clone(cfg.params), tune:curTune.st, conf:curConf.st } };
 }
 
 /* ---------- 状態 ---------- */
-const saved = store.get();
-let S = {
-  cfg: mergeCfg(saved && saved.cfg),
-  acct: null, nowIdx: HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{}
-};
-if(saved && saved.acct && Array.isArray(saved.acct.trades)) S.acct = saved.acct;
-if(saved && typeof saved.nowIdx==="number" && saved.nowIdx>=WARMUP && saved.nowIdx<TOTAL) S.nowIdx = saved.nowIdx;
-if(saved && SYMS[saved.sym]) S.sym = saved.sym;
-if(saved && ["signal","trade","stats","bt","cfg"].includes(saved.tab)) S.tab = saved.tab;
-if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
-if(!S.acct){
-  S.acct = newAcct(S.cfg);
-  /* 最初の画面で判断の例が見えるよう、直近で金の候補が出た時点からサンプルを始める */
-  for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,S.cfg.params,S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
+let S = { cfg: mergeCfg(null), acct: null, nowIdx: HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{} };
+function initState(){
+  const saved = store.get();
+  S = { cfg: mergeCfg(saved && saved.cfg), acct: null, nowIdx: MODE==="live" ? TOTAL-1 : HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{} };
+  if(saved && saved.acct && Array.isArray(saved.acct.trades)) S.acct = saved.acct;
+  if(MODE==="sample" && saved && typeof saved.nowIdx==="number" && saved.nowIdx>=WARMUP && saved.nowIdx<TOTAL) S.nowIdx = saved.nowIdx;
+  if(saved && SYMS[saved.sym]) S.sym = saved.sym;
+  if(saved && ["signal","trade","stats","bt","cfg"].includes(saved.tab)) S.tab = saved.tab;
+  if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
+  if(!S.acct){
+    S.acct = newAcct(S.cfg);
+    /* サンプルでは、最初の画面で判断の例が見えるよう、直近で金の候補が出た時点から始める */
+    if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,S.cfg.params,S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
+  }
 }
 function save(){ store.set({ cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
 
@@ -465,7 +530,11 @@ function cls(v){ return v>0?"up":v<0?"down":""; }
 function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 let toastTimer;
 function toast(msg){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el); } el.textContent=msg; el.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.hidden=true;},2600); }
-function unreal(pos){ const D=DATA[pos.sym], h=S.cfg.cost[pos.sym].spread/2, px=D.c[S.nowIdx]-pos.dir*h; return { px, pnl:(px-pos.entry)*pos.dir*pos.qty*S.cfg.usdjpy }; }
+function unreal(pos){ const h=S.cfg.cost[pos.sym].spread/2, px=midNow(pos.sym)-pos.dir*h; return { px, pnl:(px-pos.entry)*pos.dir*pos.qty*fxNow() }; }
+function modeNotice(extra){
+  if(MODE==="live") return LOAD_ERR ? "" : `<div class="notice live"><b>本物の価格（Twelve Data・1時間足）で表示中。</b>GMOクリック証券の価格とは少しずれます。${extra||""}</div>`;
+  return `${LOAD_ERR?`<div class="stop"><b>本物の価格を読み込めませんでした。</b>${esc(errText(LOAD_ERR))}。代わりにサンプルデータで表示しています。</div>`:""}<div class="notice"><b>サンプルデータで表示中。</b>価格はプログラムが作った架空の値動きで、実際の相場とは関係ありません。${extra||""}</div>`;
+}
 
 /* ---------- 現在の判断（画面用） ---------- */
 function currentDecision(sym){
@@ -473,12 +542,13 @@ function currentDecision(sym){
   const sig = signalAt(sym,i,p,S.cfg,true);
   const bOk = sig.buy.filter(x=>x.ok).length, sOk = sig.sell.filter(x=>x.ok).length;
   const lean = sig.side!=="wait" ? sig.side : (bOk>=sOk ? "buy" : "sell");
-  const lv = levels(lean, D.c[i], sig.stopDist, p, c.spread);
-  const sz = sizeFor(sym, sig.stopDist, S.cfg);
+  const lv = levels(lean, midNow(sym), sig.stopDist, p, c.spread);
+  const sz = sizeFor(sym, sig.stopDist, S.cfg, fxNow());
   const blocks = [];
   if(sig.side!=="wait"){
     if(sz.qty<=0) blocks.push(`損切りまでの幅が広く、1回の許容損失（${yen(S.cfg.riskPerTrade)}）に収まる数量がない`);
-    blocks.push(...riskBlocks(S.acct,S.cfg,sym,sz.risk,D.t[i]));
+    blocks.push(...riskBlocks(S.acct,S.cfg,sym,sz.risk,tNow()));
+    if(MODE==="live" && Date.now() - LIVE[sym].t > 2*3600e3) blocks.push("最新の価格が2時間以上更新されていない（週末・休場の可能性）");
   }
   const verdict = sig.side!=="wait" && blocks.length===0 ? sig.side : "wait";
   return { sig, lean, lv, sz, blocks, verdict, checks: lean==="buy" ? sig.buy : sig.sell };
@@ -514,8 +584,8 @@ function drawCandles(cv, sym, endIdx, n, lines){
       g.strokeStyle=line; g.setLineDash([2,3]); g.beginPath(); g.moveTo(x(i),padT); g.lineTo(x(i),padT+ch); g.stroke(); g.setLineDash([]);
     }
   }
-  g.save(); g.fillStyle=muted; g.globalAlpha=.14; g.font="700 "+Math.min(26,w/12)+"px "+css("--f-body"); g.textAlign="center"; g.textBaseline="middle";
-  g.fillText("サンプルデータ（架空）", cw/2, padT+ch/2); g.restore();
+  if(MODE==="sample"){ g.save(); g.fillStyle=muted; g.globalAlpha=.14; g.font="700 "+Math.min(26,w/12)+"px "+css("--f-body"); g.textAlign="center"; g.textBaseline="middle";
+  g.fillText("サンプルデータ（架空）", cw/2, padT+ch/2); g.restore(); }
   const bw = Math.max(1, Math.min(9, step*0.66));
   for(let i=s;i<=endIdx;i++){
     const o=D.o[i], c=D.c[i], col = c>=o ? up : dn;
@@ -564,6 +634,13 @@ function curve(trades, capital, t0){ const pts=[{t:t0,v:capital}]; let v=capital
 
 /* ---------- 画面 ---------- */
 function clockBar(){
+  if(MODE==="live"){
+    const TFh = new Intl.DateTimeFormat("ja-JP",{ timeZone:"Asia/Tokyo", hour:"2-digit", minute:"2-digit" });
+    return `<div class="card"><div class="clock">
+      <span class="t">最終更新 <b class="num">${TFh.format(new Date(FETCHED_AT))}</b> ・ 確定した足 <b class="num">${ft(DATA.gold.t[S.nowIdx])}</b>台まで</span>
+      <button class="btn" data-act="refresh">今すぐ更新</button>
+    </div><p class="note">開いている間は15分ごとに自動で更新します。判断は確定した1時間足で行い、候補価格は今の価格から計算します。画面を閉じている間の判断と通知は、次の段階で作ります。</p></div>`;
+  }
   const D=DATA.gold, end = S.nowIdx>=TOTAL-1;
   return `<div class="card"><div class="clock">
     <span class="t">サンプル時刻 <b class="num">${ft(D.t[S.nowIdx])}</b></span>
@@ -573,7 +650,7 @@ function clockBar(){
 }
 function acctSummary(){
   const a=S.acct, cfg=S.cfg, ur=a.positions.reduce((s,p)=>s+unreal(p).pnl,0);
-  const dp = a.dayKey===dayKey(DATA.gold.t[S.nowIdx]) ? a.dayPnl : 0;
+  const dp = a.dayKey===dayKey(tNow()) ? a.dayPnl : 0;
   const ddPct = (a.peak-a.balance)/a.peak*100;
   const dayUse = Math.min(100, Math.max(0,-dp)/cfg.dailyLimit*100), ddUse = Math.min(100, ddPct/cfg.maxDDPct*100);
   return `<div class="kv four">
@@ -584,7 +661,7 @@ function acctSummary(){
   </div>`;
 }
 function viewSignal(){
-  const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=D.c[i], prev=D.c[Math.max(0,i-24)], chg=px-prev;
+  const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
   const d = currentDecision(sym), label = { buy:"買い候補", sell:"売り候補", wait:"見送り" }[d.verdict];
   let why;
   if(d.verdict!=="wait") why = `5つの条件がすべてそろいました。下の候補価格で仮想取引を記録できます。`;
@@ -592,16 +669,16 @@ function viewSignal(){
   else why = `${d.lean==="buy"?"買い":"売り"}の条件のうち、そろっていないものがあります（×の項目）。`;
   const isRef = d.verdict==="wait";
   const lv=d.lv, distU = Math.abs(lv.entry-lv.sl), tpU = Math.abs(lv.tp-lv.entry);
-  const pnlTp = d.sz.qty*tpU*S.cfg.usdjpy - c.swap*0, pnlSl = d.sz.risk;
+  const pnlTp = d.sz.qty*tpU*fxNow(), pnlSl = d.sz.risk;
   const others = S.acct.positions.filter(p=>p.sym===sym);
   return `
-  <div class="notice"><b>サンプルデータで表示中。</b>価格はプログラムが作った架空の値動きで、実際の相場とは関係ありません。データの提供元が決まったら差し替えます。</div>
+  ${modeNotice()}
   ${S.acct.halted?`<div class="stop"><b>仮想取引は停止中です。</b>${esc(S.acct.halted.text)}。「設定」から再開できます。</div>`:""}
   <section class="card" aria-label="価格">
     <div class="price-row">
       <div><div class="small muted">${SYMS[sym].name}（${SYMS[sym].code}・1トロイオンスあたりドル）</div>
       <div class="price-big">${fp(sym,px)}</div></div>
-      <div class="num ${cls(chg)}" style="font-size:15px;font-weight:600">${chg>=0?"+":""}${fp(sym,chg)}（${chg>=0?"+":""}${(chg/prev*100).toFixed(2)}％）<span class="small muted"> 24時間前比</span></div>
+      <div class="num ${cls(chg)}" style="font-size:15px;font-weight:600">${chg>=0?"+":""}${fp(sym,chg)}（${chg>=0?"+":""}${(chg/prev*100).toFixed(2)}％）<span class="small muted"> 約24時間前比</span></div>
     </div>
     <div class="price-sub num"><span>売値 ${fp(sym,px-c.spread/2)}</span><span>買値 ${fp(sym,px+c.spread/2)}</span><span>スプレッド ${fp(sym,c.spread)}</span></div>
   </section>
@@ -629,7 +706,7 @@ function viewSignal(){
       <div><div class="k">数量（許容損失 ${yen(S.cfg.riskPerTrade)} 以内）</div><div class="v">${d.sz.qty>0?d.sz.qty+" オンス":"—"}</div></div>
       <div><div class="k">損切り時 / 利確時（コスト込み）</div><div class="v"><span class="down">−${yen(pnlSl)}</span> / <span class="up">+${yen(pnlTp)}</span></div></div>
     </div>
-    <p class="note">損切り幅＝ふだんの1時間の値動き×${S.cfg.params.slMult}、利確幅＝損切り幅×${S.cfg.params.rr}。ドル円は${S.cfg.usdjpy}円で換算（サンプルでは固定）。</p>
+    <p class="note">損切り幅＝ふだんの1時間の値動き×${S.cfg.params.slMult}、利確幅＝損切り幅×${S.cfg.params.rr}。ドル円は${fxNow().toFixed(2)}円で換算${MODE==="live"?"（Twelve Data の最新値）":"（サンプルでは固定）"}。</p>
     ${d.verdict!=="wait"?`<button class="btn block ${d.verdict}" data-act="open">この内容で仮想取引を記録する</button>`:`<button class="btn block" disabled>条件がそろうまで記録できません</button>`}
     <p class="note">ここでの「記録」は練習用の仮想取引です。実際の注文は出ません。</p>
   </section>
@@ -656,6 +733,7 @@ function tradeList(list, limit){
 function viewTrade(){
   const a=S.acct;
   return `
+  ${modeNotice()}
   <div class="notice"><b>練習用の仮想取引です。</b>実際の注文は出ません。GMOクリック証券の口座にも接続していません。</div>
   ${a.halted?`<div class="stop"><b>仮想取引は停止中です。</b>${esc(a.halted.text)}。「設定」から再開できます。</div>`:""}
   <section class="card"><h2>口座の状態</h2>${acctSummary()}
@@ -680,7 +758,7 @@ function viewStats(){
   const a=S.acct, st=stats(a.trades,S.cfg.capital);
   const by = s => stats(a.trades.filter(t=>t.sym===s), 0);
   return `
-  <div class="notice"><b>サンプルデータでの仮想取引の成績です。</b>将来の成績を約束するものではありません。</div>
+  ${modeNotice("ここに出る成績は、将来の成績を約束するものではありません。")}
   <section class="card"><h2>資金の推移</h2>
     <div class="chart-box" style="height:220px"><canvas id="cv-eq" aria-label="資金推移グラフ"></canvas></div>
     <p class="note">決済するたびに更新します。赤い点線は「ここまで減ったら停止」の目安（最初の資金から${S.cfg.maxDDPct}％減）です。</p></section>
@@ -695,7 +773,7 @@ function pstr(p){ return `短期${p.fast}・長期${p.slow}・損切り×${p.slM
 function viewBT(){
   const r=S.bt, D=DATA.gold, end=S.nowIdx+1, split=WARMUP+Math.floor((end-WARMUP)*0.7);
   const head = `
-  <div class="notice"><b>サンプルデータで検証しています。</b>結果は仕組みの確認用で、実際の相場での成績を表すものではありません。</div>
+  ${modeNotice(MODE==="live"?"検証結果は過去の話で、これからも同じになるとは限りません。":"結果は仕組みの確認用で、実際の相場での成績を表すものではありません。")}
   <section class="card"><h2>過去データでの検証の進め方</h2>
     <p>過去の値動きを2つに分けます。</p>
     <ul class="checks">
@@ -711,7 +789,7 @@ function viewBT(){
     : r.robust.conf.pf < 1.1 ? { cls:"wait", text:"確認期間ではほぼ損益ゼロ。コストに負ける可能性があります" }
     : { cls:"buy", text:"確認期間でもプラスを保ちました。ただし今後も同じになるとは限りません" };
   const row = (label, st) => `<tr><td>${label}</td><td>${st.n}</td><td>${st.n?pct(st.winRate,0):"—"}</td><td>${!st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"—"}</td><td class="${cls(st.net)}">${yen(st.net,true)}</td><td>${yen(st.mdd)}</td><td>${yen(st.cost)}</td></tr>`;
-  const stale = r.nowIdx!==S.nowIdx ? `<p class="note">※サンプル時刻が進んだため、再実行すると期間が変わります。</p>` : "";
+  const stale = r.endT!==DATA.gold.t[S.nowIdx] ? `<p class="note">※データが新しくなったため、再実行すると期間が変わります。</p>` : "";
   const same = JSON.stringify(r.robust.p)===JSON.stringify(S.cfg.params);
   return head + `
   <section class="card"><h2>結果</h2>
@@ -742,8 +820,10 @@ function viewCfg(){
   const c=S.cfg, ui=S.ui;
   return `
   <section class="card"><h2>データの出どころ</h2>
-    <p><span class="badge-sample">サンプルデータ</span> プログラムが作った架空の値動き（1時間足）です。</p>
-    <p class="note">価格データの提供元は、あなたの確認待ちです。決まったら本物のデータに差し替えます。GMOクリック証券の画面からデータを取り込むことはしません。</p></section>
+    ${MODE==="live"
+      ? `<p><span class="badge-sample live">本物の価格</span> Twelve Data（金 XAU/USD・銀 XAG/USD・ドル円 USD/JPY、1時間足）。確定した足 ${DATA.gold.c.length.toLocaleString()}本を読み込み済み。</p><p class="note">個人で使う無料プランのため、このページを他の人に見せたり公開したりしないでください。GMOクリック証券の画面からデータを取り込むことはしません。</p>`
+      : `<p><span class="badge-sample">サンプルデータ</span> プログラムが作った架空の値動き（1時間足）です。</p>${LOAD_ERR?`<p class="note">本物の価格を読めなかった理由：${esc(errText(LOAD_ERR))}</p>`:`<p class="note">Cloudflare に置いて APIキーを設定すると、自動で本物の価格（Twelve Data）に切り替わります。GMOクリック証券の画面からデータを取り込むことはしません。</p>`}`}
+    <p class="note">サンプルと本物の価格では、仮想取引の記録を別々に保存しています。</p></section>
   <section class="card"><h2>資金管理のルール</h2>
     ${field("f-riskPerTrade","1回の許容損失（円）","損切りになったときの損失がこの金額以内になるよう数量を決めます",c.riskPerTrade,500)}
     ${field("f-dailyLimit","1日の損失上限（円）","これを超えそうな取引はその日は見送ります（日本時間で日付を区切ります）",c.dailyLimit,1000)}
@@ -763,7 +843,7 @@ function viewCfg(){
     ${field("f-cost-silver-slip","損切り時の価格のずれ（ドル）","",c.cost.silver.slip,0.001)}
     ${field("f-cost-silver-step","最小の数量（オンス）","GMOの取引単位に合わせてください（要確認）",c.cost.silver.step,1)}
     ${field("f-cost-silver-swap","1日持ち越す費用（円/オンス）","",c.cost.silver.swap,0.1)}
-    ${field("f-usdjpy","ドル円（円）","円に換算するときに使います。サンプルでは固定",c.usdjpy,0.5)}
+    ${MODE==="sample"?field("f-usdjpy","ドル円（円）","円に換算するときに使います。サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は Twelve Data の値を自動で使います（今 ${fxNow().toFixed(2)}円）。</p>`}
   </section>
   <section class="card"><h2>判断ルールの設定</h2>
     <p class="note">数字を変えると判断が変わります。むやみに変えるより「過去検証」で確かめてから変えるのがおすすめです。</p>
@@ -786,6 +866,7 @@ function footer(){
 
 /* ---------- 画面の更新 ---------- */
 function render(){
+  const bd=$("#mode-badge"); if(bd){ bd.textContent = MODE==="live" ? "本物の価格" : "サンプルデータ"; bd.classList.toggle("live", MODE==="live"); }
   document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.sym===S.sym));
   document.querySelectorAll("nav.tabs button").forEach(b=>{ if(b.dataset.tab===S.tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   const v = { signal:viewSignal, trade:viewTrade, stats:viewStats, bt:viewBT, cfg:viewCfg }[S.tab]();
@@ -803,16 +884,16 @@ function drawAll(){
   }
   const ce=$("#cv-eq");
   if(ce){
-    const t0 = S.acct.trades.length ? Math.min(S.acct.trades[0].t, S.acct.trades[0].exitT) : DATA.gold.t[S.nowIdx];
+    const t0 = S.acct.trades.length ? Math.min(S.acct.trades[0].t, S.acct.trades[0].exitT) : tNow();
     drawEquity(ce,[{color:css("--gold"),pts:curve(S.acct.trades,S.cfg.capital,t0)}],{ floor:S.cfg.capital*(1-S.cfg.maxDDPct/100), floorLabel:`停止の目安（−${S.cfg.maxDDPct}％）`, empty:"まだ決済した取引がありません" });
   }
   const cb=$("#cv-bt");
   if(cb && S.bt){
     const r=S.bt, D=DATA.gold;
     drawEquity(cb,[
-      {color:css("--silver"),pts:curve(r.robust.tuneTrades,S.cfg.capital,D.t[WARMUP])},
-      {color:css("--gold"),pts:curve(r.robust.confTrades,S.cfg.capital,D.t[r.split])}
-    ],{ split:D.t[r.split] });
+      {color:css("--silver"),pts:curve(r.robust.tuneTrades,S.cfg.capital,r.startT)},
+      {color:css("--gold"),pts:curve(r.robust.confTrades,S.cfg.capital,r.splitT)}
+    ],{ split:r.splitT });
   }
 }
 
@@ -823,12 +904,41 @@ function advance(n){
     S.nowIdx++;
     for(const pos of [...S.acct.positions]){
       const ex=checkExit(pos,DATA[pos.sym],S.nowIdx,S.cfg.cost[pos.sym]);
-      if(ex) closed.push(closePos(S.acct,S.cfg,pos,ex.price,DATA[pos.sym].t[S.nowIdx],ex.why));
+      if(ex) closed.push(closePos(S.acct,S.cfg,pos,ex.price,DATA[pos.sym].t[S.nowIdx],ex.why,fxAt(S.nowIdx)));
     }
   }
   save(); render();
   if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
   else if(S.nowIdx>=TOTAL-1) toast("サンプルデータの終わりに着きました");
+}
+/* 本物のデータ：新しく確定した足と今の価格で、利確・損切りに届いたかを確かめる */
+function processLive(){
+  const closed=[];
+  for(const pos of [...S.acct.positions]){
+    const D=DATA[pos.sym], c=S.cfg.cost[pos.sym];
+    let hit=null;
+    for(let j=Math.max(0,D.t.length-600); j<D.t.length && !hit; j++){
+      if(D.t[j] < pos.t || D.t[j] <= (pos.lastT||0)) continue;   // 記録した後に始まった足だけ
+      const ex=checkExit(pos,D,j,c); pos.lastT=D.t[j];
+      if(ex) hit={ ...ex, t:D.t[j], rate:DATA.fx[j] };
+    }
+    if(!hit){
+      const bid = LIVE[pos.sym].price - pos.dir*c.spread/2;
+      if(pos.dir===1 ? bid<=pos.sl : bid>=pos.sl) hit={ price:(pos.dir===1?Math.min(bid,pos.sl)-c.slip:Math.max(bid,pos.sl)+c.slip), why:"損切り", t:Date.now(), rate:fxNow() };
+      else if(pos.dir===1 ? bid>=pos.tp : bid<=pos.tp) hit={ price:pos.tp, why:"利確", t:Date.now(), rate:fxNow() };
+    }
+    if(hit) closed.push(closePos(S.acct,S.cfg,pos,hit.price,hit.t,hit.why,hit.rate));
+  }
+  return closed;
+}
+async function refreshLive(manual){
+  try{ await loadLive(); LOAD_ERR=null; }
+  catch(e){ if(manual) toast(errText(e)); return; }
+  S.nowIdx = TOTAL-1;
+  const closed = processLive();
+  save(); render();
+  if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
+  else if(manual) toast("最新の価格に更新しました");
 }
 document.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
@@ -836,16 +946,17 @@ document.addEventListener("click", e=>{
   if(b.dataset.tab){ S.tab=b.dataset.tab; S.ui={}; save(); render(); window.scrollTo(0,0); return; }
   const act=b.dataset.act; if(!act) return;
   if(act==="adv") advance(+b.dataset.n);
+  else if(act==="refresh"){ b.disabled=true; b.textContent="更新中…"; refreshLive(true); }
   else if(act==="range"){ S.range=+b.dataset.n; save(); render(); }
   else if(act==="open"){
     const d=currentDecision(S.sym);
     if(d.verdict==="wait") return;
-    openPos(S.acct,S.sym,d.lv,d.sz,DATA[S.sym].t[S.nowIdx]); save(); render();
+    openPos(S.acct,S.sym,d.lv,d.sz,tNow()); save(); render();
     toast(`仮想取引を記録しました（${SYMS[S.sym].name} ${d.verdict==="buy"?"買い":"売り"} ${d.sz.qty}オンス）`);
   }
   else if(act==="close"){
     const pos=S.acct.positions.find(p=>p.id===+b.dataset.id); if(!pos) return;
-    const u=unreal(pos), tr=closePos(S.acct,S.cfg,pos,u.px,DATA[pos.sym].t[S.nowIdx],"手動で決済");
+    const u=unreal(pos), tr=closePos(S.acct,S.cfg,pos,u.px,tNow(),"手動で決済",fxNow());
     save(); render(); toast(`決済しました ${yen(tr.net,true)}`);
   }
   else if(act==="runbt"){
@@ -872,5 +983,16 @@ let rz; window.addEventListener("resize", ()=>{ clearTimeout(rz); rz=setTimeout(
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); }catch(e){}
 new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(drawAll);
-render();
+async function boot(){
+  if(CAN_LIVE){
+    $("#app").innerHTML = `<div class="card">価格データを読み込んでいます…</div>`;
+    try{ await loadLive(); MODE="live"; }
+    catch(e){ LOAD_ERR=e; MODE="sample"; DATA=genData(); TOTAL=HIST+FUT; for(const k in CACHE) delete CACHE[k]; }
+  }
+  initState();
+  if(MODE==="live"){ processLive(); save(); setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 15*60e3);
+    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && Date.now()-FETCHED_AT > 15*60e3) refreshLive(false); }); }
+  render();
+}
+boot();
 </script>

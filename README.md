@@ -8,7 +8,9 @@
 
 ## いまの状態
 
-**サンプルデータ（架空の値動き）で動いています。** 価格データの提供元は確認待ちです → [docs/data-sources.md](docs/data-sources.md)
+- 価格データは **Twelve Data（無料プラン）** に決定 → 候補の比較は [docs/data-sources.md](docs/data-sources.md)
+- Cloudflare に置いて APIキーを設定すると本物の価格で動きます → 手順は [docs/setup-cloudflare.md](docs/setup-cloudflare.md)
+- 設定前や、読み込みに失敗したときは、**サンプルデータ（架空の値動き）** で動き、画面にそう表示します
 
 ## 画面
 
@@ -28,5 +30,7 @@
 
 ## ファイル
 
-- `app/index.html` … アプリ本体（1ファイル。外部に送るデータはありません。記録はその端末のブラウザ内に保存）
+- `app/index.html` … アプリ本体（1ファイル。記録はその端末のブラウザ内に保存）
+- `functions/api/series.js` … 価格の中継役（Twelve Data から価格を読むだけ。APIキーは Cloudflare の秘密の設定に置く）
+- `scripts/build.sh` … Cloudflare Pages 用に `dist/` を作る
 - `docs/data-sources.md` … 価格データの候補と、次の段階（24時間監視・通知）の費用
