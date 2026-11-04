@@ -287,9 +287,9 @@ const SYMS = {
   silver: { name:"銀スポット", code:"XAG/USD", dec:3 }
 };
 const DEFAULT_CFG = {
-  capital: 1000000,      // 資金（円）
-  riskPerTrade: 2500,    // 1回の許容損失（円）
-  dailyLimit: 10000,     // 1日の損失上限（円）
+  capital: 1000000,      // GMOの口座の金額（円）。利用者が入れる
+  riskPerTrade: 50000,   // 1回の許容損失（円）。利用者が入れる
+  dailyLimit: 150000,    // 1日の損失上限（円）。利用者が入れる
   maxDDPct: 5,           // 最大ドローダウン（％）で停止
   maxPositions: 2,       // 同時保有の上限
   usdjpy: 150,           // ドル円（サンプルでは固定）
@@ -308,12 +308,16 @@ const DEFAULT_CFG = {
 /* アプリが決める部分：資金に合わせて、最初に決めた条件（100万円で1回2,500円・1日1万円・5％で停止・同時2つ）と同じ割合にする。
    目標を大きくしても、1回にかける金額は増やさない（検証で、かける額を増やすと資金が大きく減る確率が上がったため） */
 function applyAuto(c){
-  c.riskPerTrade = Math.max(100, Math.round(c.capital*0.0025/100)*100);
-  c.dailyLimit = Math.max(1000, Math.round(c.capital*0.01/1000)*1000);
-  c.maxDDPct = 5; c.maxPositions = 2; c.rule = "ichimoku"; c.auto.on = true;
+  // 停止ライン：1日の損失上限の2日分。ただし口座の金額の2割まで
+  c.riskPerTrade = Math.max(100, Math.min(c.riskPerTrade, c.capital));
+  c.dailyLimit = Math.max(c.riskPerTrade, c.dailyLimit);
+  const stopAmt = Math.min(c.dailyLimit*2, c.capital*0.2);
+  c.maxDDPct = +(stopAmt / c.capital * 100).toFixed(2);
+  c.maxPositions = 2; c.rule = "ichimoku"; c.auto.on = true;
   return c;
 }
-const CFG_VER = 3;
+const stopAmount = c => c.capital * c.maxDDPct / 100;
+const CFG_VER = 4;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function mergeCfg(saved, savedVer){
   const c = clone(DEFAULT_CFG);
@@ -322,7 +326,7 @@ function mergeCfg(saved, savedVer){
   if(saved.paramsI) for(const k in c.paramsI) if(typeof saved.paramsI[k]==="number") c.paramsI[k]=saved.paramsI[k];
   if(saved.auto && typeof saved.auto==="object") c.auto = { ...c.auto, ...saved.auto };
   if(saved.goal && typeof saved.goal==="object"){ if(typeof saved.goal.amount==="number") c.goal.amount=saved.goal.amount; if(/^\d{4}-\d{2}-\d{2}$/.test(saved.goal.deadline||"")) c.goal.deadline=saved.goal.deadline; }
-  for(const k of ["capital","riskPerTrade","dailyLimit","maxDDPct","maxPositions","usdjpy"]) if(typeof saved[k]==="number") c[k]=saved[k];
+  for(const k of (savedVer>=4 ? ["capital","riskPerTrade","dailyLimit","usdjpy"] : ["capital","usdjpy"])) if(typeof saved[k]==="number") c[k]=saved[k];
   // 設定の版が古い（GMOの実際の値を入れる前）なら、金のコストは新しい初期値を使う
   for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s] && !(s==="gold" && !(savedVer>=2))) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
   if(saved.params) for(const k in c.params) if(typeof saved.params[k]==="number") c.params[k]=saved.params[k];
@@ -730,14 +734,16 @@ function currentDecision(sym){
   const lean = sig.side!=="wait" ? sig.side : (bOk>=sOk ? "buy" : "sell");
   const lv = levels(lean, midNow(sym), sig.stopDist, p, c.spread);
   const sz = sizeFor(sym, sig.stopDist, cfg, fxNow());
+  { const step=cfg.cost[sym].step, perOz=midNow(sym)*fxNow()/20, mq=Math.floor(cfg.capital*0.5/perOz/step+1e-9)*step;
+    if(sz.qty > mq){ sz.qty=Math.max(0,+mq.toFixed(4)); sz.risk=sz.qty*sz.perUnit; sz.capped=true; } }
   const dp = a.dayKey===dayKey(t) ? a.dayPnl : 0, openRisk = a.positions.reduce((s,x)=>s+x.risk,0);
   const fresh = MODE!=="live" || (Date.now()-(PRICE_AT||FETCHED_AT) <= 15*60e3 && Date.now()-LIVE[sym].t <= 2*3600e3);
   const drift = Math.abs(midNow(sym) - DATA[sym].c[i]);   // 判断した足の終わりの値段から、今どれだけ動いたか
   const safety = [
     { ok: sym!=="gold" || (gmoOpen(t) && !mondayFirstHour(t)), short:"取引時間", text:"GMOクリック証券の取引時間内（週明けの最初の1時間は除く）" },
     { ok: dp - openRisk - sz.risk >= -cfg.dailyLimit, short:"今日の上限", text:`今日の損失上限（${yen(cfg.dailyLimit)}）まで余裕がある` },
-    { ok: !a.halted, short:"停止ライン", text:`資金の減りが停止ライン（−${cfg.maxDDPct}％）より手前` },
-    { ok: a.positions.length < cfg.maxPositions && !a.positions.some(x=>x.sym===sym), short:"保有の数", text:`同時に持てる数（${cfg.maxPositions}つ）に空きがある` },
+    { ok: !a.halted, short:"停止ライン", text:`口座の減りが停止ライン（−${yen(stopAmount(cfg))}）より手前` },
+    { ok: a.positions.length < cfg.maxPositions && !a.positions.some(x=>x.sym===sym), short:"前の取引", text:"前の取引（練習の記録）が終わっている" },
     { ok: fresh && drift <= 0.3*sig.stopDist, short:"価格", text:`価格が新しく、判断した時から動きすぎていない（今 ${drift.toFixed(1)}ドル。損切り幅の3割まで）` },
   ];
   const checks = lean==="buy" ? sig.buy : sig.sell;
@@ -945,7 +951,7 @@ function viewSignal(){
       <div class="trow"><div class="k">入る</div><div class="v">${fp(sym,lv.entry)}</div></div>
       <div class="trow"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="s"><span class="dist">入る${lv.dir===1?"−":"＋"}${Math.abs(lv.entry-lv.sl).toFixed(1)}ドル</span> <span class="down">−${yen(pnlSl)}</span></div></div>
       <div class="trow"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="s"><span class="dist">入る${lv.dir===1?"＋":"−"}${tpU.toFixed(1)}ドル</span> <span class="up">＋${yen(pnlTp)}</span></div></div>
-      <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div></div>
+      <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div>${d.sz.capped?`<div class="s">証拠金が口座の半分を超えないように減らしました</div>`:""}</div>
       `;
   const gmoBox = `<div class="gmo"><label for="gmo-entry">GMOで入った価格</label><input id="gmo-entry" type="number" inputmode="decimal" step="0.01" placeholder="入れると損切り・利確を計算" value="${S.gmo&&S.gmo.barT===barT?S.gmo.v:""}" data-gmo="${lv.dir}" data-sl="${Math.abs(lv.entry-lv.sl)}" data-tp="${tpU}"><div class="gmo-out" id="gmo-out">${gmoOut(lv.dir, S.gmo&&S.gmo.barT===barT?S.gmo.v:NaN, Math.abs(lv.entry-lv.sl), tpU)}</div></div>`;
   const others = S.acct.positions.filter(x=>x.sym===sym);
@@ -1136,9 +1142,13 @@ function viewCfg(){
   const c=S.cfg, ui=S.ui, p=curParams(c);
   return `
   <section class="group"><h2>あなたが決めること</h2>
-    ${field("f-capital","資金（円）",`＝${(c.capital/1e4).toLocaleString("ja-JP")}万円。変えたら「最初からやり直す」で反映`,c.capital,100000)}
+    ${field("f-capital","GMOの口座の金額（円）",`＝${(c.capital/1e4).toLocaleString("ja-JP")}万円。今、口座に入っている金額`,c.capital,10000)}
+    ${field("f-riskPerTrade","1回の許容損失（円）",`＝口座の${(c.riskPerTrade/c.capital*100).toFixed(1)}％。損切りになってもこの金額まで`,c.riskPerTrade,1000)}
+    ${field("f-dailyLimit","1日の損失上限（円）",`＝口座の${(c.dailyLimit/c.capital*100).toFixed(1)}％。超えそうならその日は見送る`,c.dailyLimit,1000)}
     ${field("f-goal-amount","目標の利益（円）",`＝${(c.goal.amount/1e4).toLocaleString("ja-JP")}万円`,c.goal.amount,100000)}
     <div class="field"><label for="f-deadline">期限<small>${c.goal.deadline.replace(/^(\d+)-(\d+)-(\d+)$/,(m,y,mo,d)=>`${y}年${+mo}月${+d}日`)}</small></label><input id="f-deadline" type="date" value="${c.goal.deadline}" data-date="goal.deadline"></div>
+    ${c.riskPerTrade/c.capital>=0.05?`<p class="note"><span class="warn-box" style="display:block"><b>1回の許容損失が口座の${(c.riskPerTrade/c.capital*100).toFixed(1)}％です。</b>とても大きい額です。一般には1回で口座の1〜2％までが目安と言われます。損切りが数回続くだけで、口座が大きく減ります。</span></p>`
+      : c.riskPerTrade/c.capital>0.02?`<p class="note"><span class="warn-box" style="display:block"><b>1回の許容損失が口座の${(c.riskPerTrade/c.capital*100).toFixed(1)}％です。</b>大きめです。一般には1回で口座の1〜2％までが目安と言われます。</span></p>`:""}
   </section>
   <section class="group"><h2>通知</h2>
     <div class="seg-row" style="display:flex;flex-direction:column;gap:8px">
@@ -1152,14 +1162,13 @@ function viewCfg(){
   <section class="group"><h2>アプリが決めていること</h2>
     <div class="seg-row"><div class="kvs">
       <div class="k">判断の方法</div><div class="v" style="font-family:var(--f-body)">自動（検証中）</div>
-      <div class="k">1回の許容損失</div><div class="v">${yen(c.riskPerTrade)}</div>
-      <div class="k">1日の損失上限</div><div class="v">${yen(c.dailyLimit)}</div>
-      <div class="k">停止ライン</div><div class="v">−${c.maxDDPct}％</div>
-      <div class="k">同時に持てる数</div><div class="v">${c.maxPositions}つ</div>
+      <div class="k">停止ライン</div><div class="v">口座が${yen(c.capital-stopAmount(c))}まで減ったら<br><span class="sub">（−${yen(stopAmount(c))}・−${c.maxDDPct}％）</span></div>
+      <div class="k">数量の上限</div><div class="v" style="font-family:var(--f-body)">証拠金が口座の半分まで</div>
+      <div class="k">次の判断</div><div class="v" style="font-family:var(--f-body)">前の取引が終わってから</div>
       <div class="k">損切り・利確・数量</div><div class="v" style="font-family:var(--f-body)">自動</div>
       <div class="k">設定の見直し</div><div class="v" style="font-family:var(--f-body)">毎月（直近3か月）${c.auto.at&&c.auto.rule===c.rule?`<br><span class="sub">最終 ${fd(c.auto.at)}</span>`:""}</div>
     </div></div>
-    <p class="note">資金に合わせて自動で決めます（資金の0.25％を1回の上限、1％を1日の上限）。どれも検証で決めた方法です。</p>
+    <p class="note">停止ラインは、1日の損失上限の2日分（ただし口座の金額の2割まで）です。口座の金額か1日の上限を変えると、自動で計算し直します。数量は、1回の許容損失に収まるように決め、必要な証拠金が口座の半分を超えないように抑えます。</p>
   </section>
   <details class="more"><summary>GMOクリック証券の値<small>たまに確認</small></summary><div class="in" style="padding:0">
     <div class="group">
@@ -1364,12 +1373,12 @@ document.addEventListener("change", e=>{
   const path=el.dataset.path.split("."); let o=S.cfg; for(let k=0;k<path.length-1;k++) o=o[path[k]];
   if(path[0]==="params" && (path[1]==="fast"||path[1]==="slow")){ if(v<2||v>200){ toast("平均線は2〜200時間で入れてください"); render(); return; } }
   o[path[path.length-1]] = path[path.length-1]==="maxPositions" ? Math.max(1,Math.round(v)) : v;
-  if(path[0]==="capital") applyAuto(S.cfg);
+  if(["capital","riskPerTrade","dailyLimit"].includes(path[0])) applyAuto(S.cfg);
   if(S.cfg.params.fast>=S.cfg.params.slow) toast("短期の平均線は長期より短くしてください");
   if(S.cfg.cost.gold.step<=0) S.cfg.cost.gold.step=0.1;
   if(S.cfg.cost.silver.step<=0) S.cfg.cost.silver.step=1;
   save(); toast("保存しました");
-  if(path[0]==="capital" || path[0]==="goal") setTimeout(render, 0);   // 入力欄を離れた直後に書き換えると失敗するので、少し後で
+  if(["capital","riskPerTrade","dailyLimit","goal"].includes(path[0])) setTimeout(render, 0);   // 入力欄を離れた直後に書き換えると失敗するので、少し後で
 });
 document.addEventListener("input", e=>{
   const g=e.target;

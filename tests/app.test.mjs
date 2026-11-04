@@ -48,7 +48,9 @@ if (shown) {
   check("損切りと利確の向きが正しい", isBuy ? (vals[1] < vals[0] && vals[2] > vals[0]) : (vals[1] > vals[0] && vals[2] < vals[0]));
   check("損切り・利確に「入る±○ドル」が出る", (await p.$$(".ticket .dist")).length === 2);
   const lossYen = num(await p.textContent(".ticket .trow:nth-child(2) .down"));
-  check("損切りの損失は1回の許容損失（2,500円）以内", Math.abs(lossYen) <= 2500, Math.abs(lossYen) + "円");
+  const rpt = await p.evaluate(() => S.cfg.riskPerTrade);
+check("損切りの損失は1回の許容損失以内", Math.abs(lossYen) <= rpt, `${Math.abs(lossYen)}円／${rpt}円`);
+check("必要な証拠金が口座の半分以内", await p.evaluate(() => { const d = currentDecision("gold"); return d.sz.qty * midNow("gold") * fxNow() / 20 <= S.cfg.capital * 0.5 + 1; }));
   await p.evaluate(() => { currentDecision = window.__orig; render(); });
 } else check("条件がそろう足が見つかる", false);
 
@@ -69,8 +71,11 @@ words = englishWords(await visibleText(p)); check("成績の画面に英語が�
 // 6. 設定：資金を変えると、アプリが決める値も変わる
 await p.click('[data-tab="cfg"]'); await p.waitForTimeout(200);
 await p.fill("#f-capital", "2000000"); await p.dispatchEvent("#f-capital", "change"); await p.waitForTimeout(200);
-const risk = await p.evaluate(() => [S.cfg.riskPerTrade, S.cfg.dailyLimit]);
-check("資金200万円なら1回5,000円・1日2万円", risk[0] === 5000 && risk[1] === 20000, risk.join("・"));
+const risk = await p.evaluate(() => [S.cfg.riskPerTrade, S.cfg.dailyLimit, stopAmount(S.cfg)]);
+check("口座200万円・1回5万円・1日15万円なら、停止ラインは30万円の減り", risk[0] === 50000 && risk[1] === 150000 && Math.round(risk[2]) === 300000, risk.join("・"));
+await p.fill("#f-capital", "1000000"); await p.dispatchEvent("#f-capital", "change"); await p.waitForTimeout(200);
+check("口座100万円なら、停止ラインは2割の20万円の減りまで", Math.round(await p.evaluate(() => stopAmount(S.cfg))) === 200000);
+check("1回の許容損失が大きいと注意が出る", (await visibleText(p)).includes("とても大きい額です"));
 words = englishWords(await visibleText(p)); check("設定の画面に英語がない", words.length === 0, words.slice(0, 5).join(","));
 await p.fill("#f-capital", "1000000"); await p.dispatchEvent("#f-capital", "change"); await p.waitForTimeout(100);
 
