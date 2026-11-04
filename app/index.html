@@ -20,7 +20,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 h1,h2,h3{text-wrap:balance;margin:0;line-height:1.35}
-h2{font-size:18px;font-weight:700}
+h2{font-size:16px;font-weight:700}
 h3{font-size:15px;font-weight:700}
 p{margin:0}
 button{font:inherit;color:inherit}
@@ -33,7 +33,7 @@ button{font:inherit;color:inherit}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg)}
 header.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
 .metal{display:flex;flex:1;background:var(--sunk);border-radius:12px;padding:4px;gap:4px;min-width:0}
-.metal button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;font-weight:700;font-size:16px;cursor:pointer;color:var(--muted)}
+.metal button{flex:1;border:0;background:transparent;padding:7px 6px;border-radius:9px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted)}
 .metal button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
 .metal button[data-sym="gold"][aria-pressed="true"]{color:var(--gold)}
 .metal button[data-sym="silver"][aria-pressed="true"]{color:var(--silver)}
@@ -44,7 +44,7 @@ header.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
 main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .view{display:flex;flex-direction:column;gap:12px}
 
-.card{background:var(--surface);border-radius:16px;padding:16px}
+.card{background:var(--surface);border-radius:16px;padding:14px}
 .card > * + *{margin-top:12px}
 .sub{font-size:13px;color:var(--muted)}
 .note{font-size:13px;color:var(--muted);line-height:1.7}
@@ -66,8 +66,10 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .decision .word{font-size:30px;font-weight:700;line-height:1.2}
 .decision.buy .word{color:var(--buy)} .decision.sell .word{color:var(--sell)} .decision.wait .word{color:var(--ink)}
 .decision .why{font-size:15px}
-.dots{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
-.dots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--muted);display:inline-block;opacity:.6}
+.dots{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted);font-family:var(--f-num)}
+.dots span{margin-left:4px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);display:inline-block;opacity:.6}
+.dots .gap{width:6px}
 .dots i.on{opacity:1;border-color:transparent}
 .dots i.on{background:var(--buy)}
 .decision.sell .dots i.on{background:var(--sell)}
@@ -79,7 +81,7 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .btn.danger{background:var(--warn-soft);color:var(--warn)}
 .btn.small{min-height:38px;padding:8px 12px;font-size:14px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.btn.block{width:100%;min-height:54px;font-size:17px}
+.btn.block{width:100%;min-height:50px;font-size:16px}
 
 /* 候補価格 */
 .lvrows{display:flex;flex-direction:column}
@@ -93,10 +95,10 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 
 /* 売値・買値（GMOの画面と同じ並び：左が売、右が買） */
 .quotes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.q{border-radius:16px;padding:12px 10px;text-align:center}
+.q{border-radius:14px;padding:10px 8px;text-align:center}
 .q.sell{background:var(--sell-soft)} .q.buy{background:var(--buy-soft)}
-.q .k{font-size:14px;font-weight:700} .q.sell .k{color:var(--sell)} .q.buy .k{color:var(--buy)}
-.q .v{font-family:var(--f-num);font-size:clamp(22px,7vw,30px);font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.q .k{font-size:12px;font-weight:700} .q.sell .k{color:var(--sell)} .q.buy .k{color:var(--buy)}
+.q .v{font-family:var(--f-num);font-size:clamp(20px,6vw,26px);font-weight:600;letter-spacing:-.01em;line-height:1.25}
 .qsub{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-family:var(--f-num)}
 .stamp{border:0;background:var(--sunk);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:12px;font-family:var(--f-num);cursor:pointer;line-height:1.6}
 /* 試算 */
@@ -110,17 +112,17 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .simout .v.big2{font-size:28px;font-weight:600}
 /* 注文の内容 */
 .ticket{border-radius:18px;overflow:hidden;background:var(--surface)}
-.ticket .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
+.ticket .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px}
 .ticket.buy .head{background:var(--buy)} .ticket.sell .head{background:var(--sell)} .ticket.wait .head{background:var(--sunk)}
-.ticket .act{font-size:32px;font-weight:800;line-height:1.1;color:#fff}
+.ticket .act{font-size:22px;font-weight:800;line-height:1.2;color:#fff}
 .ticket.wait .act{color:var(--ink)}
-.ticket .act small{display:block;font-size:13px;font-weight:700;opacity:.85}
+.ticket .act small{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:2px;white-space:nowrap}
 .ticket .body{padding:4px 16px 16px}
-.trow{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:4px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:2px 12px;padding:9px 0;border-top:1px solid var(--line)}
 .trow:first-child{border-top:0}
-.trow .k{font-size:15px;color:var(--muted);font-weight:700;white-space:nowrap}
-.trow .v{font-family:var(--f-num);font-size:30px;font-weight:600;text-align:right;letter-spacing:-.02em;line-height:1.15}
-.trow .s{grid-column:2;text-align:right;font-family:var(--f-num);font-size:14px;margin-top:-2px}
+.trow .k{font-size:14px;color:var(--muted);font-weight:700;white-space:nowrap}
+.trow .v{font-family:var(--f-num);font-size:24px;font-weight:600;text-align:right;letter-spacing:-.01em;line-height:1.2}
+.trow .s{grid-column:2;text-align:right;font-family:var(--f-num);font-size:13px;margin-top:-2px}
 .ticket .wait-msg{font-size:15px;color:var(--muted);padding:8px 0 2px}
 .ticket .dots i{border-color:rgb(255 255 255 / .7)} .ticket.wait .dots i{border-color:var(--muted)}
 .ticket.buy .dots i.on, .ticket.sell .dots i.on{background:#fff}
@@ -134,22 +136,22 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-left:auto}
 .legend i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
-.chart-box{position:relative;width:100%;height:300px}
+.chart-box{position:relative;width:100%;height:320px}
 .chart-box.short{height:220px}
 .chart-box canvas{position:absolute;inset:0;width:100%;height:100%}
 
 /* くわしく（開くと中が見える） */
 details.more{background:var(--surface);border-radius:16px}
-details.more > summary{list-style:none;cursor:pointer;padding:16px;font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details.more > summary{list-style:none;cursor:pointer;padding:13px 14px;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:12px}
 details.more > summary::-webkit-details-marker{display:none}
 details.more > summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px;transition:transform .2s}
 details.more[open] > summary::after{transform:rotate(-135deg)}
-details.more > .in{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+details.more > .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
 details.more summary small{font-weight:500;color:var(--muted);font-size:13px;margin-left:auto}
 
 .checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
-.checks li{display:grid;grid-template-columns:26px 1fr;gap:8px;font-size:15px;align-items:start}
-.checks .mk{font-weight:700;text-align:center;border-radius:50%;font-size:13px;line-height:24px;height:24px;width:24px}
+.checks li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:14px;align-items:start}
+.checks .mk{font-weight:700;text-align:center;border-radius:50%;font-size:12px;line-height:20px;height:20px;width:20px;margin-top:1px}
 .checks .ok .mk{background:var(--buy-soft);color:var(--buy)}
 .checks .ng .mk{background:var(--sell-soft);color:var(--sell)}
 .checks .ng{color:var(--muted)}
@@ -159,7 +161,7 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 .tile{background:var(--sunk);border-radius:12px;padding:12px;min-width:0}
 .tile .k{font-size:13px;color:var(--muted)}
 .tile .v{font-family:var(--f-num);font-size:20px;font-weight:600;overflow-wrap:anywhere}
-.big{font-family:var(--f-num);font-size:36px;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+.big{font-family:var(--f-num);font-size:30px;font-weight:600;line-height:1.2;letter-spacing:-.01em}
 .meter{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden;margin-top:6px}
 .meter span{display:block;height:100%;background:var(--muted);border-radius:4px}
 .meter span.hot{background:var(--sell)}
@@ -191,8 +193,8 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 
 /* 設定 */
 .group{background:var(--surface);border-radius:16px;overflow:hidden}
-.group > h2{padding:16px 16px 4px;font-size:15px;color:var(--muted);font-weight:700}
-.field{display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.group > h2{padding:14px 14px 4px;font-size:13px;color:var(--muted);font-weight:700}
+.field{display:grid;grid-template-columns:1fr 140px;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--line)}
 .group > h2 + .field, .group > h2 + .seg-row{border-top:0}
 .field label{font-size:15px}
 .field label small{display:block;color:var(--muted);font-size:12px;line-height:1.5;margin-top:2px}
@@ -204,9 +206,18 @@ details.more summary small{font-weight:500;color:var(--muted);font-size:13px;mar
 .confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--warn-soft);border-radius:12px;padding:12px}
 .confirm span{flex:1;min-width:160px;font-size:14px}
 
+/* 目標 */
+.goalbar{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.goalbar span{display:block;height:100%;background:var(--gold);border-radius:5px}
+.kvs{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.kvs .k{color:var(--muted)} .kvs .v{font-family:var(--f-num);text-align:right}
+.pace{font-size:14px;font-weight:700;border-radius:10px;padding:8px 10px}
+.pace.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.pace.ng{background:var(--warn-soft);color:var(--warn)}
+.field input[type="date"]{font-size:15px;text-align:left}
 /* 下のタブ */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-nav.tabs .in{display:grid;grid-template-columns:repeat(5,1fr);max-width:640px;margin:0 auto}
+nav.tabs .in{display:grid;grid-template-columns:repeat(4,1fr);max-width:640px;margin:0 auto}
 nav.tabs button{border:0;background:transparent;padding:9px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);cursor:pointer}
 nav.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
@@ -233,7 +244,6 @@ footer.disc{font-size:12px;color:var(--muted);line-height:1.7;text-align:center;
   <button type="button" data-tab="signal"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>判断</button>
   <button type="button" data-tab="trade"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 3v3M16 3v3"/></svg>取引</button>
   <button type="button" data-tab="stats"><svg viewBox="0 0 24 24"><path d="M5 20V11"/><path d="M12 20V5"/><path d="M19 20v-6"/></svg>成績</button>
-  <button type="button" data-tab="bt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>検証</button>
   <button type="button" data-tab="cfg"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>設定</button>
 </div></nav>
 
@@ -272,21 +282,31 @@ const DEFAULT_CFG = {
   rule: "ichimoku",      // 判断のルール："ichimoku"（一目均衡表＋損切り幅の下限＋日足の流れ）／"pullback"（押し目・戻り）
   params: { fast:20, slow:100, slMult:1.5, rr:2.0 },      // 押し目・戻りの設定
   paramsI: { slMult:1.5, rr:2.0, minStop:6 },             // 一目均衡表の設定
-  auto: { on:true, month:"", at:0, trades:0, net:0 }      // 毎月、直近3か月の値動きで設定を自動で見直す
+  auto: { on:true, month:"", at:0, trades:0, net:0 },     // 毎月、直近3か月の値動きで設定を自動で見直す
+  goal: { amount:3500000, deadline:"2026-12-31" }        // あなたが決める目標（期限までの利益）
 };
+/* アプリが決める部分：資金に合わせて、最初に決めた条件（100万円で1回2,500円・1日1万円・5％で停止・同時2つ）と同じ割合にする。
+   目標を大きくしても、1回にかける金額は増やさない（検証で、かける額を増やすと資金が大きく減る確率が上がったため） */
+function applyAuto(c){
+  c.riskPerTrade = Math.max(100, Math.round(c.capital*0.0025/100)*100);
+  c.dailyLimit = Math.max(1000, Math.round(c.capital*0.01/1000)*1000);
+  c.maxDDPct = 5; c.maxPositions = 2; c.rule = "ichimoku"; c.auto.on = true;
+  return c;
+}
 const CFG_VER = 3;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function mergeCfg(saved, savedVer){
   const c = clone(DEFAULT_CFG);
-  if(!saved) return c;
+  if(!saved) return applyAuto(c);
   if(saved.rule==="pullback" || saved.rule==="ichimoku") c.rule = (savedVer>=3 ? saved.rule : "ichimoku");
   if(saved.paramsI) for(const k in c.paramsI) if(typeof saved.paramsI[k]==="number") c.paramsI[k]=saved.paramsI[k];
   if(saved.auto && typeof saved.auto==="object") c.auto = { ...c.auto, ...saved.auto };
+  if(saved.goal && typeof saved.goal==="object"){ if(typeof saved.goal.amount==="number") c.goal.amount=saved.goal.amount; if(/^\d{4}-\d{2}-\d{2}$/.test(saved.goal.deadline||"")) c.goal.deadline=saved.goal.deadline; }
   for(const k of ["capital","riskPerTrade","dailyLimit","maxDDPct","maxPositions","usdjpy"]) if(typeof saved[k]==="number") c[k]=saved[k];
   // 設定の版が古い（GMOの実際の値を入れる前）なら、金のコストは新しい初期値を使う
   for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s] && !(s==="gold" && !(savedVer>=2))) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
   if(saved.params) for(const k in c.params) if(typeof saved.params[k]==="number") c.params[k]=saved.params[k];
-  return c;
+  return applyAuto(c);
 }
 
 /* ---------- サンプル価格の生成（毎回同じ値動きになる架空データ） ---------- */
@@ -641,7 +661,7 @@ function initState(){
   if(saved && saved.acct && Array.isArray(saved.acct.trades)) S.acct = saved.acct;
   if(MODE==="sample" && saved && typeof saved.nowIdx==="number" && saved.nowIdx>=WARMUP && saved.nowIdx<TOTAL) S.nowIdx = saved.nowIdx;
   if(saved && SYMS[saved.sym]) S.sym = saved.sym;
-  if(saved && ["signal","trade","stats","bt","cfg"].includes(saved.tab)) S.tab = saved.tab;
+  if(saved && ["signal","trade","stats","cfg"].includes(saved.tab)) S.tab = saved.tab;
   if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
   if(!S.acct){
     S.acct = newAcct(S.cfg);
@@ -670,22 +690,26 @@ function modeNotice(){ return banners(); }
 
 /* ---------- 現在の判断（画面用） ---------- */
 function currentDecision(sym){
-  const i=S.nowIdx, D=DATA[sym], c=S.cfg.cost[sym], p=curParams(S.cfg);
-  const sig = signalAt(sym,i,p,S.cfg,true);
+  const i=S.nowIdx, c=S.cfg.cost[sym], p=curParams(S.cfg), cfg=S.cfg, a=S.acct, t=tNow();
+  const sig = signalAt(sym,i,p,cfg,true);
   const bOk = sig.buy.filter(x=>x.ok).length, sOk = sig.sell.filter(x=>x.ok).length;
   const lean = sig.side!=="wait" ? sig.side : (bOk>=sOk ? "buy" : "sell");
   const lv = levels(lean, midNow(sym), sig.stopDist, p, c.spread);
-  const sz = sizeFor(sym, sig.stopDist, S.cfg, fxNow());
-  const blocks = [];
-  if(sig.side!=="wait"){
-    if(sz.qty<=0) blocks.push(`損切りまでの幅が広く、1回の許容損失（${yen(S.cfg.riskPerTrade)}）に収まる数量がない`);
-    blocks.push(...riskBlocks(S.acct,S.cfg,sym,sz.risk,tNow()));
-    if(MODE==="live" && Date.now() - LIVE[sym].t > 2*3600e3) blocks.push("最新の価格が2時間以上更新されていない（週末・休場の可能性）");
-  }
+  const sz = sizeFor(sym, sig.stopDist, cfg, fxNow());
+  const dp = a.dayKey===dayKey(t) ? a.dayPnl : 0, openRisk = a.positions.reduce((s,x)=>s+x.risk,0);
+  const safety = [
+    { ok: sym!=="gold" || gmoOpen(t), text:"GMOクリック証券の取引時間内" },
+    { ok: dp - openRisk - sz.risk >= -cfg.dailyLimit, text:`今日の損失上限（${yen(cfg.dailyLimit)}）まで余裕がある` },
+    { ok: !a.halted, text:`資金の減りが停止ライン（−${cfg.maxDDPct}％）より手前` },
+    { ok: a.positions.length < cfg.maxPositions && !a.positions.some(x=>x.sym===sym), text:`同時に持てる数（${cfg.maxPositions}つ）に空きがある` },
+    { ok: MODE!=="live" || Date.now() - LIVE[sym].t <= 2*3600e3, text:"価格が新しい（2時間以内に動いている）" },
+  ];
+  const checks = lean==="buy" ? sig.buy : sig.sell;
+  const blocks = safety.filter(x=>!x.ok).map(x=>x.text);
+  if(sig.side!=="wait" && sz.qty<=0) blocks.push(`損切り幅が広く、1回の許容損失（${yen(cfg.riskPerTrade)}）に収まる数量がない`);
   const verdict = sig.side!=="wait" && blocks.length===0 ? sig.side : "wait";
-  return { sig, lean, lv, sz, blocks, verdict, checks: lean==="buy" ? sig.buy : sig.sell };
+  return { sig, lean, lv, sz, blocks, verdict, checks, safety, okN: checks.filter(x=>x.ok).length + safety.filter(x=>x.ok).length };
 }
-
 /* ---------- 描画：ローソク足チャート ---------- */
 function setupCanvas(cv){
   const r = cv.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
@@ -696,51 +720,63 @@ function drawCandles(cv, sym, endIdx, n, lines){
   const { g, w, h } = setupCanvas(cv), D=DATA[sym], p=S.cfg.params;
   const isI = S.cfg.rule==="ichimoku", I = isI ? ichi(sym) : null;
   const ef = isI ? I.ten : emaOf(sym,p.fast), es = isI ? I.top : emaOf(sym,p.slow), eb = isI ? I.bot : null;
-  const s = Math.max(0,endIdx-n+1), padR=62, padB=20, padT=8, cw=w-padR, ch=h-padB-padT;
+  const s = Math.max(0,endIdx-n+1), padR=74, padB=22, padT=10, cw=w-padR, ch=h-padB-padT;
+  // 縦の範囲はろうそくと横線で決める（雲で縮まないように）
   let lo=Infinity, hi=-Infinity;
-  for(let i=s;i<=endIdx;i++){ lo=Math.min(lo,D.l[i],es[i],eb?eb[i]:Infinity); hi=Math.max(hi,D.h[i],es[i]); }
-  for(const L of lines){ lo=Math.min(lo,L.v); hi=Math.max(hi,L.v); }
-  const pad=(hi-lo)*0.06||1; lo-=pad; hi+=pad;
+  for(let i=s;i<=endIdx;i++){ lo=Math.min(lo,D.l[i]); hi=Math.max(hi,D.h[i]); }
+  for(const L of lines) if(!L.ref){ lo=Math.min(lo,L.v); hi=Math.max(hi,L.v); }
+  const pad=(hi-lo)*0.08||1; lo-=pad; hi+=pad;
   const y = v => padT + (hi-v)/(hi-lo)*ch, step = cw/n, x = i => (i-s+0.5)*step;
-  const ink=css("--ink"), muted=css("--muted"), line=css("--line"), up=css("--buy"), dn=css("--sell"), gold=css("--gold"), silver=css("--silver");
+  const ink=css("--ink"), muted=css("--muted"), line=css("--line"), up=css("--buy"), dn=css("--sell"), gold=css("--gold"), surf=css("--surface"), num=css("--f-num");
   g.clearRect(0,0,w,h);
-  g.font = "11px "+css("--f-num"); g.textBaseline="middle";
-  const ticks=5;
-  for(let k=0;k<=ticks;k++){ const v=lo+(hi-lo)*k/ticks, yy=y(v); g.strokeStyle=line; g.lineWidth=1; g.beginPath(); g.moveTo(0,yy); g.lineTo(cw,yy); g.stroke(); g.fillStyle=muted; g.textAlign="left"; g.fillText(fp(sym,v),cw+6,yy); }
-  g.textAlign="center"; g.textBaseline="alphabetic";
-  const lbEvery = n<=24 ? 6 : n<=72 ? 24 : 24;
+  // 横の目盛り（4本・うすく）
+  g.font="11px "+num; g.textBaseline="middle"; g.textAlign="left";
+  const tick = (()=>{ const raw=(hi-lo)/4, mag=Math.pow(10,Math.floor(Math.log10(raw))); return [1,2,2.5,5,10].map(k=>k*mag).find(k=>k>=raw); })();
+  for(let v=Math.ceil(lo/tick)*tick; v<hi; v+=tick){ const yy=y(v); g.strokeStyle=line; g.lineWidth=1; g.beginPath(); g.moveTo(0,Math.round(yy)+.5); g.lineTo(cw,Math.round(yy)+.5); g.stroke(); g.fillStyle=muted; g.fillText(Math.round(v).toLocaleString("en-US"),cw+8,yy); }
+  // 日付・時刻（下）
+  g.textAlign="center"; g.textBaseline="alphabetic"; g.fillStyle=muted;
   for(let i=s;i<=endIdx;i++){
-    const hr = (new Date(D.t[i]).getUTCHours()+9)%24;
-    if(hr % (lbEvery===6?6:24) === (lbEvery===6?0:9)){
-      const lab = lbEvery===6 ? hr+"時" : TFd.format(new Date(D.t[i])).slice(5);
-      g.fillStyle=muted; g.fillText(lab, x(i), h-5);
-      g.strokeStyle=line; g.setLineDash([2,3]); g.beginPath(); g.moveTo(x(i),padT); g.lineTo(x(i),padT+ch); g.stroke(); g.setLineDash([]);
-    }
+    const j=new Date(D.t[i]+9*3600e3), hr=j.getUTCHours();
+    const mark = n<=24 ? (hr%6===0) : (hr===0 || (i>s && new Date(D.t[i-1]+9*3600e3).getUTCDate()!==j.getUTCDate() && hr<3));
+    if(mark && x(i)>16 && x(i)<cw-16){ g.fillText(n<=24 ? hr+"時" : (j.getUTCMonth()+1)+"/"+j.getUTCDate(), x(i), h-6); }
   }
-  if(MODE==="sample"){ g.save(); g.fillStyle=muted; g.globalAlpha=.14; g.font="700 "+Math.min(26,w/12)+"px "+css("--f-body"); g.textAlign="center"; g.textBaseline="middle";
-  g.fillText("サンプルデータ（架空）", cw/2, padT+ch/2); g.restore(); }
-  const bw = Math.max(1, Math.min(9, step*0.66));
-  for(let i=s;i<=endIdx;i++){
-    const o=D.o[i], c=D.c[i], col = c>=o ? up : dn;
-    g.strokeStyle=col; g.fillStyle=col; g.lineWidth=1;
-    g.beginPath(); g.moveTo(Math.round(x(i))+.5,y(D.h[i])); g.lineTo(Math.round(x(i))+.5,y(D.l[i])); g.stroke();
-    const top=y(Math.max(o,c)), bh=Math.max(1,Math.abs(y(o)-y(c)));
-    g.fillRect(x(i)-bw/2, top, bw, bh);
-  }
-  const plot = (arr,col,wd) => { g.strokeStyle=col; g.lineWidth=wd; g.beginPath(); for(let i=s;i<=endIdx;i++){ const yy=y(arr[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); } g.stroke(); };
+  g.save(); g.beginPath(); g.rect(0,padT,cw,ch); g.clip();
+  if(MODE==="sample"){ g.save(); g.fillStyle=muted; g.globalAlpha=.10; g.font="700 "+Math.min(22,w/14)+"px "+css("--f-body"); g.textAlign="center"; g.textBaseline="middle"; g.fillText("サンプル", cw/2, padT+ch/2); g.restore(); }
+  // 雲（うすい帯）と転換線
   if(isI){
-    g.save(); g.globalAlpha=.16; g.fillStyle=muted; g.beginPath();
+    g.save(); g.globalAlpha=.13; g.fillStyle=css("--silver"); g.beginPath();
     for(let i=s;i<=endIdx;i++){ const yy=y(es[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); }
     for(let i=endIdx;i>=s;i--) g.lineTo(x(i),y(eb[i]));
     g.closePath(); g.fill(); g.restore();
-    plot(es, muted, 1); plot(eb, muted, 1); plot(ef, sym==="gold"?gold:silver, 1.4);
-  } else { plot(ef, sym==="gold"?gold:silver, 1.6); plot(es, muted, 1.4); }
+  }
+  // ろうそく（上昇＝赤、下落＝青）
+  const bw = Math.max(1.5, Math.min(8, step*0.62));
+  for(let i=s;i<=endIdx;i++){
+    const o=D.o[i], c=D.c[i], col = c>=o ? up : dn, xx=Math.round(x(i))+.5;
+    g.strokeStyle=col; g.fillStyle=col; g.lineWidth=1;
+    g.beginPath(); g.moveTo(xx,y(D.h[i])); g.lineTo(xx,y(D.l[i])); g.stroke();
+    g.fillRect(xx-bw/2, y(Math.max(o,c)), bw, Math.max(1,Math.abs(y(o)-y(c))));
+  }
+  const plot = (arr,col,wd,al=1) => { g.save(); g.globalAlpha=al; g.strokeStyle=col; g.lineWidth=wd; g.beginPath(); for(let i=s;i<=endIdx;i++){ const yy=y(arr[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); } g.stroke(); g.restore(); };
+  if(isI) plot(ef, gold, 1.5, .9); else { plot(ef, gold, 1.5, .9); plot(es, muted, 1.2, .8); }
+  // 横線（入る＝白、利確＝赤、損切り＝青）
   for(const L of lines){
     const yy=y(L.v), col = L.kind==="tp"?up : L.kind==="sl"?dn : ink;
-    g.save(); g.globalAlpha = L.ref ? .45 : 1; g.strokeStyle=col; g.lineWidth=1.2; g.setLineDash(L.kind==="entry"?[]:[5,4]);
-    g.beginPath(); g.moveTo(0,yy); g.lineTo(cw,yy); g.stroke(); g.setLineDash([]);
-    g.fillStyle=col; g.fillRect(cw,yy-8,padR,16); g.fillStyle=css("--surface"); g.textAlign="left"; g.textBaseline="middle"; g.font="600 11px "+css("--f-num");
-    g.fillText(fp(sym,L.v),cw+4,yy); g.textAlign="right"; g.fillStyle=col; g.font="700 11px "+css("--f-body"); g.fillText(L.label,cw-4,yy-9); g.restore();
+    g.save(); g.globalAlpha = L.ref ? .3 : .85; g.strokeStyle=col; g.lineWidth=1; g.setLineDash(L.kind==="entry"?[]:[4,4]);
+    g.beginPath(); g.moveTo(0,Math.round(yy)+.5); g.lineTo(cw,Math.round(yy)+.5); g.stroke(); g.restore();
+  }
+  g.restore();
+  // 右側の値札（重ならないようにずらす）。今の価格は白抜き
+  const last=D.c[endIdx];
+  const tags=[{ v:last, bg:surf, fg:ink, border:ink, label:"今" }, ...lines.filter(L=>!L.ref).map(L=>({ v:L.v, bg:L.kind==="tp"?up:L.kind==="sl"?dn:ink, fg:L.kind==="entry"?surf:"#fff", label:L.kind==="tp"?"利":L.kind==="sl"?"損":"入" }))];
+  tags.forEach(t=>t.y=y(t.v)); tags.sort((a,b)=>a.y-b.y);
+  for(let k=1;k<tags.length;k++) if(tags[k].y-tags[k-1].y<18) tags[k].y=tags[k-1].y+18;
+  for(const t of tags){
+    const yy=Math.min(Math.max(t.y,padT+8),h-padB+4);
+    g.fillStyle=t.bg; g.beginPath(); g.roundRect ? g.roundRect(cw+2,yy-9,padR-4,18,4) : g.rect(cw+2,yy-9,padR-4,18); g.fill();
+    if(t.border){ g.strokeStyle=t.border; g.lineWidth=1; g.stroke(); }
+    g.fillStyle=t.fg; g.font="600 11px "+num; g.textAlign="left"; g.textBaseline="middle";
+    g.fillText(t.label+" "+Math.round(t.v).toLocaleString("en-US"), cw+6, yy);
   }
 }
 /* ---------- 描画：資金推移 ---------- */
@@ -855,9 +891,9 @@ function levelsHtml(sym, d){
 function viewSignal(){
   if(!DATA[S.sym]) return viewSilverOff();
   const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
-  const d = currentDecision(sym), okN = d.checks.filter(x=>x.ok).length, all = d.checks.length;
+  const d = currentDecision(sym), all10 = [...d.checks, ...d.safety], okN = d.okN, all = all10.length;
   const lv=d.lv, tpU=Math.abs(lv.tp-lv.entry), pnlTp=d.sz.qty*tpU*fxNow(), pnlSl=d.sz.risk;
-  const dots = `<span class="dots" aria-label="そろった条件 ${okN}／${all}">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}／${all}</span></span>`;
+  const dots = `<span class="dots" aria-label="そろった条件 ${okN}／${all}">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<b class="gap"></b>${d.safety.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}/${all}</span></span>`;
   const act = { buy:"買い", sell:"売り", wait:"待ち" }[d.verdict];
   const rows = `
       <div class="trow"><div class="k">入る</div><div class="v">${fp(sym,lv.entry)}</div></div>
@@ -872,7 +908,7 @@ function viewSignal(){
   </section>
   <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span>${stamp()}</div>
   <section class="ticket ${d.verdict}" aria-label="判断">
-    <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"資金管理のルールで見送り":"条件がそろうまで注文しない"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
+    <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"安全確認で見送り":"条件待ち"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
     ${d.verdict!=="wait"?`<div class="body">${rows}
       <button class="btn block ${d.verdict}" style="margin-top:8px" data-act="open">仮想取引に記録</button></div>`:""}
   </section>
@@ -883,9 +919,11 @@ function viewSignal(){
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
-  <details class="more"><summary>理由<small>${okN}／${all}</small></summary><div class="in">
+  <details class="more"><summary>10の条件<small>${okN}／${all}</small></summary><div class="in">
+    <h3>売買の条件（${d.lean==="buy"?"買い":"売り"}）</h3>
     <ul class="checks">${d.checks.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
-    ${d.blocks.length?`<ul class="checks">${d.blocks.map(b=>`<li class="ng"><span class="mk">×</span><span>${esc(b)}</span></li>`).join("")}</ul>`:""}
+    <h3>安全の確認</h3>
+    <ul class="checks">${d.safety.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
     <p class="note">${RULES[S.cfg.rule].name}。損切り幅＝ふだんの値動き×${p.slMult}、利確幅＝損切り幅×${p.rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`毎月自動で見直し（最終 ${fd(S.cfg.auto.at)}）。`:""}数量はGMOの取引数量（1＝1オンス）。</p>
   </div></details>
   ${d.verdict==="wait"?`<details class="more"><summary>そろったときの目安<small>${d.lean==="buy"?"買い":"売り"}</small></summary><div class="in"><div class="ticket ${d.lean}" style="background:transparent"><div class="body" style="padding:0">${rows}</div></div></div></details>`:""}
@@ -925,10 +963,38 @@ function viewTrade(){
   <section class="card"><h2>決済した取引</h2>${tradeList(a.trades,30)}${a.trades.length>30?`<p class="note">新しい30件を表示（全${a.trades.length}件）</p>`:""}</section>
   <div class="qsub">${stamp()}</div>`;
 }
+function goalInfo(){
+  const cfg=S.cfg, a=S.acct, ur=a.positions.reduce((s,p)=>s+unreal(p).pnl,0);
+  const profit = a.balance - cfg.capital + ur, amount = cfg.goal.amount;
+  const end = Date.parse(cfg.goal.deadline+"T23:59:59+09:00"), now = Date.now(), days = Math.max(0, Math.ceil((end-now)/86400e3));
+  const remain = Math.max(0, amount - profit), perDay = days ? remain/days : remain;
+  const pace = cfg.auto.at && cfg.auto.trades ? cfg.auto.net/91 : null;   // 直近3か月の検証での1日あたり（目安）
+  const expect = pace!=null ? pace*days : null;
+  return { profit, amount, days, remain, perDay, pace, expect, pct: amount>0 ? Math.max(0,Math.min(100, profit/amount*100)) : 0 };
+}
+function goalCard(){
+  const g=goalInfo(), cfg=S.cfg;
+  if(!(g.amount>0)) return `<section class="card"><h2>目標</h2><p class="note">「設定」で、期限と目標の利益を入れてください。</p></section>`;
+  const reach = g.expect!=null && g.profit + g.expect >= g.amount;
+  return `<section class="card">
+    <div class="sub">目標：${cfg.goal.deadline.replace(/-/g,"/")}までに ＋${yen(g.amount)}</div>
+    <div class="big ${cls(g.profit)}">${yen(g.profit,true)}</div>
+    <div class="goalbar"><span style="width:${g.pct}%"></span></div>
+    <div class="kvs">
+      <div class="k">あと</div><div class="v">${yen(g.remain)}</div>
+      <div class="k">残りの日数</div><div class="v">${g.days}日</div>
+      <div class="k">1日あたり必要</div><div class="v">${yen(g.perDay)}</div>
+      ${g.pace!=null?`<div class="k">今のペースの目安（1日）</div><div class="v ${cls(g.pace)}">${yen(g.pace,true)}</div>`:""}
+    </div>
+    ${g.pace!=null?`<div class="pace ${reach?"ok":"ng"}">${reach?"今のペースなら届く見込み（目安）":`今のペースだと期限までに約${yen(Math.max(0,g.profit+g.expect),true)}（目安）`}</div>`:""}
+    <p class="note">1回にかける金額は増やしません。目標を追いかけてかける額を増やすと、資金が大きく減る確率が上がるためです。「今のペース」は直近3か月の検証の結果で、約束ではありません。</p>
+  </section>`;
+}
 function viewStats(){
   const a=S.acct, st=stats(a.trades,S.cfg.capital), by = s => stats(a.trades.filter(t=>t.sym===s), 0);
   const tile = (k,v,c="") => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
   return `${banners()}
+  ${goalCard()}
   <section class="card">
     <div class="sub">仮想取引の損益（コストを引いた後）</div>
     <div class="big ${cls(st.net)}">${yen(st.net,true)}</div>
@@ -998,52 +1064,34 @@ function field(id, label, hint, val, step){
   return `<div class="field"><label for="${id}">${label}${hint?`<small>${hint}</small>`:""}</label><input id="${id}" type="number" inputmode="decimal" step="${step}" value="${val}" data-path="${id.replace(/^f-/,"").replace(/-/g,".")}"></div>`;
 }
 function viewCfg(){
-  const c=S.cfg, ui=S.ui;
+  const c=S.cfg, ui=S.ui, p=curParams(c);
   return `
-  <section class="group"><h2>判断のルール</h2>
-    <div class="seg-row"><div class="seg2" role="group" aria-label="判断のルール">
-      <button type="button" data-act="rule" data-rule="ichimoku" aria-pressed="${c.rule==="ichimoku"}">一目均衡表</button>
-      <button type="button" data-act="rule" data-rule="pullback" aria-pressed="${c.rule==="pullback"}">押し目・戻り</button>
+  <section class="group"><h2>あなたが決めること</h2>
+    ${field("f-capital","資金（円）","変えたら下の「最初からやり直す」で反映",c.capital,100000)}
+    ${field("f-goal-amount","目標の利益（円）","期限までに増やしたい金額",c.goal.amount,100000)}
+    <div class="field"><label for="f-deadline">期限</label><input id="f-deadline" type="date" value="${c.goal.deadline}" data-date="goal.deadline"></div>
+  </section>
+  <section class="group"><h2>アプリが決めていること</h2>
+    <div class="seg-row"><div class="kvs">
+      <div class="k">判断のルール</div><div class="v" style="font-family:var(--f-body)">一目均衡表</div>
+      <div class="k">1回の許容損失</div><div class="v">${yen(c.riskPerTrade)}</div>
+      <div class="k">1日の損失上限</div><div class="v">${yen(c.dailyLimit)}</div>
+      <div class="k">停止ライン</div><div class="v">−${c.maxDDPct}％</div>
+      <div class="k">同時に持てる数</div><div class="v">${c.maxPositions}つ</div>
+      <div class="k">損切り幅・利確幅</div><div class="v">${p.slMult}倍・${p.rr}倍</div>
+      <div class="k">設定の見直し</div><div class="v" style="font-family:var(--f-body)">毎月（直近3か月）${c.auto.at&&c.auto.rule===c.rule?`<br><span class="sub">最終 ${fd(c.auto.at)}</span>`:""}</div>
     </div></div>
-    <p class="note">${c.rule==="ichimoku"?"一目均衡表＋損切り幅の下限＋日足の流れ。2021〜2026年の検証で一番安定していたルールです。将来も同じとは限りません。":"最初に作ったルールです。検証ではコストを引くとマイナスでした。比べるために残しています。"}</p>
-    <div class="field"><label>毎月の自動見直し<small>直近3か月の本物の値動きで、毎月はじめに設定を選び直します${c.auto.at&&c.auto.rule===c.rule?`（最終：${fd(c.auto.at)}）`:""}</small></label><button type="button" class="btn ${c.auto.on?"primary":""}" data-act="autotune">${c.auto.on?"オン":"オフ"}</button></div>
-    ${c.rule==="ichimoku"?`
-    ${field("f-paramsI-slMult","損切り幅","ふだんの1時間の値動きの何倍か",c.paramsI.slMult,0.5)}
-    ${field("f-paramsI-rr","利確幅","損切り幅の何倍か",c.paramsI.rr,0.5)}
-    ${field("f-paramsI-minStop","損切り幅の下限（ドル）","これより小さいときは見送る",c.paramsI.minStop,1)}`:`
-    ${field("f-params-fast","短い平均線（時間）","",c.params.fast,1)}
-    ${field("f-params-slow","長い平均線（時間）","",c.params.slow,1)}
-    ${field("f-params-slMult","損切り幅","ふだんの1時間の値動きの何倍か",c.params.slMult,0.1)}
-    ${field("f-params-rr","利確幅","損切り幅の何倍か",c.params.rr,0.1)}`}
+    <p class="note">資金に合わせて自動で決めます（資金の0.25％を1回の上限、1％を1日の上限）。どれも検証で決めた方法です。</p>
   </section>
-  <section class="group"><h2>資金の守り方</h2>
-    ${field("f-riskPerTrade","1回の許容損失（円）","損切りになってもこの金額以内",c.riskPerTrade,500)}
-    ${field("f-dailyLimit","1日の損失上限（円）","超えそうならその日は見送る",c.dailyLimit,1000)}
-    ${field("f-maxDDPct","停止する減り方（％）","一番多かった時からこれだけ減ったら停止",c.maxDDPct,0.5)}
-    ${field("f-maxPositions","同時に持てる数","",c.maxPositions,1)}
-    ${field("f-capital","最初の資金（円）","「最初からやり直す」で反映",c.capital,100000)}
-  </section>
-  <section class="group"><h2>金の取引コスト（GMOクリック証券の画面の値）</h2>
-    ${field("f-cost-gold-spread","スプレッド（ドル）","買値と売値の差",c.cost.gold.spread,0.01)}
-    ${field("f-cost-gold-slip","損切りのずれ（ドル）","損切りは不利な価格になりやすい分",c.cost.gold.slip,0.01)}
-    ${field("f-cost-gold-step","最小の数量（オンス）","",c.cost.gold.step,0.1)}
-    ${field("f-cost-gold-swapLong","買いの持ち越し（円/日）","払うときはプラスで入力",c.cost.gold.swapLong,1)}
-    ${field("f-cost-gold-swapShort","売りの持ち越し（円/日）","受け取るときはマイナスで入力",c.cost.gold.swapShort,1)}
-    <p class="note">2026年11月4日の画面の値です。持ち越しの金額（金利調整額）は毎日変わるので、ときどき見直してください。</p>
-  </section>
-  <details class="more"><summary>銀の取引コスト・その他</summary><div class="in" style="padding:0">
+  <details class="more"><summary>GMOクリック証券の値<small>たまに確認</small></summary><div class="in" style="padding:0">
     <div class="group">
-    ${field("f-cost-silver-spread","銀のスプレッド（ドル）","",c.cost.silver.spread,0.001)}
-    ${field("f-cost-silver-slip","銀の損切りのずれ（ドル）","",c.cost.silver.slip,0.001)}
-    ${field("f-cost-silver-step","銀の最小の数量（オンス）","",c.cost.silver.step,1)}
-    ${field("f-cost-silver-swapLong","銀・買いの持ち越し（円/日）","",c.cost.silver.swapLong,0.1)}
-    ${field("f-cost-silver-swapShort","銀・売りの持ち越し（円/日）","",c.cost.silver.swapShort,0.1)}
-    ${MODE==="sample"?field("f-usdjpy","ドル円（円）","サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は自動で最新の値を使います（今 ${fxNow().toFixed(2)}円）。</p>`}
+    ${field("f-cost-gold-spread","スプレッド（ドル）","買値と売値の差",c.cost.gold.spread,0.01)}
+    ${field("f-cost-gold-step","最小の数量","",c.cost.gold.step,0.1)}
+    ${field("f-cost-gold-swapLong","買いの持ち越し（円/日）","払うときはプラス",c.cost.gold.swapLong,1)}
+    ${field("f-cost-gold-swapShort","売りの持ち越し（円/日）","受け取るときはマイナス",c.cost.gold.swapShort,1)}
+    <p class="note">GMOクリック証券の「金スポット」の画面（情報のボタン）で見られます。持ち越しの金額（金利調整額）は「3日分」などと出るので、1日分にして入れてください。</p>
     </div>
   </div></details>
-  <section class="group"><h2>データ</h2>
-    <p class="note">${MODE==="live"?`本物の価格（ツエルブデータ・1時間ごと）を使っています。読み込んだ数：${DATA.gold.c.length.toLocaleString()}本。${SILVER_OFF?"銀は今のプランでは取れません。":""}個人で使う無料プランなので、このページを他の人に見せないでください。`:`サンプルの値動きを使っています。${LOAD_ERR?"本物の価格を読めなかった理由："+esc(errText(LOAD_ERR))+"。":""}`}GMOクリック証券の画面からデータを取り込むことはしません。サンプルと本物では、仮想取引の記録を別々に保存しています。</p>
-  </section>
   <section class="group"><h2>やり直し</h2>
     <div class="seg-row" style="display:flex;flex-direction:column;gap:8px">
     ${S.acct.halted?`<button class="btn block" data-act="ask" data-what="resume">停止を解除する（成績は残す）</button>`:""}
@@ -1051,7 +1099,7 @@ function viewCfg(){
     ${ui.ask?`<div class="confirm"><span>${ui.ask==="reset"?"取引の記録と資金をすべて最初に戻します。元には戻せません。":"今の資金を新しい基準にして、取引を再開します。"}</span>
       <button class="btn small" data-act="ask" data-what="">やめる</button><button class="btn small ${ui.ask==="reset"?"sell":"primary"}" data-act="${ui.ask}">${ui.ask==="reset"?"やり直す":"再開する"}</button></div>`:""}
     </div>
-    <p class="note">記録はこの端末の中だけに保存されます。別の端末には引き継がれません。</p>
+    <p class="note">記録はこの端末の中だけに保存されます。${MODE==="live"?"価格はツエルブデータ（1時間ごと・約2分ごとに今の価格）。":""}このページを他の人に見せないでください。</p>
   </section>`;
 }
 function footer(){
@@ -1192,16 +1240,20 @@ document.addEventListener("click", e=>{
   else if(act==="resume"){ S.acct.halted=null; S.acct.peak=S.acct.balance; S.ui={}; save(); render(); toast("停止を解除しました"); }
 });
 document.addEventListener("change", e=>{
-  const el=e.target; if(!el.dataset || !el.dataset.path) return;
+  const el=e.target;
+  if(el.dataset && el.dataset.date){ if(/^\d{4}-\d{2}-\d{2}$/.test(el.value)){ S.cfg.goal.deadline=el.value; save(); toast("保存しました"); } return; }
+  if(!el.dataset || !el.dataset.path) return;
   const v=parseFloat(el.value), canMinus=/swap/.test(el.dataset.path);
   if(!isFinite(v) || (v<0 && !canMinus)){ toast(canMinus?"数字を入れてください":"0以上の数字を入れてください"); render(); return; }
   const path=el.dataset.path.split("."); let o=S.cfg; for(let k=0;k<path.length-1;k++) o=o[path[k]];
   if(path[0]==="params" && (path[1]==="fast"||path[1]==="slow")){ if(v<2||v>200){ toast("平均線は2〜200時間で入れてください"); render(); return; } }
   o[path[path.length-1]] = path[path.length-1]==="maxPositions" ? Math.max(1,Math.round(v)) : v;
+  if(path[0]==="capital") applyAuto(S.cfg);
   if(S.cfg.params.fast>=S.cfg.params.slow) toast("短期の平均線は長期より短くしてください");
   if(S.cfg.cost.gold.step<=0) S.cfg.cost.gold.step=0.1;
   if(S.cfg.cost.silver.step<=0) S.cfg.cost.silver.step=1;
   save(); toast("保存しました");
+  if(path[0]==="capital" || path[0]==="goal") setTimeout(render, 0);   // 入力欄を離れた直後に書き換えると失敗するので、少し後で
 });
 document.addEventListener("input", e=>{
   const el=e.target; if(!el.dataset || !el.dataset.sim) return;
