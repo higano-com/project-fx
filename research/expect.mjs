@@ -1,9 +1,10 @@
 // アプリの「届く見込み」に使う数字：調整に使っていない期間（毎月の見直しの次の1か月）の取引だけから作る
 import { loadCsv, prepare, STRATEGIES, gridList, runStrategy, summarize } from "./engine.mjs";
-import { compose } from "./filters.mjs";
+import { FILTERS, compose } from "./filters.mjs";
+FILTERS.bigBar = { opts: [0, 0.6, 1.0], fn: (B, i, s, v) => !v || Math.abs(B.c[i] - B.o[i]) > v * B.atr[i] };   // アプリと同じ（抜けた足が0.6倍以上）
 const B = prepare(loadCsv("data/xau_usd_1h.csv"), loadCsv("data/usd_jpy_1h.csv"));
 const DAY = 86400e3, START = Date.UTC(2021, 2, 1), END = B.t[B.n - 1] + 1;
-const S = compose(STRATEGIES.ichimoku, {}, ["minStop", "daily"]);
+const S = compose(STRATEGIES.ichimoku, { bigBar: 0.6 }, ["minStop", "daily"]);
 const combos = gridList(S.grid).map(x => ({ ...x, trades: runStrategy(B, S, x.p) }));
 const byIdx = new Map(combos.map(x => [x.idx.join(","), x]));
 const all = [];
