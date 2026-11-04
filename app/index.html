@@ -275,7 +275,7 @@ async function fetchSeries(symbol){
   try{ r = await fetch("api/series?symbol="+encodeURIComponent(symbol), { cache:"no-store" }); }
   catch(e){ throw { kind:"network" }; }
   let j = null; try{ j = await r.json(); }catch(e){}
-  if(!r.ok || !j || !Array.isArray(j.values)) throw { kind:(j && j.error) || "bad_response", code:j && j.code, detail:j && j.message, keyLength:j && j.keyLength };
+  if(!r.ok || !j || !Array.isArray(j.values)) throw { kind:(j && j.error) || "bad_response", code:j && j.code, detail:j && j.message, keyLength:j && j.keyLength, keyId:j && j.keyId };
   return j.values;   // [時刻(ms), 始値, 高値, 安値, 終値] の配列
 }
 function buildLive(g, s, f){
@@ -315,7 +315,7 @@ function errText(e){
   if(!e) return "";
   if(e.kind==="no_key") return "APIキーがまだ設定されていません（Cloudflare の設定を確認してください）";
   if(e.kind==="upstream" && e.code===429) return "Twelve Data の無料枠の回数を使い切りました。しばらく待つか、明日また開いてください";
-  if(e.kind==="upstream" && e.code===401) return "APIキーが正しくないようです（Cloudflare に入れたキーを確認してください" + (typeof e.keyLength==="number" ? `。今入っているキーは${e.keyLength}文字。正しいキーは32文字です` : "") + "）";
+  if(e.kind==="upstream" && e.code===401) return "APIキーが正しくないようです（Cloudflare に入れたキーを確認してください" + (typeof e.keyLength==="number" ? `。今入っているキーは${e.keyLength}文字。正しいキーは32文字です` : "") + (e.keyId ? `。識別番号 ${e.keyId}` : "") + "）" + (e.detail ? `［Twelve Data：${String(e.detail).slice(0,70)}］` : "");
   if(e.kind==="network") return "インターネットに接続できませんでした";
   if(e.kind==="short") return "データの本数が足りません";
   return "データを受け取れませんでした" + (e.detail ? "（" + String(e.detail).slice(0,80) + "）" : "");

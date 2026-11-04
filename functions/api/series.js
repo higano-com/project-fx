@@ -37,8 +37,10 @@ export async function onRequestGet({ request, env, waitUntil }) {
   }
   if (!data || data.status !== "ok" || !Array.isArray(data.values)) {
     const msg = String((data && data.message) || "").split(apiKey).join("***");
-    // キーが合っているか確かめる手がかりとして、文字数だけを返す（キーの文字は一切返さない）
-    return json({ error: "upstream", code: data && data.code, message: msg, keyLength: apiKey.length }, 502);
+    // キーが合っているか確かめる手がかり：文字数と、キーから作った短い識別番号（SHA-256 の先頭8文字。キーは逆算できない）
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(apiKey)));
+    const keyId = Array.from(digest.slice(0, 4), b => b.toString(16).padStart(2, "0")).join("");
+    return json({ error: "upstream", code: data && data.code, message: msg, keyLength: apiKey.length, keyId }, 502);
   }
 
   const values = data.values
