@@ -351,6 +351,7 @@ let DATA = genData();
 
 /* ---------- 本物のデータ（Twelve Data）を中継役 /api/series から受け取る ---------- */
 const CAN_LIVE = !!document.querySelector('meta[name="pfx-live"]');  // Cloudflare に置いたときだけ true
+const WORKER = "";   // 24時間の見張り役（クラウドフレアのワーカー）のアドレス。作ったあとに入れる
 async function fetchSeries(symbol){
   let r;
   try{ r = await fetch("api/series?symbol="+encodeURIComponent(symbol), { cache:"no-store" }); }
@@ -663,13 +664,14 @@ function initState(){
   if(saved && SYMS[saved.sym]) S.sym = saved.sym;
   if(saved && ["signal","trade","stats","cfg"].includes(saved.tab)) S.tab = saved.tab;
   if(saved && [24,72,120].includes(saved.range)) S.range = saved.range;
+  if(saved && saved.notifyOn) S.notifyOn = true;
   if(!S.acct){
     S.acct = newAcct(S.cfg);
     /* サンプルでは、最初の画面で判断の例が見えるよう、直近で金の候補が出た時点から始める */
     if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,curParams(S.cfg),S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
   }
 }
-function save(){ store.set({ cfgVer:CFG_VER, cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
+function save(){ store.set({ cfgVer:CFG_VER, notifyOn:!!S.notifyOn, cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
 
 /* ---------- 表示の補助 ---------- */
 const $ = s => document.querySelector(s);
@@ -1071,6 +1073,15 @@ function viewCfg(){
     ${field("f-goal-amount","目標の利益（円）","期限までに増やしたい金額",c.goal.amount,100000)}
     <div class="field"><label for="f-deadline">期限</label><input id="f-deadline" type="date" value="${c.goal.deadline}" data-date="goal.deadline"></div>
   </section>
+  <section class="group"><h2>通知</h2>
+    <div class="seg-row" style="display:flex;flex-direction:column;gap:8px">
+      ${!WORKER?`<p class="sub">準備中です。</p>`
+        : !canPush()||!isHomeApp() ? `<p class="sub">ホーム画面に追加したアプリから開くと、ここで通知を受け取る設定ができます。</p>`
+        : (S.notifyOn && Notification.permission==="granted")
+          ? `<p class="sub">「買い」「売り」が出たら通知します（毎時チェック）。アイコンの右上にも数字が付きます。</p><button class="btn block" data-act="notify-test">テストの通知を送る</button>`
+          : `<button class="btn primary block" data-act="notify-on">通知を受け取る</button><p class="sub">「買い」「売り」が出たときだけ通知します。</p>`}
+    </div>
+  </section>
   <section class="group"><h2>アプリが決めていること</h2>
     <div class="seg-row"><div class="kvs">
       <div class="k">判断の方法</div><div class="v" style="font-family:var(--f-body)">自動（検証で一番安定）</div>
@@ -1156,6 +1167,36 @@ function advance(n){
   if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
   else if(S.nowIdx>=TOTAL-1) toast("サンプルデータの終わりに着きました");
 }
+/* ---------- 通知（ホーム画面に追加したアプリで受け取る） ---------- */
+const canPush = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const isHomeApp = () => (window.navigator.standalone===true) || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+function unb64u(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; return Uint8Array.from(atob(s), c=>c.charCodeAt(0)); }
+async function pushState(){
+  if(!WORKER || MODE!=="live") return;
+  try{ await fetch(WORKER+"/state",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ paramsI:S.cfg.paramsI, cost:S.cfg.cost.gold, riskPerTrade:S.cfg.riskPerTrade }) }); }catch(e){}
+}
+async function enableNotify(){
+  if(!WORKER){ toast("通知の準備がまだできていません"); return; }
+  if(!canPush()){ toast("ホーム画面に追加したアプリから開くと、通知を受け取れます"); return; }
+  let perm;
+  try{ perm = await Notification.requestPermission(); }catch(e){ perm = "denied"; }
+  if(perm!=="granted"){ toast("通知が許可されませんでした。iPhoneの「設定」→「通知」から許可できます"); render(); return; }
+  try{
+    const reg = await navigator.serviceWorker.register("sw.js"); await navigator.serviceWorker.ready;
+    const { publicKey } = await (await fetch(WORKER+"/vapid")).json();
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:unb64u(publicKey) });
+    const r = await fetch(WORKER+"/subscribe",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ subscription:sub.toJSON() }) });
+    if(!r.ok) throw new Error("subscribe");
+    await pushState(); S.notifyOn = true; save(); render(); toast("通知を受け取る準備ができました");
+  }catch(e){ toast("通知の登録に失敗しました。少し待ってからもう一度押してください"); }
+}
+async function testNotify(){
+  if(!WORKER) return;
+  try{ const r = await fetch(WORKER+"/test",{ method:"POST" }); toast(r.status===429 ? "少し待ってからもう一度押してください" : "テストの通知を送りました"); }catch(e){ toast("送れませんでした"); }
+}
+function clearBadge(){ try{ if(navigator.clearAppBadge) navigator.clearAppBadge(); }catch(e){} }
+
 /* 本物のデータ：新しく確定した足と今の価格で、利確・損切りに届いたかを確かめる */
 function processLive(){
   const closed=[];
@@ -1196,7 +1237,7 @@ async function refreshLive(manual){
   catch(e){ if(manual) toast(errText(e)); return; }
   if(manual) await refreshPrice();
   S.nowIdx = TOTAL-1;
-  if(autoTune(false)) toast("今月の設定を、直近3か月の値動きで見直しました");
+  if(autoTune(false)){ toast("今月の設定を、直近3か月の値動きで見直しました"); pushState(); }
   const closed = processLive();
   save(); render();
   if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
@@ -1233,6 +1274,8 @@ document.addEventListener("click", e=>{
     setTimeout(()=>{ S.bt=runValidation(S.cfg); render(); toast(`${S.bt.combos}通りの設定を試しました`); }, 30);
   }
   else if(act==="usebt" && S.bt && S.bt.rule===S.cfg.rule){ S.cfg[RULES[S.cfg.rule].pk]=clone(S.bt.robust.p); save(); render(); toast("判断のルールを検証で選んだ設定に変えました"); }
+  else if(act==="notify-on"){ enableNotify(); }
+  else if(act==="notify-test"){ testNotify(); }
   else if(act==="rule"){ S.cfg.rule=b.dataset.rule; S.bt=null; autoTune(true); save(); render(); toast(`判断のルールを「${RULES[S.cfg.rule].name}」にしました`); }
   else if(act==="autotune"){ S.cfg.auto.on=!S.cfg.auto.on; if(S.cfg.auto.on) autoTune(true); save(); render(); toast(S.cfg.auto.on?"毎月の自動見直しを始めました":"毎月の自動見直しを止めました"); }
   else if(act==="ask"){ S.ui.ask=b.dataset.what||null; render(); }
@@ -1274,7 +1317,8 @@ async function boot(){
     catch(e){ LOAD_ERR=e; MODE="sample"; DATA=genData(); TOTAL=HIST+FUT; for(const k in CACHE) delete CACHE[k]; }
   }
   initState();
-  if(MODE==="live"){ PRICE_AT=FETCHED_AT; autoTune(false); processLive(); save();
+  clearBadge(); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) clearBadge(); });
+  if(MODE==="live"){ PRICE_AT=FETCHED_AT; autoTune(false); processLive(); save(); pushState();
     setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 30*60e3);
     setInterval(()=>{ if(!document.hidden) refreshPrice(); }, 120e3);
     refreshPrice();

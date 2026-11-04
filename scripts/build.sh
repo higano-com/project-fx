@@ -8,6 +8,8 @@ mkdir -p dist
     '<meta name="pfx-live" content="1">' \
     '<meta name="robots" content="noindex,nofollow">' \
     '<link rel="apple-touch-icon" href="apple-touch-icon.png">' \
+    '<link rel="manifest" href="manifest.webmanifest">' \
+    '<meta name="theme-color" content="#000000">' \
     '<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">' \
     '<meta name="apple-mobile-web-app-title" content="金銀シグナル検証">' \
     '<meta name="apple-mobile-web-app-capable" content="yes">' \
@@ -16,5 +18,5 @@ mkdir -p dist
   printf '\n%s\n' '</html>'
 } > dist/index.html
 printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
-cp app/icons/apple-touch-icon.png app/icons/icon-192.png app/icons/icon-512.png dist/
+cp app/icons/apple-touch-icon.png app/icons/icon-192.png app/icons/icon-512.png app/sw.js app/manifest.webmanifest dist/
 echo "built dist/index.html"

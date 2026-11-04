@@ -1,0 +1,17 @@
+# 24時間の見張り役（クラウドフレアのワーカー）の設定
+name = "kingin-mihari"
+main = "index.js"
+compatibility_date = "2025-09-01"
+
+# 毎時3分に判断する（1時間の足が確定した直後）
+[triggers]
+crons = ["3 * * * *"]
+
+# 登録などを置く、このワーカー専用の保管場所
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "Store"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Store"]
