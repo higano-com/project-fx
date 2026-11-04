@@ -219,16 +219,22 @@ const DEFAULT_CFG = {
     gold:   { spread:0.80,  slip:0.10,  step:0.1, swapLong:85, swapShort:-83 },
     silver: { spread:0.025, slip:0.005, step:1,   swapLong:0,  swapShort:0 }
   },
-  params: { fast:20, slow:100, slMult:1.5, rr:2.0 }
+  rule: "ichimoku",      // 判断のルール："ichimoku"（一目均衡表＋損切り幅の下限＋日足の流れ）／"pullback"（押し目・戻り）
+  params: { fast:20, slow:100, slMult:1.5, rr:2.0 },      // 押し目・戻りの設定
+  paramsI: { slMult:1.5, rr:2.0, minStop:6 },             // 一目均衡表の設定
+  auto: { on:true, month:"", at:0, trades:0, net:0 }      // 毎月、直近3か月の値動きで設定を自動で見直す
 };
-const CFG_VER = 2;
+const CFG_VER = 3;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function mergeCfg(saved, savedVer){
   const c = clone(DEFAULT_CFG);
   if(!saved) return c;
+  if(saved.rule==="pullback" || saved.rule==="ichimoku") c.rule = (savedVer>=3 ? saved.rule : "ichimoku");
+  if(saved.paramsI) for(const k in c.paramsI) if(typeof saved.paramsI[k]==="number") c.paramsI[k]=saved.paramsI[k];
+  if(saved.auto && typeof saved.auto==="object") c.auto = { ...c.auto, ...saved.auto };
   for(const k of ["capital","riskPerTrade","dailyLimit","maxDDPct","maxPositions","usdjpy"]) if(typeof saved[k]==="number") c[k]=saved[k];
   // 設定の版が古い（GMOの実際の値を入れる前）なら、金のコストは新しい初期値を使う
-  for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s] && !(s==="gold" && savedVer!==CFG_VER)) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
+  for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s] && !(s==="gold" && !(savedVer>=2))) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
   if(saved.params) for(const k in c.params) if(typeof saved.params[k]==="number") c.params[k]=saved.params[k];
   return c;
 }
@@ -348,11 +354,48 @@ function midNow(sym){ return MODE==="live" ? LIVE[sym].price : DATA[sym].c[S.now
 function tNow(){ return MODE==="live" ? Date.now() : DATA.gold.t[S.nowIdx]; }
 function base(sym){ const k=sym+":b"; if(!CACHE[k]){ const a=atr(DATA[sym],14); CACHE[k]={ rsi:rsi(DATA[sym].c,14), atr:a, atrAvg:sma(a,100) }; } return CACHE[k]; }
 
+function rollMax(a,n){ const o=new Float64Array(a.length); for(let i=0;i<a.length;i++){ let m=-Infinity; for(let k=Math.max(0,i-n+1);k<=i;k++) if(a[k]>m) m=a[k]; o[i]=m; } return o; }
+function rollMin(a,n){ const o=new Float64Array(a.length); for(let i=0;i<a.length;i++){ let m=Infinity; for(let k=Math.max(0,i-n+1);k<=i;k++) if(a[k]<m) m=a[k]; o[i]=m; } return o; }
+/* 一目均衡表（9・26・52。雲は26本前に計算した値）と、日足の流れ（約20日の平均線） */
+function ichi(sym){
+  const k=sym+":i"; if(CACHE[k]) return CACHE[k];
+  const D=DATA[sym], n=D.c.length, h9=rollMax(D.h,9), l9=rollMin(D.l,9), h26=rollMax(D.h,26), l26=rollMin(D.l,26), h52=rollMax(D.h,52), l52=rollMin(D.l,52);
+  const ten=new Float64Array(n), kij=new Float64Array(n), top=new Float64Array(n), bot=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    ten[i]=(h9[i]+l9[i])/2; kij[i]=(h26[i]+l26[i])/2;
+    const j=i-26; if(j>=0){ const a=((h9[j]+l9[j])/2+(h26[j]+l26[j])/2)/2, b=(h52[j]+l52[j])/2; top[i]=Math.max(a,b); bot[i]=Math.min(a,b); } else { top[i]=bot[i]=D.c[i]; }
+  }
+  return CACHE[k] = { ten, kij, top, bot, daily: emaOf(sym,460) };
+}
+const RULES = {
+  ichimoku: { name:"一目均衡表＋損切り幅の下限＋日足の流れ", pk:"paramsI", grid:{ slMult:[1,1.5,2,2.5], rr:[1.5,2,3], minStop:[0,6,10,15] } },
+  pullback: { name:"押し目・戻り（最初のルール）", pk:"params", grid:{ fast:[10,20,30], slow:[50,100,150], slMult:[1,1.5,2], rr:[1.5,2,2.5] } },
+};
+function curParams(cfg){ return cfg[RULES[cfg.rule].pk]; }
+function signalAt(sym, i, p, cfg, explain){ return cfg.rule==="ichimoku" ? signalIchimoku(sym,i,p,cfg,explain) : signalPullback(sym,i,p,cfg,explain); }
+/* 一目均衡表のルール（検証で一番安定していたもの）
+   買い：価格が雲を上に抜けた ＋ 転換線が基準線より上 ＋ 日足の流れが上向き ＋ 損切り幅が下限以上 ＋ コストが小さい。売りはその逆 */
+function signalIchimoku(sym, i, p, cfg, explain){
+  const D=DATA[sym], B=base(sym), I=ichi(sym);
+  if(i < WARMUP) return { side:"wait", stopDist:0, buy:[], sell:[] };
+  const c=D.c[i], a=B.atr[i], stopDist=p.slMult*a, spread=cfg.cost[sym].spread, costRatio=spread/stopDist;
+  const bCloud = c>I.top[i] && D.c[i-1]<=I.top[i-1], sCloud = c<I.bot[i] && D.c[i-1]>=I.bot[i-1];
+  const bTk = I.ten[i]>I.kij[i], sTk = I.ten[i]<I.kij[i];
+  const dUp = I.daily[i]>I.daily[i-115], dDn = I.daily[i]<I.daily[i-115];
+  const wide = stopDist>=p.minStop, cheap = costRatio<=0.10;
+  const bOk=bCloud&&bTk&&dUp&&wide&&cheap, sOk=sCloud&&sTk&&dDn&&wide&&cheap;
+  const side = bOk ? "buy" : sOk ? "sell" : "wait";
+  if(!explain) return { side, stopDist };
+  const ws=`損切り幅が${p.minStop}ドル以上（今は${stopDist.toFixed(1)}ドル）`, cs=`取引コストが損切り幅の10％以内（今は${(costRatio*100).toFixed(0)}％）`;
+  return { side, stopDist,
+    buy:[ { ok:bCloud, text:"価格が一目均衡表の雲を上に抜けた（直近1時間）" }, { ok:bTk, text:"短い期間の線（転換線）が、長い期間の線（基準線）より上" }, { ok:dUp, text:"日足の流れが上向き（約20日の平均線が上向き）" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ],
+    sell:[ { ok:sCloud, text:"価格が一目均衡表の雲を下に抜けた（直近1時間）" }, { ok:sTk, text:"短い期間の線（転換線）が、長い期間の線（基準線）より下" }, { ok:dDn, text:"日足の流れが下向き（約20日の平均線が下向き）" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ] };
+}
 /* ---------- 売買判断のルール ----------
    買い：大きな流れが上向き ＋ 一時的な下げから短期平均線を上に抜け直した ＋ 勢いが行き過ぎていない
          ＋ 値動きが荒れすぎていない ＋ コストが損切り幅に比べて小さい。売りはその逆。 */
 const WARMUP = 220;
-function signalAt(sym, i, p, cfg, explain){
+function signalPullback(sym, i, p, cfg, explain){
   const D=DATA[sym], ef=emaOf(sym,p.fast), es=emaOf(sym,p.slow), B=base(sym);
   if(i < WARMUP) return { side:"wait", stopDist:0, buy:[], sell:[] };
   const c=D.c[i], a=B.atr[i], r=B.rsi[i], vr=a/B.atrAvg[i];
@@ -496,31 +539,47 @@ function backtest(p, cfg, from, to){
   for(const pos of [...acct.positions]){ const D=DATA[pos.sym], h=cfg.cost[pos.sym].spread/2; closePos(acct,cfg,pos,D.c[to-1]-pos.dir*h,D.t[to-1],"期間終了",fxAt(to-1)); }
   return { acct, st:stats(acct.trades,cfg.capital), from, to };
 }
-const GRID = { fast:[10,20,30], slow:[50,100,150], slMult:[1,1.5,2], rr:[1.5,2,2.5] };
-function runValidation(cfg){
-  const end = S.nowIdx+1, split = WARMUP + Math.floor((end-WARMUP)*0.7);
-  const keys = Object.keys(GRID), res = [];
-  for(const a of GRID.fast.keys()) for(const b of GRID.slow.keys()) for(const c of GRID.slMult.keys()) for(const d of GRID.rr.keys()){
-    const p = { fast:GRID.fast[a], slow:GRID.slow[b], slMult:GRID.slMult[c], rr:GRID.rr[d] };
-    if(p.fast >= p.slow) continue;
-    const r = backtest(p, cfg, WARMUP, split);
-    res.push({ idx:[a,b,c,d], p, st:r.st });
-  }
+let GRID = RULES.pullback.grid;
+function gridCombos(grid){
+  let out=[{ p:{}, idx:[] }];
+  for(const k of Object.keys(grid)) out=out.flatMap(x=>grid[k].map((v,j)=>({ p:{ ...x.p, [k]:v }, idx:[...x.idx, j] })));
+  return out.filter(x=>!(x.p.fast!=null && x.p.fast>=x.p.slow));
+}
+/* 設定の組み合わせを試し、「少しずらしても崩れにくい」ものに点数をつける */
+function scoreCombos(cfg, from, to, minN){
+  const res = gridCombos(RULES[cfg.rule].grid).map(x=>({ ...x, st:backtest(x.p, cfg, from, to).st }));
   const find = idx => res.find(r=>r.idx.every((v,k)=>v===idx[k]));
   for(const r of res){
     const ns=[r];
-    for(let k=0;k<4;k++) for(const dlt of [-1,1]){ const idx=[...r.idx]; idx[k]+=dlt; const n=find(idx); if(n) ns.push(n); }
-    r.score = r.st.n>=20 ? ns.reduce((s,x)=>s+x.st.net,0)/ns.length : -Infinity;
+    for(let k=0;k<r.idx.length;k++) for(const dlt of [-1,1]){ const idx=[...r.idx]; idx[k]+=dlt; const n=find(idx); if(n) ns.push(n); }
+    r.score = r.st.n>=minN ? ns.reduce((s,x)=>s+x.st.net,0)/ns.length : -Infinity;
   }
+  return res;
+}
+/* 毎月の自動見直し：直近3か月の値動きで設定を選び直す（その時点より前のデータだけを使う） */
+function autoTune(force){
+  const cfg=S.cfg, month=new Date(Date.now()+9*3600e3).toISOString().slice(0,7);
+  if(MODE!=="live" || !cfg.auto.on || (!force && cfg.auto.month===month && cfg.auto.rule===cfg.rule)) return false;
+  const end=TOTAL, from=Math.max(WARMUP, DATA.gold.t.findIndex(t=>t>=DATA.gold.t[end-1]-91*86400e3));
+  const res=scoreCombos(cfg, from, end, 5), best=res.reduce((a,b)=> b.score>a.score ? b : a);
+  if(!isFinite(best.score)) return false;
+  cfg[RULES[cfg.rule].pk] = clone(best.p);
+  cfg.auto = { ...cfg.auto, month, rule:cfg.rule, at:Date.now(), trades:best.st.n, net:best.st.net, from:DATA.gold.t[from], to:DATA.gold.t[end-1] };
+  return true;
+}
+function runValidation(cfg){
+  const end = S.nowIdx+1, split = WARMUP + Math.floor((end-WARMUP)*0.7);
+  GRID = RULES[cfg.rule].grid;
+  const res = scoreCombos(cfg, WARMUP, split, 20);
   const robust = res.reduce((a,b)=> b.score>a.score ? b : a);
   const best = res.filter(r=>r.st.n>=20).reduce((a,b)=> b.st.net>a.st.net ? b : a, robust);
   const robustTune = backtest(robust.p, cfg, WARMUP, split), robustConf = backtest(robust.p, cfg, split, end);
   const bestConf = backtest(best.p, cfg, split, end);
-  const curTune = backtest(cfg.params, cfg, WARMUP, split), curConf = backtest(cfg.params, cfg, split, end);
+  const curTune = backtest(curParams(cfg), cfg, WARMUP, split), curConf = backtest(curParams(cfg), cfg, split, end);
   return { at:Date.now(), nowIdx:S.nowIdx, split, end, combos:res.length, cond:clone({ capital:cfg.capital, riskPerTrade:cfg.riskPerTrade, dailyLimit:cfg.dailyLimit, maxDDPct:cfg.maxDDPct, maxPositions:cfg.maxPositions, cost:cfg.cost.gold }), startT:DATA.gold.t[WARMUP], splitT:DATA.gold.t[split], endT:DATA.gold.t[end-1],
     robust:{ p:robust.p, tune:robustTune.st, conf:robustConf.st, tuneTrades:robustTune.acct.trades, confTrades:robustConf.acct.trades, tuneHalt:robustTune.acct.halted, confHalt:robustConf.acct.halted },
     best:{ p:best.p, tune:best.st, conf:bestConf.st },
-    cur:{ p:clone(cfg.params), tune:curTune.st, conf:curConf.st } };
+    cur:{ p:clone(curParams(cfg)), tune:curTune.st, conf:curConf.st }, rule:cfg.rule };
 }
 
 /* ---------- 状態 ---------- */
@@ -536,7 +595,7 @@ function initState(){
   if(!S.acct){
     S.acct = newAcct(S.cfg);
     /* サンプルでは、最初の画面で判断の例が見えるよう、直近で金の候補が出た時点から始める */
-    if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,S.cfg.params,S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
+    if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,curParams(S.cfg),S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
   }
 }
 function save(){ store.set({ cfgVer:CFG_VER, cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
@@ -563,7 +622,7 @@ function modeNotice(extra){
 
 /* ---------- 現在の判断（画面用） ---------- */
 function currentDecision(sym){
-  const i=S.nowIdx, D=DATA[sym], c=S.cfg.cost[sym], p=S.cfg.params;
+  const i=S.nowIdx, D=DATA[sym], c=S.cfg.cost[sym], p=curParams(S.cfg);
   const sig = signalAt(sym,i,p,S.cfg,true);
   const bOk = sig.buy.filter(x=>x.ok).length, sOk = sig.sell.filter(x=>x.ok).length;
   const lean = sig.side!=="wait" ? sig.side : (bOk>=sOk ? "buy" : "sell");
@@ -587,10 +646,11 @@ function setupCanvas(cv){
 }
 function drawCandles(cv, sym, endIdx, n, lines){
   const { g, w, h } = setupCanvas(cv), D=DATA[sym], p=S.cfg.params;
-  const ef=emaOf(sym,p.fast), es=emaOf(sym,p.slow);
+  const isI = S.cfg.rule==="ichimoku", I = isI ? ichi(sym) : null;
+  const ef = isI ? I.ten : emaOf(sym,p.fast), es = isI ? I.top : emaOf(sym,p.slow), eb = isI ? I.bot : null;
   const s = Math.max(0,endIdx-n+1), padR=62, padB=20, padT=8, cw=w-padR, ch=h-padB-padT;
   let lo=Infinity, hi=-Infinity;
-  for(let i=s;i<=endIdx;i++){ lo=Math.min(lo,D.l[i],es[i]); hi=Math.max(hi,D.h[i],es[i]); }
+  for(let i=s;i<=endIdx;i++){ lo=Math.min(lo,D.l[i],es[i],eb?eb[i]:Infinity); hi=Math.max(hi,D.h[i],es[i]); }
   for(const L of lines){ lo=Math.min(lo,L.v); hi=Math.max(hi,L.v); }
   const pad=(hi-lo)*0.06||1; lo-=pad; hi+=pad;
   const y = v => padT + (hi-v)/(hi-lo)*ch, step = cw/n, x = i => (i-s+0.5)*step;
@@ -620,7 +680,13 @@ function drawCandles(cv, sym, endIdx, n, lines){
     g.fillRect(x(i)-bw/2, top, bw, bh);
   }
   const plot = (arr,col,wd) => { g.strokeStyle=col; g.lineWidth=wd; g.beginPath(); for(let i=s;i<=endIdx;i++){ const yy=y(arr[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); } g.stroke(); };
-  plot(ef, sym==="gold"?gold:silver, 1.6); plot(es, muted, 1.4);
+  if(isI){
+    g.save(); g.globalAlpha=.16; g.fillStyle=muted; g.beginPath();
+    for(let i=s;i<=endIdx;i++){ const yy=y(es[i]); i===s?g.moveTo(x(i),yy):g.lineTo(x(i),yy); }
+    for(let i=endIdx;i>=s;i--) g.lineTo(x(i),y(eb[i]));
+    g.closePath(); g.fill(); g.restore();
+    plot(es, muted, 1); plot(eb, muted, 1); plot(ef, sym==="gold"?gold:silver, 1.4);
+  } else { plot(ef, sym==="gold"?gold:silver, 1.6); plot(es, muted, 1.4); }
   for(const L of lines){
     const yy=y(L.v), col = L.kind==="tp"?up : L.kind==="sl"?dn : ink;
     g.save(); g.globalAlpha = L.ref ? .45 : 1; g.strokeStyle=col; g.lineWidth=1.2; g.setLineDash(L.kind==="entry"?[]:[5,4]);
@@ -717,7 +783,7 @@ function viewSignal(){
   <section class="card" aria-label="チャート">
     <div class="chart-tools">
       ${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}
-      <div class="legend"><span><i style="border-color:var(--${sym})"></i>短期平均(${S.cfg.params.fast}時間)</span><span><i style="border-color:var(--muted)"></i>長期平均(${S.cfg.params.slow}時間)</span></div>
+      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>転換線</span><span><i style="border-color:var(--muted)"></i>雲（灰色の帯）</span>`:`<span><i style="border-color:var(--${sym})"></i>短期平均(${S.cfg.params.fast}時間)</span><span><i style="border-color:var(--muted)"></i>長期平均(${S.cfg.params.slow}時間)</span>`}</div>
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間足チャート"></canvas></div>
     <p class="note">1本のろうそく＝1時間の値動き。緑は上昇、赤は下落。横線は候補価格（薄い線は参考）と、保有中の仮想ポジションです。</p>
@@ -737,7 +803,7 @@ function viewSignal(){
       <div><div class="k">数量（許容損失 ${yen(S.cfg.riskPerTrade)} 以内）</div><div class="v">${d.sz.qty>0?d.sz.qty+" オンス":"—"}</div></div>
       <div><div class="k">損切り時 / 利確時（コスト込み）</div><div class="v"><span class="down">−${yen(pnlSl)}</span> / <span class="up">+${yen(pnlTp)}</span></div></div>
     </div>
-    <p class="note">損切り幅＝ふだんの1時間の値動き×${S.cfg.params.slMult}、利確幅＝損切り幅×${S.cfg.params.rr}。ドル円は${fxNow().toFixed(2)}円で換算${MODE==="live"?"（Twelve Data の最新値）":"（サンプルでは固定）"}。</p>
+    <p class="note">判断のルール：${RULES[S.cfg.rule].name}。損切り幅＝ふだんの1時間の値動き×${curParams(S.cfg).slMult}、利確幅＝損切り幅×${curParams(S.cfg).rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`設定は毎月、直近3か月の値動きで自動で見直しています（最終：${fd(S.cfg.auto.at)}）。`:""}ドル円は${fxNow().toFixed(2)}円で換算${MODE==="live"?"（Twelve Data の最新値）":"（サンプルでは固定）"}。</p>
     ${d.verdict!=="wait"?`<button class="btn block ${d.verdict}" data-act="open">この内容で仮想取引を記録する</button>`:`<button class="btn block" disabled>条件がそろうまで記録できません</button>`}
     <p class="note">ここでの「記録」は練習用の仮想取引です。実際の注文は出ません。</p>
   </section>
@@ -800,7 +866,7 @@ function viewStats(){
     ${activeSyms().map(s=>{ const b=by(s); return `<tr><td>${SYMS[s].name}</td><td>${b.n}</td><td>${b.n?pct(b.winRate,0):"—"}</td><td class="${cls(b.net)}">${yen(b.net,true)}</td><td>${yen(b.cost)}</td></tr>`; }).join("")}
     </tbody></table></div></section>`;
 }
-function pstr(p){ return `短期${p.fast}・長期${p.slow}・損切り×${p.slMult}・利確×${p.rr}`; }
+function pstr(p){ return p.fast!=null ? `短期${p.fast}・長期${p.slow}・損切り×${p.slMult}・利確×${p.rr}` : `損切り×${p.slMult}・利確×${p.rr}・損切り幅の下限${p.minStop}ドル`; }
 function viewBT(){
   const r=S.bt, D=DATA.gold, end=S.nowIdx+1, split=WARMUP+Math.floor((end-WARMUP)*0.7);
   const head = `
@@ -808,7 +874,7 @@ function viewBT(){
   <section class="card"><h2>過去データでの検証の進め方</h2>
     <p>過去の値動きを2つに分けます。</p>
     <ul class="checks">
-      <li class="ok"><span class="mk">1</span><span><b>調整期間</b>（前の7割：${fd(D.t[WARMUP])}〜${fd(D.t[split-1])}）<br>ここだけを使って、設定の組み合わせ${GRID.fast.length*GRID.slow.length*GRID.slMult.length*GRID.rr.length}通りを試します。</span></li>
+      <li class="ok"><span class="mk">1</span><span><b>調整期間</b>（前の7割：${fd(D.t[WARMUP])}〜${fd(D.t[split-1])}）<br>ここだけを使って、設定の組み合わせ${gridCombos(RULES[S.cfg.rule].grid).length}通りを試します（ルール：${RULES[S.cfg.rule].name}）。</span></li>
       <li class="ok"><span class="mk">2</span><span><b>確認期間</b>（後ろの3割：${fd(D.t[split])}〜${fd(D.t[end-1])}）<br>選んだ設定を、調整に使っていない期間で試します。ここで成績が崩れるなら「たまたま過去に合っていただけ」の可能性が高いと判断します。</span></li>
     </ul>
     <p class="note">設定の選び方：一番成績が良い1つではなく、「少し設定を変えても成績が崩れにくいもの」を選びます。最高成績の設定は過去に合わせ込みすぎていることが多いためです。資金管理のルール（1回2,500円、1日1万円、5％で停止、同時2つまで）とコストも同じように適用します。</p>
@@ -821,7 +887,7 @@ function viewBT(){
     : { cls:"buy", text:"確認期間でもプラスを保ちました。ただし今後も同じになるとは限りません" };
   const row = (label, st) => `<tr><td>${label}</td><td>${st.n}</td><td>${st.n?pct(st.winRate,0):"—"}</td><td>${!st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"—"}</td><td class="${cls(st.net)}">${yen(st.net,true)}</td><td>${yen(st.mdd)}</td><td>${yen(st.cost)}</td></tr>`;
   const stale = r.endT!==DATA.gold.t[S.nowIdx] ? `<p class="note">※データが新しくなったため、再実行すると期間が変わります。</p>` : "";
-  const same = JSON.stringify(r.robust.p)===JSON.stringify(S.cfg.params);
+  const same = r.rule!==S.cfg.rule || JSON.stringify(r.robust.p)===JSON.stringify(curParams(S.cfg));
   return head + `
   <section class="card"><h2>結果</h2>
     <div class="verdict"><span class="pill ${verdict.cls}" style="font-size:15px">${verdict.cls==="buy"?"確認期間でプラス":verdict.cls==="sell"?"確認期間でマイナス":"判断保留"}</span><p>${verdict.text}</p></div>
@@ -833,7 +899,7 @@ function viewBT(){
     </tbody></table></div>
     ${r.robust.tuneHalt||r.robust.confHalt?`<p class="note">※${r.robust.tuneHalt?"調整期間":""}${r.robust.tuneHalt&&r.robust.confHalt?"・":""}${r.robust.confHalt?"確認期間":""}で5％停止ルールが発動し、その後の取引は止めています。</p>`:""}
     ${stale}
-    ${same?`<p class="note">この設定は現在の判断に使用中です。</p>`:`<button class="btn block" data-act="usebt">この設定を「判断」に使う</button><p class="note">押すと、判断画面のルールがこの設定に変わります。今の設定：${pstr(S.cfg.params)}</p>`}
+    ${same?`<p class="note">この設定は現在の判断に使用中です。</p>`:`<button class="btn block" data-act="usebt">この設定を「判断」に使う</button><p class="note">押すと、判断画面のルールがこの設定に変わります。今の設定：${pstr(curParams(S.cfg))}</p>`}
   </section>
   <section class="card"><h2>比べるための参考</h2>
     <div class="scroll-x"><table class="cmp"><thead><tr><th>設定</th><th>期間</th><th>回数</th><th>PF</th><th>純損益</th></tr></thead><tbody>
@@ -880,12 +946,22 @@ function viewCfg(){
     ${field("f-cost-silver-swapShort","売りを1日持ち越す費用（円/オンス）","",c.cost.silver.swapShort,0.1)}
     ${MODE==="sample"?field("f-usdjpy","ドル円（円）","円に換算するときに使います。サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は Twelve Data の値を自動で使います（今 ${fxNow().toFixed(2)}円）。</p>`}
   </section>
-  <section class="card"><h2>判断ルールの設定</h2>
-    <p class="note">数字を変えると判断が変わります。むやみに変えるより「過去検証」で確かめてから変えるのがおすすめです。</p>
+  <section class="card"><h2>判断のルール</h2>
+    <div class="seg" role="group" aria-label="判断のルール">
+      <button type="button" data-act="rule" data-rule="ichimoku" aria-pressed="${c.rule==="ichimoku"}">一目均衡表</button>
+      <button type="button" data-act="rule" data-rule="pullback" aria-pressed="${c.rule==="pullback"}">押し目・戻り</button>
+    </div>
+    <p class="note">${c.rule==="ichimoku"?"一目均衡表＋損切り幅の下限＋日足の流れ。2021〜2026年の検証（毎月見直し・直近3か月）で一番安定していたルールです。ただし将来も同じとは限りません。":"最初に作ったルールです。検証ではコストを引くとマイナスでした。比べるために残しています。"}</p>
+    <div class="field"><label>毎月の自動見直し<small>直近3か月の本物の値動きで、毎月はじめに設定を選び直します${c.auto.at&&c.auto.rule===c.rule?`（最終：${fd(c.auto.at)}、その3か月で${c.auto.trades}回・${yen(c.auto.net,true)}）`:""}</small></label><button type="button" class="btn ${c.auto.on?"primary":""}" data-act="autotune">${c.auto.on?"オン":"オフ"}</button></div>
+    ${c.rule==="ichimoku"?`
+    ${field("f-paramsI-slMult","損切り幅（ふだんの値動きの何倍）","",c.paramsI.slMult,0.5)}
+    ${field("f-paramsI-rr","利確幅（損切り幅の何倍）","",c.paramsI.rr,0.5)}
+    ${field("f-paramsI-minStop","損切り幅の下限（ドル）","これより損切り幅が小さいときは見送ります",c.paramsI.minStop,1)}`:`
     ${field("f-params-fast","短期の平均線（時間）","",c.params.fast,1)}
     ${field("f-params-slow","長期の平均線（時間）","",c.params.slow,1)}
     ${field("f-params-slMult","損切り幅（ふだんの値動きの何倍）","",c.params.slMult,0.1)}
-    ${field("f-params-rr","利確幅（損切り幅の何倍）","",c.params.rr,0.1)}
+    ${field("f-params-rr","利確幅（損切り幅の何倍）","",c.params.rr,0.1)}`}
+    <p class="note">自動見直しがオンのときは、毎月はじめに上の数字が自動で変わります。</p>
   </section>
   <section class="card"><h2>やり直し</h2>
     ${S.acct.halted?`<button class="btn block" data-act="ask" data-what="resume">停止を解除する（成績は残す）</button>`:""}
@@ -970,6 +1046,7 @@ async function refreshLive(manual){
   try{ await loadLive(); LOAD_ERR=null; }
   catch(e){ if(manual) toast(errText(e)); return; }
   S.nowIdx = TOTAL-1;
+  if(autoTune(false)) toast("今月の設定を、直近3か月の値動きで見直しました");
   const closed = processLive();
   save(); render();
   if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
@@ -998,7 +1075,9 @@ document.addEventListener("click", e=>{
     b.disabled=true; b.textContent="計算中…（数秒かかります）";
     setTimeout(()=>{ S.bt=runValidation(S.cfg); render(); toast(`${S.bt.combos}通りの設定を試しました`); }, 30);
   }
-  else if(act==="usebt" && S.bt){ S.cfg.params=clone(S.bt.robust.p); save(); render(); toast("判断のルールを検証で選んだ設定に変えました"); }
+  else if(act==="usebt" && S.bt && S.bt.rule===S.cfg.rule){ S.cfg[RULES[S.cfg.rule].pk]=clone(S.bt.robust.p); save(); render(); toast("判断のルールを検証で選んだ設定に変えました"); }
+  else if(act==="rule"){ S.cfg.rule=b.dataset.rule; S.bt=null; autoTune(true); save(); render(); toast(`判断のルールを「${RULES[S.cfg.rule].name}」にしました`); }
+  else if(act==="autotune"){ S.cfg.auto.on=!S.cfg.auto.on; if(S.cfg.auto.on) autoTune(true); save(); render(); toast(S.cfg.auto.on?"毎月の自動見直しを始めました":"毎月の自動見直しを止めました"); }
   else if(act==="ask"){ S.ui.ask=b.dataset.what||null; render(); }
   else if(act==="reset"){ S.acct=newAcct(S.cfg); S.ui={}; save(); render(); toast("仮想取引を最初からやり直しました"); }
   else if(act==="resume"){ S.acct.halted=null; S.acct.peak=S.acct.balance; S.ui={}; save(); render(); toast("停止を解除しました"); }
@@ -1026,7 +1105,7 @@ async function boot(){
     catch(e){ LOAD_ERR=e; MODE="sample"; DATA=genData(); TOTAL=HIST+FUT; for(const k in CACHE) delete CACHE[k]; }
   }
   initState();
-  if(MODE==="live"){ processLive(); save(); setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 15*60e3);
+  if(MODE==="live"){ autoTune(false); processLive(); save(); setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 15*60e3);
     document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && Date.now()-FETCHED_AT > 15*60e3) refreshLive(false); }); }
   render();
 }
