@@ -126,6 +126,10 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .gmo-out{display:flex;justify-content:space-between;gap:10px;font-size:14px;flex-wrap:wrap}
 .gmo-out b{font-size:18px}
 .sec.dim{opacity:.55}
+.spike{display:flex;gap:8px;align-items:flex-start;margin:8px 10px 0;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.5}
+.spike b{white-space:nowrap;font-size:14px}
+.spike.down{background:var(--sell-soft)} .spike.down b{color:var(--sell)}
+.spike.up{background:var(--buy-soft)} .spike.up b{color:var(--buy)}
 .gloss{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:14px}
 .gloss dt{font-weight:700;color:var(--muted)} .gloss dd{margin:0}
 .warn-box{background:var(--warn-soft);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:14px}
@@ -940,6 +944,17 @@ function levelsHtml(sym, d){
     <div class="lvrow sl"><div class="k">損切り<small>ここで損失を確定</small></div><div class="v">${fp(sym,lv.sl)}<small class="down">−${yen(pnlSl)}</small></div></div>
   </div>`;
 }
+/* 短時間の急落・急騰の知らせ（売買の判断ではなく、参考の情報。research/spikes.mjs の結果） */
+function spikeInfo(sym){
+  const D=DATA[sym], B=base(sym), i=S.nowIdx, a=B.atr[Math.max(0,i-1)];
+  let best=null;
+  for(let j=i-2;j<=i;j++){ if(j<1) continue; const k=(D.c[j]-D.o[j])/B.atr[j-1]; if(Math.abs(k)>=3 && (!best||Math.abs(k)>Math.abs(best.k))) best={k, t:D.t[j]}; }
+  const live=(midNow(sym)-D.c[i])/a;   // まだ確定していない今の足の動き
+  if(Math.abs(live)>=3 && (!best||Math.abs(live)>Math.abs(best.k))) best={k:live, t:Date.now(), live:true};
+  if(!best) return "";
+  const down=best.k<0, TFh=new Intl.DateTimeFormat("ja-JP",{ timeZone:"Asia/Tokyo", hour:"numeric" });
+  return `<div class="spike ${down?"down":"up"}"><b>${down?"急落":"急騰"}</b><span>${best.live?"今の1時間":TFh.format(new Date(best.t))+"台"}に、ふだんの${Math.abs(best.k).toFixed(1)}倍の動き。${down?"過去は、12時間後までに一部戻ることがやや多い（約6割）":"過去は、その後に続くか戻るかは半々"}。目安で、約束ではありません。</span></div>`;
+}
 function viewSignal(){
   if(!DATA[S.sym]) return viewSilverOff();
   const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
@@ -967,6 +982,7 @@ function viewSignal(){
       <div class="q sell"><div class="k">売（目安）</div><div class="v">${fp(sym,px-c.spread/2)}</div></div>
       <div class="q buy"><div class="k">買（目安）</div><div class="v">${fp(sym,px+c.spread/2)}</div></div>
     </div>
+    ${spikeInfo(sym)}
     <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}（想定）</span>${stamp()}</div>
     <div class="ticket ${d.verdict}">
       <div class="head"><div class="act">${act}<small>${sub}</small></div></div>

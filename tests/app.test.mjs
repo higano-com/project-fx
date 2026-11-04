@@ -29,6 +29,11 @@ check("判断の帯に、足りない条件か見送りの理由が言葉で出�
 check("銀は使えないので隠れている", await p.evaluate(() => document.querySelector('.metal [data-sym="silver"]').hidden));
 let words = englishWords(await visibleText(p)); check("判断の画面に英語がない", words.length === 0, words.slice(0, 5).join(","));
 
+// 1b. 急落・急騰の知らせ（今の価格を大きく動かして確かめる）
+await p.evaluate(() => { LIVE.gold = { price: DATA.gold.c[S.nowIdx] - 5 * base("gold").atr[S.nowIdx - 1], t: Date.now() }; render(); });
+check("急落の知らせが出る", ((await p.textContent(".spike").catch(() => "")) || "").includes("急落"));
+await p.reload(); await p.waitForSelector(".ticket"); await p.waitForTimeout(300);
+
 // 2. 約2分ごとの価格の更新
 await p.evaluate(() => refreshPrice()); await p.waitForTimeout(300);
 const after = num(await p.textContent(".q.buy .v"));
