@@ -213,18 +213,22 @@ const DEFAULT_CFG = {
   maxDDPct: 5,           // 最大ドローダウン（％）で停止
   maxPositions: 2,       // 同時保有の上限
   usdjpy: 150,           // ドル円（サンプルでは固定）
-  cost: {                // 取引コスト（仮の値。GMOの画面の実際の値に合わせて変更してください）
-    gold:   { spread:0.40,  slip:0.10,  step:0.1, swap:0 },
-    silver: { spread:0.025, slip:0.005, step:1,   swap:0 }
+  cost: {                // 取引コスト。金は GMOクリック証券「金スポット」の画面（2026/11/04）の値
+    // swapLong/swapShort：1オンスを1日持ち越すと払う金額（円）。受け取りはマイナス
+    // 金：金利調整額 買 −255円・売 +249円（3日分）→ 1日あたり 買いは85円払う／売りは83円受け取る
+    gold:   { spread:0.80,  slip:0.10,  step:0.1, swapLong:85, swapShort:-83 },
+    silver: { spread:0.025, slip:0.005, step:1,   swapLong:0,  swapShort:0 }
   },
   params: { fast:20, slow:100, slMult:1.5, rr:2.0 }
 };
+const CFG_VER = 2;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
-function mergeCfg(saved){
+function mergeCfg(saved, savedVer){
   const c = clone(DEFAULT_CFG);
   if(!saved) return c;
   for(const k of ["capital","riskPerTrade","dailyLimit","maxDDPct","maxPositions","usdjpy"]) if(typeof saved[k]==="number") c[k]=saved[k];
-  for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s]) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
+  // 設定の版が古い（GMOの実際の値を入れる前）なら、金のコストは新しい初期値を使う
+  for(const s of ["gold","silver"]) if(saved.cost && saved.cost[s] && !(s==="gold" && savedVer!==CFG_VER)) for(const k in c.cost[s]) if(typeof saved.cost[s][k]==="number") c.cost[s][k]=saved.cost[s][k];
   if(saved.params) for(const k in c.params) if(typeof saved.params[k]==="number") c.params[k]=saved.params[k];
   return c;
 }
@@ -394,6 +398,7 @@ function dayKey(t){ return new Date(t + 9*3600e3).toISOString().slice(0,10); } /
 function newAcct(cfg){ return { balance:cfg.capital, peak:cfg.capital, trades:[], positions:[], halted:null, dayKey:"", dayPnl:0, nextId:1 }; }
 function riskBlocks(acct, cfg, sym, newRisk, t){
   const out = [];
+  if(sym==="gold" && !gmoOpen(t)) out.push(`GMOクリック証券の取引時間外（日本時間 ${usDst(t)?"7:00〜翌6:00":"8:00〜翌7:00"}、土日は休み）`);
   if(acct.halted) out.push(`最大ドローダウン（${cfg.maxDDPct}％）に達したため、新しい取引を停止中`);
   if(acct.positions.length >= cfg.maxPositions) out.push(`同時に持てるポジションの上限（${cfg.maxPositions}つ）に達している`);
   if(acct.positions.some(x=>x.sym===sym)) out.push("この銘柄はすでに保有中（同じ銘柄は1つまで）");
@@ -425,10 +430,26 @@ function checkExit(pos, D, j, c){
   }
   return null;
 }
+/* 持ち越した日数：日本時間の朝7時（夏時間は6時）をまたいだ回数。週末をまたぐと土日の分も数える */
+function rollovers(t0, t1){ const day=86400e3, off=22*3600e3; return Math.max(0, Math.floor((t1-off)/day) - Math.floor((t0-off)/day)); }
+/* GMOクリック証券の金スポットの取引時間：日本時間 月曜8:00〜土曜7:00、毎日7:00〜8:00は休み（米国の夏時間は1時間早まる） */
+function usDst(t){
+  const y=new Date(t).getUTCFullYear();
+  const nthSun=(m,n)=>{ const f=new Date(Date.UTC(y,m,1)).getUTCDay(); return Date.UTC(y,m,1+((7-f)%7)+7*(n-1)); };
+  return t >= nthSun(2,2)+7*3600e3 && t < nthSun(10,1)+6*3600e3;
+}
+function gmoOpen(t){
+  const j=new Date(t + 9*3600e3 + (usDst(t)?3600e3:0));   // 夏時間でも「8時開始」として扱えるようにずらす
+  const wd=j.getUTCDay(), h=j.getUTCHours();
+  if(h===7 || wd===0) return false;
+  if(wd===6) return h<7;
+  if(wd===1) return h>=8;
+  return true;
+}
 function closePos(acct, cfg, pos, price, t, why, rate){
   const c = cfg.cost[pos.sym];
-  const days = Math.floor((t - pos.t)/86400e3);
-  const swap = c.swap * pos.qty * days;
+  const days = rollovers(pos.t, t);
+  const swap = (pos.dir===1 ? c.swapLong : c.swapShort) * pos.qty * days;
   const gross = (price - pos.entry) * pos.dir * pos.qty * rate;
   const net = gross - swap;
   const cost = (c.spread + (why==="損切り" ? c.slip : 0)) * pos.qty * rate + swap;
@@ -506,7 +527,7 @@ function runValidation(cfg){
 let S = { cfg: mergeCfg(null), acct: null, nowIdx: HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{} };
 function initState(){
   const saved = store.get();
-  S = { cfg: mergeCfg(saved && saved.cfg), acct: null, nowIdx: MODE==="live" ? TOTAL-1 : HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{} };
+  S = { cfg: mergeCfg(saved && saved.cfg, saved && saved.cfgVer), acct: null, nowIdx: MODE==="live" ? TOTAL-1 : HIST-1, sym:"gold", tab:"signal", range:72, bt:null, ui:{} };
   if(saved && saved.acct && Array.isArray(saved.acct.trades)) S.acct = saved.acct;
   if(MODE==="sample" && saved && typeof saved.nowIdx==="number" && saved.nowIdx>=WARMUP && saved.nowIdx<TOTAL) S.nowIdx = saved.nowIdx;
   if(saved && SYMS[saved.sym]) S.sym = saved.sym;
@@ -518,7 +539,7 @@ function initState(){
     if(MODE==="sample") for(let i=HIST-1;i>HIST-400;i--){ if(signalAt("gold",i,S.cfg.params,S.cfg,false).side!=="wait"){ S.nowIdx=i; break; } }
   }
 }
-function save(){ store.set({ cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
+function save(){ store.set({ cfgVer:CFG_VER, cfg:S.cfg, acct:S.acct, nowIdx:S.nowIdx, sym:S.sym, tab:S.tab, range:S.range }); }
 
 /* ---------- 表示の補助 ---------- */
 const $ = s => document.querySelector(s);
@@ -847,12 +868,15 @@ function viewCfg(){
     ${field("f-cost-gold-spread","スプレッド（ドル）","",c.cost.gold.spread,0.01)}
     ${field("f-cost-gold-slip","損切り時の価格のずれ（ドル）","損切りは不利な価格で成立しやすいため、余分に見込みます",c.cost.gold.slip,0.01)}
     ${field("f-cost-gold-step","最小の数量（オンス）","GMOの取引単位に合わせてください（要確認）",c.cost.gold.step,0.1)}
-    ${field("f-cost-gold-swap","1日持ち越す費用（円/オンス）","持ち越しで支払う金額。受け取りの場合はマイナスで入力",c.cost.gold.swap,1)}
+    ${field("f-cost-gold-swapLong","買いを1日持ち越す費用（円/オンス）","GMOの「金利調整額」の『買』を1日分にした金額。払うときはプラス、受け取るときはマイナス",c.cost.gold.swapLong,1)}
+    ${field("f-cost-gold-swapShort","売りを1日持ち越す費用（円/オンス）","同じく『売』の1日分。今は受け取りなのでマイナス",c.cost.gold.swapShort,1)}
+    <p class="note">入っている値：GMOクリック証券「金スポット」の画面（2026年11月4日）。スプレッド0.80ドル、最小数量0.1（1単位＝1オンス）、金利調整額 買−255円・売＋249円（3日分）。金利調整額は毎日変わるので、ときどき見直してください。</p>
     <h3>銀スポット</h3>
     ${field("f-cost-silver-spread","スプレッド（ドル）","",c.cost.silver.spread,0.001)}
     ${field("f-cost-silver-slip","損切り時の価格のずれ（ドル）","",c.cost.silver.slip,0.001)}
     ${field("f-cost-silver-step","最小の数量（オンス）","GMOの取引単位に合わせてください（要確認）",c.cost.silver.step,1)}
-    ${field("f-cost-silver-swap","1日持ち越す費用（円/オンス）","",c.cost.silver.swap,0.1)}
+    ${field("f-cost-silver-swapLong","買いを1日持ち越す費用（円/オンス）","",c.cost.silver.swapLong,0.1)}
+    ${field("f-cost-silver-swapShort","売りを1日持ち越す費用（円/オンス）","",c.cost.silver.swapShort,0.1)}
     ${MODE==="sample"?field("f-usdjpy","ドル円（円）","円に換算するときに使います。サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は Twelve Data の値を自動で使います（今 ${fxNow().toFixed(2)}円）。</p>`}
   </section>
   <section class="card"><h2>判断ルールの設定</h2>
@@ -980,7 +1004,8 @@ document.addEventListener("click", e=>{
 });
 document.addEventListener("change", e=>{
   const el=e.target; if(!el.dataset || !el.dataset.path) return;
-  const v=parseFloat(el.value); if(!isFinite(v) || v<0){ toast("0以上の数字を入れてください"); render(); return; }
+  const v=parseFloat(el.value), canMinus=/swap/.test(el.dataset.path);
+  if(!isFinite(v) || (v<0 && !canMinus)){ toast(canMinus?"数字を入れてください":"0以上の数字を入れてください"); render(); return; }
   const path=el.dataset.path.split("."); let o=S.cfg; for(let k=0;k<path.length-1;k++) o=o[path[k]];
   if(path[0]==="params" && (path[1]==="fast"||path[1]==="slow")){ if(v<2||v>200){ toast("平均線は2〜200時間で入れてください"); render(); return; } }
   o[path[path.length-1]] = path[path.length-1]==="maxPositions" ? Math.max(1,Math.round(v)) : v;
