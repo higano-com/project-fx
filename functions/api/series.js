@@ -5,7 +5,7 @@
 // ・価格を読むだけです。注文に関わる処理はありません。
 
 const ALLOWED = new Set(["XAU/USD", "XAG/USD", "USD/JPY"]);
-const CACHE_SECONDS = 600;
+const CACHE_SECONDS = 1800;   // 1時間ごとの値動きは30分ためる（今の価格は /api/price で短い間隔で取る）
 
 function json(body, status = 200, extra = {}) {
   return new Response(JSON.stringify(body), {

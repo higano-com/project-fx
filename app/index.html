@@ -286,6 +286,7 @@ let MODE = "sample";   // "sample"＝架空データ / "live"＝Twelve Data の�
 let LIVE = null;       // 最新価格（まだ確定していない今の1時間足）
 let LOAD_ERR = null;   // 本物のデータを読めなかった理由
 let FETCHED_AT = 0;
+let PRICE_AT = 0;      // 今の価格を最後に受け取った時刻
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function genData(){
   const rnd = mulberry32(20261104);
@@ -765,7 +766,7 @@ function clockBar(){
   if(MODE==="live"){
     const TFh = new Intl.DateTimeFormat("ja-JP",{ timeZone:"Asia/Tokyo", hour:"2-digit", minute:"2-digit" });
     return `<section class="card"><div class="clock">
-      <span class="t">最終更新 <b class="num">${TFh.format(new Date(FETCHED_AT))}</b><br>開いている間は15分ごとに自動で更新</span>
+      <span class="t">価格の更新 <b class="num">${TFh.format(new Date(PRICE_AT||FETCHED_AT))}</b><br>開いている間は約2分ごとに自動で更新</span>
       <button class="btn small" data-act="refresh">今すぐ更新</button>
     </div></section>`;
   }
@@ -1007,7 +1008,10 @@ function render(){
   document.querySelectorAll(".metal button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.sym===S.sym));
   document.querySelectorAll("nav.tabs button").forEach(b=>{ if(b.dataset.tab===S.tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   const v = { signal:viewSignal, trade:viewTrade, stats:viewStats, bt:viewBT, cfg:viewCfg }[S.tab]();
+  const open = S.lastTab===S.tab ? [...document.querySelectorAll("#app details.more")].map(d=>d.open) : [];
   $("#app").innerHTML = `<div class="view">${v}${footer()}</div>`;
+  document.querySelectorAll("#app details.more").forEach((d,k)=>{ if(open[k]) d.open=true; });
+  S.lastTab = S.tab;
   drawAll();
 }
 function drawAll(){
@@ -1068,9 +1072,23 @@ function processLive(){
   }
   return closed;
 }
+/* 今の価格だけを約2分ごとに受け取る（1時間ごとの値動きは30分ごと） */
+async function refreshPrice(){
+  if(MODE!=="live" || !LIVE) return;
+  try{
+    const r = await fetch("api/price?symbol=XAU%2FUSD", { cache:"no-store" });
+    const j = await r.json();
+    if(!r.ok || !Number.isFinite(j.price)) return;
+    LIVE.gold = { price:j.price, t:LIVE.gold.t }; PRICE_AT = j.t || Date.now();
+  }catch(e){ return; }
+  const closed = processLive();
+  save(); render();
+  if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
+}
 async function refreshLive(manual){
-  try{ await loadLive(); LOAD_ERR=null; }
+  try{ await loadLive(); LOAD_ERR=null; PRICE_AT=Date.now(); }
   catch(e){ if(manual) toast(errText(e)); return; }
+  if(manual) await refreshPrice();
   S.nowIdx = TOTAL-1;
   if(autoTune(false)) toast("今月の設定を、直近3か月の値動きで見直しました");
   const closed = processLive();
@@ -1131,8 +1149,11 @@ async function boot(){
     catch(e){ LOAD_ERR=e; MODE="sample"; DATA=genData(); TOTAL=HIST+FUT; for(const k in CACHE) delete CACHE[k]; }
   }
   initState();
-  if(MODE==="live"){ autoTune(false); processLive(); save(); setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 15*60e3);
-    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && Date.now()-FETCHED_AT > 15*60e3) refreshLive(false); }); }
+  if(MODE==="live"){ PRICE_AT=FETCHED_AT; autoTune(false); processLive(); save();
+    setInterval(()=>{ if(!document.hidden) refreshLive(false); }, 30*60e3);
+    setInterval(()=>{ if(!document.hidden) refreshPrice(); }, 120e3);
+    refreshPrice();
+    document.addEventListener("visibilitychange", ()=>{ if(document.hidden) return; if(Date.now()-FETCHED_AT > 30*60e3) refreshLive(false); else if(Date.now()-PRICE_AT > 120e3) refreshPrice(); }); }
   render();
 }
 boot();
