@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const html = readFileSync(new URL("../app/index.html", import.meta.url), "utf8");
+const html = readFileSync(process.env.APP_HTML || new URL("../app/index.html", import.meta.url), "utf8");
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1].replace(/\nboot\(\);\s*$/, "\n");
 
 const fake = () => new Proxy(function(){}, { get: (t, k) => k === Symbol.toPrimitive ? () => "" : fake(), apply: () => fake(), set: () => true });
@@ -19,8 +19,9 @@ const ctx = {
 };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-vm.runInContext(code + "\n;globalThis.__api={get S(){return S}, set S(v){S=v}, get DATA(){return DATA}, set DATA(v){DATA=v}, set MODE(v){MODE=v}, get MODE(){return MODE}, set TOTAL(v){TOTAL=v}, get TOTAL(){return TOTAL}, CACHE, WARMUP, GRID, signalAt, levels, sizeFor, riskBlocks, backtest, stats, newAcct, mergeCfg, gmoOpen, runValidation, initState};", ctx);
+vm.runInContext(code + "\n;globalThis.__api={get S(){return S}, set S(v){S=v}, get DATA(){return DATA}, set DATA(v){DATA=v}, set MODE(v){MODE=v}, get MODE(){return MODE}, set TOTAL(v){TOTAL=v}, get TOTAL(){return TOTAL}, CACHE, WARMUP, GRID, signalAt, levels, sizeFor, riskBlocks, backtest, stats, newAcct, mergeCfg, gmoOpen:typeof gmoOpen==='function'?gmoOpen:null, runValidation, initState, loadLive, buildLive};", ctx);
 export const app = ctx.__api;
+export const sandbox = ctx;
 
 export function loadCsv(path) {
   const lines = readFileSync(path, "utf8").trim().split("\n").slice(1);
