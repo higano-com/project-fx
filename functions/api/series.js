@@ -37,7 +37,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   }
   if (!data || data.status !== "ok" || !Array.isArray(data.values)) {
     const msg = String((data && data.message) || "").split(apiKey).join("***");
-    return json({ error: "upstream", code: data && data.code, message: msg }, 502);
+    // キーが合っているか確かめる手がかりとして、文字数だけを返す（キーの文字は一切返さない）
+    return json({ error: "upstream", code: data && data.code, message: msg, keyLength: apiKey.length }, 502);
   }
 
   const values = data.values
