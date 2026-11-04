@@ -29,7 +29,6 @@ await shoot("04_判断_チャート1日", 390, 844, async p => { await p.click('
 await shoot("05_成績", 390, 844, async p => { await p.click('[data-tab="stats"]'); });
 await shoot("06_成績_練習の記録あり", 390, 844, async p => { await signal(p); await p.click("[data-act=open]"); await p.evaluate(() => { const pos = S.acct.positions[0]; if (pos) { closePos(S.acct, S.cfg, pos, pos.tp, Date.now(), "利確", fxNow()); save(); } }); await p.click('[data-tab="stats"]'); });
 await shoot("07_設定", 390, 844, async p => { await p.click('[data-tab="cfg"]'); });
-await shoot("08_銀", 390, 844, async p => { await p.click('[data-sym="silver"]'); });
 await shoot("09_小さいiPhone_判断が出たとき", 375, 667, signal);
 await shoot("10_大きいiPhone_判断が出たとき", 430, 932, signal);
 await browser.close(); srv.close();

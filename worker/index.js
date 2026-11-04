@@ -49,13 +49,16 @@ async function check(env, force) {
   const fx = await td("price?symbol=USD%2FJPY");
   st.fx = +fx.price || 155;
   const sig = computeSignal(bars, Date.now(), st);
+  // アプリと同じ停止の確認（停止中・今日の上限・保有の数がいっぱいなら通知しない）
+  if (sig.side !== "wait" && st.stop && (st.stop.halted || st.stop.dayOver || st.stop.full)) { await d.put("checked", { at: Date.now(), side: "wait", reason: "停止の確認", barT: sig.barT }); return { ...sig, side: "wait", reason: "停止の確認" }; }
   const last = (await d.get("last")) || {};
   await d.put("checked", { at: Date.now(), side: sig.side, barT: sig.barT });
   if (sig.side === "wait") return sig;
   if (!force && last.barT === sig.barT && last.side === sig.side) return { ...sig, skipped: true };
   const word = sig.side === "buy" ? "買い" : "売り";
   const sgn = sig.side === "buy" ? ["−", "＋"] : ["＋", "−"];
-  const msg = { title: `金 ${word}`, body: `数量 ${sig.qty.toFixed(1)} ／ 損切り 入る${sgn[0]}${Math.abs(sig.entry - sig.sl).toFixed(1)}ドル ／ 利確 入る${sgn[1]}${Math.abs(sig.tp - sig.entry).toFixed(1)}ドル（目安の入る価格 ${fmt(sig.entry)}）`, tag: "signal", url: "/" };
+  const ver = st.version ? `（設定 ${new Date(st.version + 9 * 3600e3).getUTCMonth() + 1}/${new Date(st.version + 9 * 3600e3).getUTCDate()}版）` : "（設定は初期値）";
+  const msg = { title: `金 ${word}${ver}`, body: `数量 ${sig.qty.toFixed(1)} ／ 損切り 入る${sgn[0]}${Math.abs(sig.entry - sig.sl).toFixed(1)}ドル ／ 利確 入る${sgn[1]}${Math.abs(sig.tp - sig.entry).toFixed(1)}ドル（目安の入る価格 ${fmt(sig.entry)}）`, tag: "signal", url: "/" };
   const sent = await pushAll(env, msg);
   await d.put("last", { barT: sig.barT, side: sig.side, at: Date.now(), msg });
   return { ...sig, sent };
@@ -77,13 +80,18 @@ export default {
       const subs = ((await d.get("subs")) || []).filter(s => s.endpoint !== sub.endpoint);
       subs.push({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } });
       await d.put("subs", subs.slice(-5));
-      return json({ ok: true, count: subs.length });
+      // 設定を受け取るための合言葉（初めて登録したときに作る）
+      let token = await d.get("token");
+      if (!token) { token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); await d.put("token", token); }
+      return json({ ok: true, count: subs.length, token });
     }
     if (path === "/state") {
-      const p = body.paramsI || {}, c = body.cost || {}, r = +body.riskPerTrade;
+      const token = await d.get("token");
+      if (!token || body.token !== token) return json({ error: "bad_token" }, 403);
+      const p = body.paramsI || {}, c = body.cost || {}, r = +body.riskPerTrade, stop = body.stop || {};
       const okNum = (v, a, b) => Number.isFinite(+v) && +v >= a && +v <= b;
       if (!okNum(p.slMult, 0.5, 5) || !okNum(p.rr, 0.5, 6) || !okNum(p.minStop, 0, 100) || !okNum(c.spread, 0, 20) || !okNum(c.slip, 0, 20) || !okNum(c.step, 0.01, 10) || !okNum(r, 100, 1e7)) return json({ error: "bad_state" }, 400);
-      await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r });
+      await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
       return json({ ok: true });
     }
     if (path === "/test") {

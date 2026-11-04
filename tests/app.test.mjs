@@ -20,11 +20,13 @@ const num = s => parseFloat(String(s).replace(/[^\d.\-−]/g, "").replace("−",
 // 1. 本物のデータの画面
 const p = await page("http://localhost:8790/");
 await p.waitForSelector(".ticket", { timeout: 30000 }); await p.waitForTimeout(500);
-check("本物の価格で開く", (await p.textContent("#mode-badge")).includes("本物"));
+check("目安の価格で開く（本物のデータ）", (await p.textContent("#mode-badge")).includes("目安の価格"));
 check("タブは3つ（判断・成績・設定）", (await p.$$eval("nav.tabs button", b => b.map(x => x.textContent.trim()).join("・"))) === "判断・成績・設定");
 const sell = num(await p.textContent(".q.sell .v")), buy = num(await p.textContent(".q.buy .v"));
 check("買値−売値＝スプレッド0.80", Math.abs(buy - sell - 0.8) < 0.011, `${buy}−${sell}`);
-check("判断の点は10個", (await p.$$(".ticket .dots i")).length === 10);
+const head = (await p.textContent(".ticket .head")).trim();
+check("判断の帯に、足りない条件か見送りの理由が言葉で出る", /足りない：|見送り：|足で判断/.test(head), head.slice(0, 30));
+check("銀は使えないので隠れている", await p.evaluate(() => document.querySelector('.metal [data-sym="silver"]').hidden));
 let words = englishWords(await visibleText(p)); check("判断の画面に英語がない", words.length === 0, words.slice(0, 5).join(","));
 
 // 2. 約2分ごとの価格の更新
@@ -57,8 +59,9 @@ await p.fill("#sim-qty", "1"); await p.fill("#sim-entry", "4000"); await p.fill(
 const simYen = num(await p.textContent("#sim-out .big2")), fx = await p.evaluate(() => fxNow());
 check("試算：買い1オンスで10ドル上がると、10×ドル円の利益", Math.abs(simYen - 10 * fx) < 2, `${simYen}円`);
 
-// 5. 成績：目標と取引できる日
+// 5. 成績：目標と取引できる日・無理な目標の警告
 await p.click('[data-tab="stats"]'); await p.waitForTimeout(200);
+check("無理な目標には警告が出る", (await visibleText(p)).includes("この目標は現実的ではありません"));
 const days = await p.evaluate(() => tradingDays(Date.parse("2026-11-05T03:44:00+09:00"), Date.parse("2026-12-31T23:59:59+09:00")));
 check("11/5〜12/31の取引できる日は40日", days === 40, days + "日");
 words = englishWords(await visibleText(p)); check("成績の画面に英語がない", words.length === 0, words.slice(0, 5).join(","));
@@ -71,9 +74,12 @@ check("資金200万円なら1回5,000円・1日2万円", risk[0] === 5000 && ris
 words = englishWords(await visibleText(p)); check("設定の画面に英語がない", words.length === 0, words.slice(0, 5).join(","));
 await p.fill("#f-capital", "1000000"); await p.dispatchEvent("#f-capital", "change"); await p.waitForTimeout(100);
 
-// 7. 銀は無料プランでは取れない → 理由を出す
-await p.click('[data-tab="signal"]'); await p.waitForTimeout(100); await p.click('[data-sym="silver"]'); await p.waitForTimeout(200);
-check("銀は理由を表示する", (await visibleText(p)).includes("無料プランでは受け取れません"));
+// 7. GMOで入った価格から、損切り・利確を出し直す
+await p.click('[data-tab="signal"]'); await p.waitForTimeout(100);
+await p.evaluate(() => { for (let i = TOTAL - 1; i > TOTAL - 1500; i--) if (signalAt("gold", i, curParams(S.cfg), S.cfg, false).side !== "wait") { S.nowIdx = i; LIVE.gold = { price: DATA.gold.c[i], t: Date.now() }; break; } const o = currentDecision; currentDecision = sym => { const d = o(sym); d.safety.forEach(x => x.ok = true); d.blocks = []; d.verdict = d.sig.side; return d; }; render(); });
+await p.fill("#gmo-entry", "4000"); await p.waitForTimeout(100);
+const g = await p.evaluate(() => { const el = document.querySelector("#gmo-entry"); return { dir: +el.dataset.gmo, sl: +el.dataset.sl, out: document.querySelector("#gmo-out").textContent }; });
+check("GMOで入った価格を入れると、損切り・利確が出直す", g.out.includes((4000 - g.dir * g.sl).toFixed(2)), g.out.trim());
 
 // 8. サンプル（中継役がないとき）
 const html = readFileSync("app/index.html", "utf8");
