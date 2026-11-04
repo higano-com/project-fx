@@ -517,7 +517,7 @@ function runValidation(cfg){
   const robustTune = backtest(robust.p, cfg, WARMUP, split), robustConf = backtest(robust.p, cfg, split, end);
   const bestConf = backtest(best.p, cfg, split, end);
   const curTune = backtest(cfg.params, cfg, WARMUP, split), curConf = backtest(cfg.params, cfg, split, end);
-  return { at:Date.now(), nowIdx:S.nowIdx, split, end, combos:res.length, startT:DATA.gold.t[WARMUP], splitT:DATA.gold.t[split], endT:DATA.gold.t[end-1],
+  return { at:Date.now(), nowIdx:S.nowIdx, split, end, combos:res.length, cond:clone({ capital:cfg.capital, riskPerTrade:cfg.riskPerTrade, dailyLimit:cfg.dailyLimit, maxDDPct:cfg.maxDDPct, maxPositions:cfg.maxPositions, cost:cfg.cost.gold }), startT:DATA.gold.t[WARMUP], splitT:DATA.gold.t[split], endT:DATA.gold.t[end-1],
     robust:{ p:robust.p, tune:robustTune.st, conf:robustConf.st, tuneTrades:robustTune.acct.trades, confTrades:robustConf.acct.trades, tuneHalt:robustTune.acct.halted, confHalt:robustConf.acct.halted },
     best:{ p:best.p, tune:best.st, conf:bestConf.st },
     cur:{ p:clone(cfg.params), tune:curTune.st, conf:curConf.st } };
@@ -826,6 +826,7 @@ function viewBT(){
   <section class="card"><h2>結果</h2>
     <div class="verdict"><span class="pill ${verdict.cls}" style="font-size:15px">${verdict.cls==="buy"?"確認期間でプラス":verdict.cls==="sell"?"確認期間でマイナス":"判断保留"}</span><p>${verdict.text}</p></div>
     <p class="small">選んだ設定：<b>${pstr(r.robust.p)}</b></p>
+    ${r.cond?`<p class="note">検証の条件：資金 ${yen(r.cond.capital)}・1回の許容損失 ${yen(r.cond.riskPerTrade)}・1日の損失上限 ${yen(r.cond.dailyLimit)}・${r.cond.maxDDPct}％で停止・同時${r.cond.maxPositions}つまで・金のスプレッド ${r.cond.cost.spread}ドル${r.cond.riskPerTrade!==2500||r.cond.dailyLimit!==10000||r.cond.capital!==1000000?'　<b class="down">※初期設定（100万円・2,500円・1万円）と違います</b>':''}</p>`:""}
     <div class="chart-box" style="height:200px"><canvas id="cv-bt" aria-label="検証の資金推移"></canvas></div>
     <div class="scroll-x"><table class="cmp"><thead><tr><th>期間</th><th>回数</th><th>勝率</th><th>PF</th><th>純損益</th><th>最大落込</th><th>コスト</th></tr></thead><tbody>
       ${row("調整期間",r.robust.tune)}${row("確認期間",r.robust.conf)}
