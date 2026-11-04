@@ -965,14 +965,27 @@ function viewTrade(){
   <section class="card"><h2>決済した取引</h2>${tradeList(a.trades,30)}${a.trades.length>30?`<p class="note">新しい30件を表示（全${a.trades.length}件）</p>`:""}</section>
   <div class="qsub">${stamp()}</div>`;
 }
+/* 取引できる日の数（日本時間の日付で、月〜金。12/25と1/1は休みとして数える＝目安） */
+function tradingDays(fromMs, toMs){
+  let n=0;
+  for(let t=fromMs; t<=toMs; t+=86400e3){
+    const j=new Date(t+9*3600e3), wd=j.getUTCDay(), md=String(j.getUTCMonth()+1).padStart(2,"0")+"-"+String(j.getUTCDate()).padStart(2,"0");
+    if(wd>=1 && wd<=5 && md!=="12-25" && md!=="01-01") n++;
+  }
+  return n;
+}
 function goalInfo(){
   const cfg=S.cfg, a=S.acct, ur=a.positions.reduce((s,p)=>s+unreal(p).pnl,0);
   const profit = a.balance - cfg.capital + ur, amount = cfg.goal.amount;
-  const end = Date.parse(cfg.goal.deadline+"T23:59:59+09:00"), now = Date.now(), days = Math.max(0, Math.ceil((end-now)/86400e3));
+  const end = Date.parse(cfg.goal.deadline+"T23:59:59+09:00"), now = Date.now();
+  const calDays = Math.max(0, Math.ceil((end-now)/86400e3));
+  const days = end>now ? tradingDays(now, end) : 0;            // 残りの「取引できる日」
   const remain = Math.max(0, amount - profit), perDay = days ? remain/days : remain;
-  const pace = cfg.auto.at && cfg.auto.trades ? cfg.auto.net/91 : null;   // 直近3か月の検証での1日あたり（目安）
+  // 直近3か月の検証での「取引できる日」1日あたり（目安）
+  const pastDays = cfg.auto.from && cfg.auto.to ? Math.max(1, tradingDays(cfg.auto.from, cfg.auto.to)) : 65;
+  const pace = cfg.auto.at && cfg.auto.trades ? cfg.auto.net/pastDays : null;
   const expect = pace!=null ? pace*days : null;
-  return { profit, amount, days, remain, perDay, pace, expect, pct: amount>0 ? Math.max(0,Math.min(100, profit/amount*100)) : 0 };
+  return { profit, amount, days, calDays, remain, perDay, pace, expect, pct: amount>0 ? Math.max(0,Math.min(100, profit/amount*100)) : 0 };
 }
 function goalCard(){
   const g=goalInfo(), cfg=S.cfg;
@@ -984,12 +997,12 @@ function goalCard(){
     <div class="goalbar"><span style="width:${g.pct}%"></span></div>
     <div class="kvs">
       <div class="k">あと</div><div class="v">${yen(g.remain)}</div>
-      <div class="k">残りの日数</div><div class="v">${g.days}日</div>
-      <div class="k">1日あたり必要</div><div class="v">${yen(g.perDay)}</div>
-      ${g.pace!=null?`<div class="k">今のペースの目安（1日）</div><div class="v ${cls(g.pace)}">${yen(g.pace,true)}</div>`:""}
+      <div class="k">残りの取引できる日</div><div class="v">${g.days}日<span class="sub">（カレンダーで${g.calDays}日）</span></div>
+      <div class="k">取引日1日あたり必要</div><div class="v">${yen(g.perDay)}</div>
+      ${g.pace!=null?`<div class="k">今のペースの目安（取引日1日）</div><div class="v ${cls(g.pace)}">${yen(g.pace,true)}</div>`:""}
     </div>
     ${g.pace!=null?`<div class="pace ${reach?"ok":"ng"}">${reach?"今のペースなら届く見込み（目安）":`今のペースだと期限までに約${yen(Math.max(0,g.profit+g.expect),true)}（目安）`}</div>`:""}
-    <p class="note">1回にかける金額は増やしません。目標を追いかけてかける額を増やすと、資金が大きく減る確率が上がるためです。「今のペース」は直近3か月の検証の結果で、約束ではありません。</p>
+    <p class="note">1回にかける金額は増やしません。目標を追いかけてかける額を増やすと、資金が大きく減る確率が上がるためです。「今のペース」は直近3か月の検証の結果で、約束ではありません。取引できる日は、土日・12月25日・1月1日を除いた目安です。</p>
   </section>`;
 }
 function viewStats(){
