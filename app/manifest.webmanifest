@@ -1,6 +1,6 @@
 {
-  "name": "金銀シグナル検証",
-  "short_name": "金銀シグナル",
+  "name": "シグナル",
+  "short_name": "シグナル",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
