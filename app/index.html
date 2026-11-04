@@ -457,10 +457,10 @@ function signalIchimoku(sym, i, p, cfg, explain){
   const bOk=bCloud&&bTk&&dUp&&wide&&cheap, sOk=sCloud&&sTk&&dDn&&wide&&cheap;
   const side = bOk ? "buy" : sOk ? "sell" : "wait";
   if(!explain) return { side, stopDist };
-  const ws=`損切り幅が${p.minStop}ドル以上（今は${stopDist.toFixed(1)}ドル）`, cs=`取引コストが損切り幅の10％以内（今は${(costRatio*100).toFixed(0)}％）`;
+  const ws=`損切りまでの幅が十分ある（今は${stopDist.toFixed(0)}ドル）`, cs=`取引のコストが小さい（損切りまでの幅の${(costRatio*100).toFixed(0)}％）`;
   return { side, stopDist,
-    buy:[ { ok:bCloud, text:"価格が一目均衡表の雲を上に抜けた（直近1時間）" }, { ok:bTk, text:"短い期間の線（転換線）が、長い期間の線（基準線）より上" }, { ok:dUp, text:"日足の流れが上向き（約20日の平均線が上向き）" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ],
-    sell:[ { ok:sCloud, text:"価格が一目均衡表の雲を下に抜けた（直近1時間）" }, { ok:sTk, text:"短い期間の線（転換線）が、長い期間の線（基準線）より下" }, { ok:dDn, text:"日足の流れが下向き（約20日の平均線が下向き）" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ] };
+    buy:[ { ok:bCloud, text:"値段が、最近のもみ合いの範囲を上に抜けた" }, { ok:bTk, text:"ここ数日の勢いが上向き" }, { ok:dUp, text:"この1か月の大きな流れが上向き" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ],
+    sell:[ { ok:sCloud, text:"値段が、最近のもみ合いの範囲を下に抜けた" }, { ok:sTk, text:"ここ数日の勢いが下向き" }, { ok:dDn, text:"この1か月の大きな流れが下向き" }, { ok:wide, text:ws }, { ok:cheap, text:cs } ] };
 }
 /* ---------- 売買判断のルール ----------
    買い：大きな流れが上向き ＋ 一時的な下げから短期平均線を上に抜け直した ＋ 勢いが行き過ぎていない
@@ -915,7 +915,7 @@ function viewSignal(){
   <section class="card" aria-label="チャート">
     <div class="chart-head">
       <div class="chips">${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}</div>
-      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>転換線</span><span><i style="border-color:var(--muted)"></i>雲</span>`:`<span><i style="border-color:var(--${sym})"></i>短い平均線</span><span><i style="border-color:var(--muted)"></i>長い平均線</span>`}</div>
+      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>もみ合いの範囲</span>`:`<span><i style="border-color:var(--${sym})"></i>勢い</span><span><i style="border-color:var(--muted)"></i>大きな流れ</span>`}</div>
     </div>
     <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
@@ -924,7 +924,7 @@ function viewSignal(){
     <ul class="checks">${d.checks.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
     <h3>安全の確認</h3>
     <ul class="checks">${d.safety.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
-    <p class="note">${RULES[S.cfg.rule].name}。損切り幅＝ふだんの値動き×${p.slMult}、利確幅＝損切り幅×${p.rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`毎月自動で見直し（最終 ${fd(S.cfg.auto.at)}）。`:""}数量はGMOの取引数量（1＝1オンス）。</p>
+    <p class="note">入る・損切り・利確の価格と数量は、アプリが自動で決めています（毎月見直し${S.cfg.auto.at?`・最終 ${fd(S.cfg.auto.at)}`:""}）。数量はGMOの取引数量（1＝1オンス）です。</p>
   </div></details>
   ${d.verdict==="wait"?`<details class="more"><summary>そろったときの目安<small>${d.lean==="buy"?"買い":"売り"}</small></summary><div class="in"><div class="ticket ${d.lean}" style="background:transparent"><div class="body" style="padding:0">${rows}</div></div></div></details>`:""}
   <details class="more" id="sim-box"${S.simOpen?" open":""}><summary>試算<small>数量と価格で損益を計算</small></summary><div class="in">${simHtml(sym,d)}</div></details>
@@ -1073,12 +1073,12 @@ function viewCfg(){
   </section>
   <section class="group"><h2>アプリが決めていること</h2>
     <div class="seg-row"><div class="kvs">
-      <div class="k">判断のルール</div><div class="v" style="font-family:var(--f-body)">一目均衡表</div>
+      <div class="k">判断の方法</div><div class="v" style="font-family:var(--f-body)">自動（検証で一番安定）</div>
       <div class="k">1回の許容損失</div><div class="v">${yen(c.riskPerTrade)}</div>
       <div class="k">1日の損失上限</div><div class="v">${yen(c.dailyLimit)}</div>
       <div class="k">停止ライン</div><div class="v">−${c.maxDDPct}％</div>
       <div class="k">同時に持てる数</div><div class="v">${c.maxPositions}つ</div>
-      <div class="k">損切り幅・利確幅</div><div class="v">${p.slMult}倍・${p.rr}倍</div>
+      <div class="k">損切り・利確・数量</div><div class="v" style="font-family:var(--f-body)">自動</div>
       <div class="k">設定の見直し</div><div class="v" style="font-family:var(--f-body)">毎月（直近3か月）${c.auto.at&&c.auto.rule===c.rule?`<br><span class="sub">最終 ${fd(c.auto.at)}</span>`:""}</div>
     </div></div>
     <p class="note">資金に合わせて自動で決めます（資金の0.25％を1回の上限、1％を1日の上限）。どれも検証で決めた方法です。</p>
