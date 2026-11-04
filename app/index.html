@@ -371,7 +371,7 @@ let DATA = genData();
 
 /* ---------- 本物のデータ（Twelve Data）を中継役 /api/series から受け取る ---------- */
 const CAN_LIVE = !!document.querySelector('meta[name="pfx-live"]');  // Cloudflare に置いたときだけ true
-const WORKER = "";   // 24時間の見張り役（クラウドフレアのワーカー）のアドレス。作ったあとに入れる
+const WORKER = "https://kingin-mihari.higano-com.workers.dev";   // 24時間の見張り役（クラウドフレアのワーカー）のアドレス
 async function fetchSeries(symbol){
   let r;
   try{ r = await fetch("api/series?symbol="+encodeURIComponent(symbol), { cache:"no-store" }); }
