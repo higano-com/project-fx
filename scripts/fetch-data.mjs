@@ -26,9 +26,14 @@ for (const { symbol, file } of SYMBOLS) {
     const url = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(symbol) +
       "&interval=1h&outputsize=5000&timezone=UTC&order=desc" + (end ? "&end_date=" + encodeURIComponent(end) : "") +
       "&apikey=" + KEY;
-    const res = await fetch(url);
-    const j = await res.json().catch(() => null);
-    await sleep(9000);
+    let j = null;
+    for (let tryNo = 0; tryNo < 4; tryNo++) {   // 「1分あたりの回数」を超えたら1分待って取り直す
+      const res = await fetch(url);
+      j = await res.json().catch(() => null);
+      await sleep(9000);
+      if (j && j.code === 429) { console.log("回数の制限に当たったので65秒待ちます"); await sleep(65000); continue; }
+      break;
+    }
     if (!j || j.status !== "ok" || !Array.isArray(j.values) || !j.values.length) {
       note = j && j.message ? String(j.message).split(KEY).join("***").slice(0, 200) : "no data";
       break;
