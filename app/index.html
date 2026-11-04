@@ -97,7 +97,17 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .q.sell{background:var(--sell-soft)} .q.buy{background:var(--buy-soft)}
 .q .k{font-size:14px;font-weight:700} .q.sell .k{color:var(--sell)} .q.buy .k{color:var(--buy)}
 .q .v{font-family:var(--f-num);font-size:clamp(22px,7vw,30px);font-weight:600;letter-spacing:-.02em;line-height:1.2}
-.qsub{display:flex;justify-content:center;gap:14px;font-size:13px;color:var(--muted);font-family:var(--f-num)}
+.qsub{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-family:var(--f-num)}
+.stamp{border:0;background:var(--sunk);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:12px;font-family:var(--f-num);cursor:pointer;line-height:1.6}
+/* 試算 */
+.sim{display:flex;flex-direction:column;gap:10px}
+.simrow{display:grid;grid-template-columns:5.5em 1fr;gap:10px;align-items:center}
+.simrow label{font-size:14px;color:var(--muted);font-weight:700}
+.simrow input{width:100%;font-family:var(--f-num);font-size:20px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);text-align:right}
+.simchips{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.simout{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline;background:var(--sunk);border-radius:12px;padding:12px}
+.simout .k{font-size:13px;color:var(--muted)} .simout .v{font-family:var(--f-num);font-size:16px;text-align:right}
+.simout .v.big2{font-size:28px;font-weight:600}
 /* 注文の内容 */
 .ticket{border-radius:18px;overflow:hidden;background:var(--surface)}
 .ticket .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
@@ -777,6 +787,52 @@ function clockBar(){
     <button class="btn small" data-act="adv" data-n="24" ${end?"disabled":""}>＋1日</button>
   </div><p class="note">サンプルでは、時間を手で進めて動きを確かめます。</p></section>`;
 }
+/* 価格の横に置く、小さな更新の表示 */
+function stamp(){
+  if(MODE==="live"){
+    const TFh = new Intl.DateTimeFormat("ja-JP",{ timeZone:"Asia/Tokyo", hour:"2-digit", minute:"2-digit" });
+    return `<button class="stamp" data-act="refresh" aria-label="今すぐ更新">↻ ${TFh.format(new Date(PRICE_AT||FETCHED_AT))}</button>`;
+  }
+  const end = S.nowIdx>=TOTAL-1;
+  return `<span>${ft(DATA.gold.t[S.nowIdx])}</span><button class="stamp" data-act="adv" data-n="1" ${end?"disabled":""}>＋1時間</button><button class="stamp" data-act="adv" data-n="24" ${end?"disabled":""}>＋1日</button>`;
+}
+/* 試算：この数量で入って、この価格まで行ったら */
+function simState(sym, d){
+  const c=S.cfg.cost[sym], px=midNow(sym), sim=S.sim||{};
+  const dir = sim.dir || (d.lean==="buy"?1:-1);
+  const entry = sim.entry ?? +(px + dir*c.spread/2).toFixed(SYMS[sym].dec);
+  const lvDir = (d.lean==="buy"?1:-1)===dir;
+  const target = sim.target ?? +(lvDir ? d.lv.tp : px + dir*2*d.sig.stopDist).toFixed(SYMS[sym].dec);
+  const qty = sim.qty ?? (d.sz.qty>0 ? d.sz.qty : 1);
+  return { dir, entry, target, qty };
+}
+function simCalc(sym, st){
+  const fx=fxNow(), c=S.cfg.cost[sym];
+  const pnl=(st.target-st.entry)*st.dir*st.qty*fx, margin=st.entry*st.qty*fx/20;
+  const swap=-(st.dir===1?c.swapLong:c.swapShort)*st.qty;
+  return { pnl, margin, move:(st.target-st.entry)*st.dir, swap };
+}
+function simOut(sym, st){
+  const r=simCalc(sym, st);
+  return `<div class="k">損益</div><div class="v big2 ${cls(r.pnl)}">${yen(r.pnl,true)}</div>
+    <div class="k">値幅</div><div class="v ${cls(r.move)}">${r.move>=0?"＋":"−"}${fp(sym,Math.abs(r.move))}ドル</div>
+    <div class="k">必要な証拠金（20倍）</div><div class="v">${yen(r.margin)}</div>
+    <div class="k">1日持ち越すと</div><div class="v ${cls(r.swap)}">${yen(r.swap,true)}</div>`;
+}
+function simHtml(sym, d){
+  const st=simState(sym,d), dec=SYMS[sym].dec;
+  return `<div class="sim">
+    <div class="seg2" role="group" aria-label="買いか売りか">
+      <button type="button" data-simdir="1" aria-pressed="${st.dir===1}">買い</button>
+      <button type="button" data-simdir="-1" aria-pressed="${st.dir===-1}">売り</button>
+    </div>
+    <div class="simrow"><label for="sim-qty">数量</label><input id="sim-qty" data-sim="qty" type="number" inputmode="decimal" step="0.1" min="0" value="${st.qty}"></div>
+    <div class="simrow"><label for="sim-entry">入る価格</label><input id="sim-entry" data-sim="entry" type="number" inputmode="decimal" step="0.01" value="${st.entry.toFixed(dec)}"></div>
+    <div class="simrow"><label for="sim-target">この値まで</label><input id="sim-target" data-sim="target" type="number" inputmode="decimal" step="0.01" value="${st.target.toFixed(dec)}"></div>
+    <div class="simchips">${(d.lean==="buy"?1:-1)===st.dir?`<button class="stamp" data-simset="sl">損切りの価格</button><button class="stamp" data-simset="tp">利確の価格</button>`:""}<button class="stamp" data-simset="now">今の価格</button><button class="stamp" data-simset="reset">はじめに戻す</button></div>
+    <div class="simout" id="sim-out">${simOut(sym, st)}</div>
+  </div>`;
+}
 function banners(){
   let h = "";
   if(MODE!=="live") h += `<div class="banner warn"><span><b>サンプルの値動きです。</b>本物の相場とは関係ありません。${LOAD_ERR?esc(errText(LOAD_ERR))+"。":""}</span></div>`;
@@ -814,7 +870,7 @@ function viewSignal(){
     <div class="q sell"><div class="k">売</div><div class="v">${fp(sym,px-c.spread/2)}</div></div>
     <div class="q buy"><div class="k">買</div><div class="v">${fp(sym,px+c.spread/2)}</div></div>
   </section>
-  <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span></div>
+  <div class="qsub"><span class="${cls(chg)}">${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％</span><span>スプレッド ${fp(sym,c.spread)}</span>${stamp()}</div>
   <section class="ticket ${d.verdict}" aria-label="判断">
     <div class="head"><div class="act">${act}<small>${d.verdict==="wait"?(d.sig.side!=="wait"?"資金管理のルールで見送り":"条件がそろうまで注文しない"):`${SYMS[sym].name}を${act}`}</small></div>${dots}</div>
     ${d.verdict!=="wait"?`<div class="body">${rows}
@@ -833,8 +889,8 @@ function viewSignal(){
     <p class="note">${RULES[S.cfg.rule].name}。損切り幅＝ふだんの値動き×${p.slMult}、利確幅＝損切り幅×${p.rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`毎月自動で見直し（最終 ${fd(S.cfg.auto.at)}）。`:""}数量はGMOの取引数量（1＝1オンス）。</p>
   </div></details>
   ${d.verdict==="wait"?`<details class="more"><summary>そろったときの目安<small>${d.lean==="buy"?"買い":"売り"}</small></summary><div class="in"><div class="ticket ${d.lean}" style="background:transparent"><div class="body" style="padding:0">${rows}</div></div></div></details>`:""}
-  ${others.length?`<section class="card"><h2>保有中</h2>${posList(others)}</section>`:""}
-  ${clockBar()}`;
+  <details class="more" id="sim-box"${S.simOpen?" open":""}><summary>試算<small>数量と価格で損益を計算</small></summary><div class="in">${simHtml(sym,d)}</div></details>
+  ${others.length?`<section class="card"><h2>保有中</h2>${posList(others)}</section>`:""}`;
 }
 function posList(list){
   if(!list.length) return `<div class="empty">今は持っていません</div>`;
@@ -867,7 +923,7 @@ function viewTrade(){
   </section>
   <section class="card"><h2>保有中 <span class="sub">（${a.positions.length}／${cfg.maxPositions}つ）</span></h2>${posList(a.positions)}</section>
   <section class="card"><h2>決済した取引</h2>${tradeList(a.trades,30)}${a.trades.length>30?`<p class="note">新しい30件を表示（全${a.trades.length}件）</p>`:""}</section>
-  ${clockBar()}`;
+  <div class="qsub">${stamp()}</div>`;
 }
 function viewStats(){
   const a=S.acct, st=stats(a.trades,S.cfg.capital), by = s => stats(a.trades.filter(t=>t.sym===s), 0);
@@ -1082,7 +1138,9 @@ async function refreshPrice(){
     LIVE.gold = { price:j.price, t:LIVE.gold.t }; PRICE_AT = j.t || Date.now();
   }catch(e){ return; }
   const closed = processLive();
-  save(); render();
+  save();
+  const typing = document.activeElement && document.activeElement.tagName==="INPUT";
+  if(!typing || closed.length) render();   // 入力中は画面を書き換えない
   if(closed.length) toast(closed.map(t=>`${SYMS[t.sym].name} ${t.why} ${yen(t.net,true)}`).join(" ／ "));
 }
 async function refreshLive(manual){
@@ -1098,7 +1156,14 @@ async function refreshLive(manual){
 }
 document.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
-  if(b.dataset.sym){ S.sym=b.dataset.sym; save(); render(); return; }
+  if(b.dataset.sym){ S.sym=b.dataset.sym; S.sim=null; save(); render(); return; }
+  if(b.dataset.simdir){ S.sim={ dir:+b.dataset.simdir, qty:(S.sim&&S.sim.qty) }; if(S.sim.qty==null) delete S.sim.qty; S.simOpen=true; render(); return; }
+  if(b.dataset.simset){
+    const d=currentDecision(S.sym), st=simState(S.sym,d), w=b.dataset.simset, px=midNow(S.sym), h=S.cfg.cost[S.sym].spread/2;
+    if(w==="reset") S.sim=null;
+    else S.sim={ ...(S.sim||{}), dir:st.dir, target: w==="sl"?d.lv.sl : w==="tp"?d.lv.tp : px - st.dir*h };
+    S.simOpen=true; render(); return;
+  }
   if(b.dataset.tab){ S.tab=b.dataset.tab; S.ui={}; save(); render(); window.scrollTo(0,0); return; }
   const act=b.dataset.act; if(!act) return;
   if(act==="adv") advance(+b.dataset.n);
@@ -1138,6 +1203,14 @@ document.addEventListener("change", e=>{
   if(S.cfg.cost.silver.step<=0) S.cfg.cost.silver.step=1;
   save(); toast("保存しました");
 });
+document.addEventListener("input", e=>{
+  const el=e.target; if(!el.dataset || !el.dataset.sim) return;
+  const v=parseFloat(el.value); if(!isFinite(v)) return;
+  const d=currentDecision(S.sym), st=simState(S.sym,d);
+  S.sim={ ...st, [el.dataset.sim]:v }; S.simOpen=true;
+  const out=$("#sim-out"); if(out) out.innerHTML=simOut(S.sym, S.sim);
+});
+document.addEventListener("toggle", e=>{ if(e.target && e.target.id==="sim-box") S.simOpen=e.target.open; }, true);
 let rz; window.addEventListener("resize", ()=>{ clearTimeout(rz); rz=setTimeout(drawAll,120); });
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); }catch(e){}
 new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
