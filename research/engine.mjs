@@ -249,7 +249,7 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
   for (let i = from; i < to; i++) {
     if (pend) {
       const entry = B.o[i] + pend.dir * h, qty = RISK / ((pend.stop + COST.slip) * B.fx[i]);
-      pos = { i, t: B.t[i], dir: pend.dir, entry, sl: entry - pend.dir * pend.stop, tp: entry + pend.dir * pend.stop * pend.rr, qty, stopFrac: pend.stop / entry, regime: B.regime[pend.i] };
+      pos = { i, t: B.t[i], dir: pend.dir, entry, sl: entry - pend.dir * pend.stop, tp: entry + pend.dir * pend.stop * pend.rr, qty, stopFrac: pend.stop / entry, regime: B.regime[pend.i], stop0: pend.stop, be: pend.be || 0, trail: pend.trail || 0, hold: pend.hold || maxHold };
       pend = null;
     }
     if (pos && flat && flat[i] && i > pos.i) {   // 発表の前に決済（その足の始値で）
@@ -269,7 +269,15 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
         if (o >= pos.sl) { px = o + COST.slip; why = "損切り"; } else if (hi >= pos.sl) { px = pos.sl + COST.slip; why = "損切り"; }
         else if (o <= pos.tp) { px = o; why = "利確"; } else if (lo <= pos.tp) { px = pos.tp; why = "利確"; }
       }
-      if (!px && i - pos.i >= maxHold) { px = B.c[i] - pos.dir * h; why = "時間切れ"; }
+      if (!px && i - pos.i >= pos.hold) { px = B.c[i] - pos.dir * h; why = "時間切れ"; }
+      // 足が終わったところで損切りを動かす（次の足から有効。先の値動きは見ない）
+      if (px === null && (pos.be || pos.trail)) {
+        const gainR = (B.c[i] - pos.entry) * pos.dir / pos.stop0;
+        let nsl = pos.sl;
+        if (pos.be && gainR >= pos.be) nsl = pos.dir === 1 ? Math.max(nsl, pos.entry) : Math.min(nsl, pos.entry);
+        if (pos.trail && gainR >= 0.5) { const t = B.c[i] - pos.dir * pos.trail * B.atr[i]; nsl = pos.dir === 1 ? Math.max(nsl, t) : Math.min(nsl, t); }
+        pos.sl = nsl;
+      }
       if (px !== null) {
         const days = rollovers(pos.t, B.t[i]);
         const swap = (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.qty * days;
