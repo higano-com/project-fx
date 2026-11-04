@@ -54,7 +54,8 @@ async function check(env, force) {
   if (sig.side === "wait") return sig;
   if (!force && last.barT === sig.barT && last.side === sig.side) return { ...sig, skipped: true };
   const word = sig.side === "buy" ? "買い" : "売り";
-  const msg = { title: `金 ${word}`, body: `入る ${fmt(sig.entry)} ／ 損切り ${fmt(sig.sl)} ／ 利確 ${fmt(sig.tp)} ／ 数量 ${sig.qty.toFixed(1)}`, tag: "signal", url: "/" };
+  const sgn = sig.side === "buy" ? ["−", "＋"] : ["＋", "−"];
+  const msg = { title: `金 ${word}`, body: `数量 ${sig.qty.toFixed(1)} ／ 損切り 入る${sgn[0]}${Math.abs(sig.entry - sig.sl).toFixed(1)}ドル ／ 利確 入る${sgn[1]}${Math.abs(sig.tp - sig.entry).toFixed(1)}ドル（目安の入る価格 ${fmt(sig.entry)}）`, tag: "signal", url: "/" };
   const sent = await pushAll(env, msg);
   await d.put("last", { barT: sig.barT, side: sig.side, at: Date.now(), msg });
   return { ...sig, sent };

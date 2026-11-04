@@ -130,6 +130,7 @@ main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
 .trow .k{font-size:14px;color:var(--muted);font-weight:700;white-space:nowrap}
 .trow .v{font-family:var(--f-num);font-size:24px;font-weight:600;text-align:right;letter-spacing:-.01em;line-height:1.2}
 .trow .s{grid-column:2;text-align:right;font-family:var(--f-num);font-size:13px;margin-top:-2px}
+.trow .dist{color:var(--ink);font-weight:600;background:var(--sunk);border-radius:6px;padding:1px 6px;margin-right:6px}
 .ticket .wait-msg{font-size:15px;color:var(--muted);padding:8px 0 2px}
 .ticket .dots i{border-color:rgb(255 255 255 / .7)} .ticket.wait .dots i{border-color:var(--muted)}
 .ticket.buy .dots i.on, .ticket.sell .dots i.on{background:#fff}
@@ -905,9 +906,10 @@ function viewSignal(){
   const act = { buy:"買い", sell:"売り", wait:"待ち" }[d.verdict];
   const rows = `
       <div class="trow"><div class="k">入る</div><div class="v">${fp(sym,lv.entry)}</div></div>
-      <div class="trow"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="s down">−${yen(pnlSl)}</div></div>
-      <div class="trow"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="s up">＋${yen(pnlTp)}</div></div>
-      <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div></div>`;
+      <div class="trow"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="s"><span class="dist">入る${lv.dir===1?"−":"＋"}${Math.abs(lv.entry-lv.sl).toFixed(1)}ドル</span> <span class="down">−${yen(pnlSl)}</span></div></div>
+      <div class="trow"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="s"><span class="dist">入る${lv.dir===1?"＋":"−"}${tpU.toFixed(1)}ドル</span> <span class="up">＋${yen(pnlTp)}</span></div></div>
+      <div class="trow"><div class="k">数量</div><div class="v">${d.sz.qty>0?d.sz.qty.toFixed(1):"—"}</div></div>
+      <p class="note" style="margin-top:4px">GMOの価格とは数ドルずれます。GMOで入った価格から、上の「入る±○ドル」の幅で損切り・利確を入れてください。</p>`;
   const others = S.acct.positions.filter(x=>x.sym===sym);
   const list = arr => `<ul class="checks">${arr.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>`;
   return `${banners()}
