@@ -58,8 +58,10 @@ check("必要な証拠金が口座の半分以内", await p.evaluate(() => { con
 await p.click("#detail-box summary"); await p.waitForTimeout(100);
 await p.click('[data-simdir="1"]'); await p.waitForTimeout(100);
 await p.fill("#sim-qty", "1"); await p.fill("#sim-entry", "4000"); await p.fill("#sim-target", "4010");
-const simYen = num(await p.textContent("#sim-out .big2")), fx = await p.evaluate(() => fxNow());
-check("試算：買い1オンスで10ドル上がると、10×ドル円の利益", Math.abs(simYen - 10 * fx) < 2, `${simYen}円`);
+const simTxt = await p.textContent("#sim-out"), fx = await p.evaluate(() => fxNow());
+const want = Math.round(10 * fx).toLocaleString("ja-JP");
+check("試算：買い1オンスで10ドル上がると、10×ドル円の利益", simTxt.replace(/\s/g,"").includes("＋" + want + "円") || simTxt.includes("+" + want), want + "円");
+check("試算：損切りと利確の両方の損益が出る", simTxt.includes("損切りまで行ったら") && simTxt.includes("利確まで行ったら"));
 
 // 5. 成績：目標と取引できる日・無理な目標の警告
 await p.click('[data-tab="stats"]'); await p.waitForTimeout(200);

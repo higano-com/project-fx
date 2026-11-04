@@ -881,26 +881,28 @@ function gmoOut(dir, v, sl, tp){
 }
 /* 試算：この数量で入って、この価格まで行ったら */
 function simState(sym, d){
-  const c=S.cfg.cost[sym], px=midNow(sym), sim=S.sim||{};
+  const c=S.cfg.cost[sym], px=midNow(sym), sim=S.sim||{}, p=curParams(S.cfg);
   const dir = sim.dir || (d.lean==="buy"?1:-1);
   const entry = sim.entry ?? +(px + dir*c.spread/2).toFixed(SYMS[sym].dec);
-  const lvDir = (d.lean==="buy"?1:-1)===dir;
-  const target = sim.target ?? +(lvDir ? d.lv.tp : px + dir*2*d.sig.stopDist).toFixed(SYMS[sym].dec);
+  const stop = d.sig.stopDist, rr = p.rr;
   const qty = sim.qty ?? (d.sz.qty>0 ? d.sz.qty : 1);
-  return { dir, entry, target, qty };
+  const target = sim.target ?? NaN;   // 自由に入れる「この値まで」（入れなければ使わない）
+  return { dir, entry, target, qty, stop, rr };
 }
-function simCalc(sym, st){
+function simCalc(sym, st, target){
   const fx=fxNow(), c=S.cfg.cost[sym];
-  const pnl=(st.target-st.entry)*st.dir*st.qty*fx, margin=st.entry*st.qty*fx/20;
+  const pnl=(target-st.entry)*st.dir*st.qty*fx, margin=st.entry*st.qty*fx/20;
   const swap=-(st.dir===1?c.swapLong:c.swapShort)*st.qty;
-  return { pnl, margin, move:(st.target-st.entry)*st.dir, swap };
+  return { pnl, margin, move:(target-st.entry)*st.dir, swap };
 }
 function simOut(sym, st){
-  const r=simCalc(sym, st);
-  return `<div class="k">損益</div><div class="v big2 ${cls(r.pnl)}">${yen(r.pnl,true)}</div>
-    <div class="k">値幅</div><div class="v ${cls(r.move)}">${r.move>=0?"＋":"−"}${fp(sym,Math.abs(r.move))}ドル</div>
-    <div class="k">必要な証拠金（20倍）</div><div class="v">${yen(r.margin)}</div>
-    <div class="k">1日持ち越すと</div><div class="v ${cls(r.swap)}">${yen(r.swap,true)}</div>`;
+  const sl = st.entry - st.dir*st.stop, tp = st.entry + st.dir*st.stop*st.rr;
+  const a=simCalc(sym, st, sl), b=simCalc(sym, st, tp), x=isFinite(st.target)?simCalc(sym, st, st.target):null;
+  return `<div class="k">損切りまで行ったら<br><span class="sub num">${fp(sym,sl)}（入る${st.dir===1?"−":"＋"}${st.stop.toFixed(1)}ドル）</span></div><div class="v big2 ${cls(a.pnl)}">${yen(a.pnl,true)}</div>
+    <div class="k">利確まで行ったら<br><span class="sub num">${fp(sym,tp)}（入る${st.dir===1?"＋":"−"}${(st.stop*st.rr).toFixed(1)}ドル）</span></div><div class="v big2 ${cls(b.pnl)}">${yen(b.pnl,true)}</div>
+    ${x?`<div class="k">この値まで行ったら<br><span class="sub num">${fp(sym,st.target)}</span></div><div class="v ${cls(x.pnl)}">${yen(x.pnl,true)}</div>`:""}
+    <div class="k">必要な証拠金（20倍）</div><div class="v">${yen(a.margin)}</div>
+    <div class="k">1日持ち越すと</div><div class="v ${cls(a.swap)}">${yen(a.swap,true)}</div>`;
 }
 function simHtml(sym, d){
   const st=simState(sym,d), dec=SYMS[sym].dec;
@@ -911,8 +913,9 @@ function simHtml(sym, d){
     </div>
     <div class="simrow"><label for="sim-qty">数量</label><input id="sim-qty" data-sim="qty" type="number" inputmode="decimal" step="0.1" min="0" value="${st.qty}"></div>
     <div class="simrow"><label for="sim-entry">入る価格</label><input id="sim-entry" data-sim="entry" type="number" inputmode="decimal" step="0.01" value="${st.entry.toFixed(dec)}"></div>
-    <div class="simrow"><label for="sim-target">この値まで</label><input id="sim-target" data-sim="target" type="number" inputmode="decimal" step="0.01" value="${st.target.toFixed(dec)}"></div>
-    <div class="simchips">${(d.lean==="buy"?1:-1)===st.dir?`<button class="stamp" data-simset="sl">損切りの価格</button><button class="stamp" data-simset="tp">利確の価格</button>`:""}<button class="stamp" data-simset="now">今の価格</button><button class="stamp" data-simset="reset">はじめに戻す</button></div>
+    <div class="simrow"><label for="sim-target">この値まで</label><input id="sim-target" data-sim="target" type="number" inputmode="decimal" step="0.01" placeholder="好きな価格（なくても可）" value="${isFinite(st.target)?st.target.toFixed(dec):""}"></div>
+    <div class="simchips"><button class="stamp" data-simset="reset">はじめに戻す</button></div>
+    <p class="note">損切り・利確の幅は、アプリのルールで決めたものです（損切り＝ふだんの値動きの${curParams(S.cfg).slMult}倍、利確＝損切り幅の${st.rr}倍）。「この値まで」は、自分で決めた価格の損益を見るためのものです。</p>
     <div class="simout" id="sim-out">${simOut(sym, st)}</div>
   </div>`;
 }
@@ -1332,7 +1335,6 @@ document.addEventListener("click", e=>{
   if(b.dataset.simset){
     const d=currentDecision(S.sym), st=simState(S.sym,d), w=b.dataset.simset, px=midNow(S.sym), h=S.cfg.cost[S.sym].spread/2;
     if(w==="reset") S.sim=null;
-    else S.sim={ ...(S.sim||{}), dir:st.dir, target: w==="sl"?d.lv.sl : w==="tp"?d.lv.tp : px - st.dir*h };
     S.detailOpen=true; render(); return;
   }
   if(b.dataset.tab){ S.tab=b.dataset.tab; S.ui={}; save(); render(); window.scrollTo(0,0); return; }
