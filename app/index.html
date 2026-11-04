@@ -5,175 +5,200 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: phone-first single column. Sticky header holds the metal switch and the sample-data badge; a fixed bottom tab bar switches views. */
+/* 画面の考え方：一番上に「今の価格」と「判断」を大きく。説明は「くわしく」を開いたときだけ。文字は大きく、押す場所も大きく。 */
 :root{
-  --bg:#ECEEEA; --surface:#FFFFFF; --sunk:#E2E5E0; --ink:#1B2126; --muted:#5B656E; --line:#D3D8D1;
-  --gold:#8C6A17; --gold-soft:#F2E8CC; --silver:#56656F; --silver-soft:#E1E6EA;
-  --buy:#1C7146; --buy-soft:#DCEEE3; --sell:#A83232; --sell-soft:#F5DDDA; --wait:#6A624C; --wait-soft:#EAE6DA;
-  --warn:#7E5200; --warn-soft:#FBEDC6;
+  --bg:#F2F3F5; --surface:#FFFFFF; --sunk:#E8EAEE; --ink:#14171C; --muted:#5F6772; --line:#E0E3E8;
+  --gold:#98720F; --gold-soft:#F6EDD3; --silver:#566573; --silver-soft:#E5EAEF;
+  --buy:#11804A; --buy-soft:#E0F3E8; --sell:#C23A2C; --sell-soft:#FBE6E3; --wait:#5F6772; --wait-soft:#ECEEF2;
+  --warn:#8A5A00; --warn-soft:#FDF0CF;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#111518; --surface:#1A1F24; --sunk:#232A30; --ink:#E6E9EC; --muted:#9AA4AD; --line:#2D353C;
-  --gold:#D6AC4E; --gold-soft:#3A3120; --silver:#AAB7C2; --silver-soft:#28313A;
-  --buy:#4DC28A; --buy-soft:#173326; --sell:#EF7F7A; --sell-soft:#3D1F1E; --wait:#C4B791; --wait-soft:#2E2B22;
-  --warn:#F0C25C; --warn-soft:#3A2F14; color-scheme:dark;
+  --bg:#0D0F12; --surface:#171A1F; --sunk:#21252C; --ink:#EEF0F3; --muted:#9BA3AE; --line:#272C34;
+  --gold:#E2B754; --gold-soft:#2F2815; --silver:#B6C2CE; --silver-soft:#232A31;
+  --buy:#3FD68D; --buy-soft:#11301F; --sell:#FF6C5F; --sell-soft:#3A1916; --wait:#A9B1BC; --wait-soft:#22262D;
+  --warn:#F2C14E; --warn-soft:#33290F; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#111518; --surface:#1A1F24; --sunk:#232A30; --ink:#E6E9EC; --muted:#9AA4AD; --line:#2D353C;
-  --gold:#D6AC4E; --gold-soft:#3A3120; --silver:#AAB7C2; --silver-soft:#28313A;
-  --buy:#4DC28A; --buy-soft:#173326; --sell:#EF7F7A; --sell-soft:#3D1F1E; --wait:#C4B791; --wait-soft:#2E2B22;
-  --warn:#F0C25C; --warn-soft:#3A2F14; color-scheme:dark;
+  --bg:#0D0F12; --surface:#171A1F; --sunk:#21252C; --ink:#EEF0F3; --muted:#9BA3AE; --line:#272C34;
+  --gold:#E2B754; --gold-soft:#2F2815; --silver:#B6C2CE; --silver-soft:#232A31;
+  --buy:#3FD68D; --buy-soft:#11301F; --sell:#FF6C5F; --sell-soft:#3A1916; --wait:#A9B1BC; --wait-soft:#22262D;
+  --warn:#F2C14E; --warn-soft:#33290F; color-scheme:dark;
 }
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
-h1,h2,h3{text-wrap:balance;margin:0;line-height:1.3}
-h2{font-size:17px;font-weight:700}
-h3{font-size:14px;font-weight:700}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.35}
+h2{font-size:18px;font-weight:700}
+h3{font-size:15px;font-weight:700}
 p{margin:0}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.up{color:var(--buy)} .down{color:var(--sell)} .muted{color:var(--muted)}
 
-.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:640px;margin:0 auto}
 
-header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
-header.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
-.brand{font-weight:700;font-size:15px;letter-spacing:.02em;margin-right:auto}
-.badge-sample{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--warn);background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);padding:2px 8px;border-radius:4px;white-space:nowrap}
-.seg{display:flex;background:var(--sunk);border-radius:8px;padding:3px;gap:3px;width:100%}
-.seg button{flex:1;border:0;background:transparent;padding:7px 6px;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:baseline;justify-content:center;gap:6px}
-.seg button small{font-family:var(--f-num);font-weight:500;font-size:11px;color:var(--muted)}
-.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
-.seg button[data-sym="gold"][aria-pressed="true"]{color:var(--gold)}
-.seg button[data-sym="silver"][aria-pressed="true"]{color:var(--silver)}
+/* 上の帯：銘柄の切り替えと、データの状態 */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg)}
+header.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
+.metal{display:flex;flex:1;background:var(--sunk);border-radius:12px;padding:4px;gap:4px;min-width:0}
+.metal button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;font-weight:700;font-size:16px;cursor:pointer;color:var(--muted)}
+.metal button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
+.metal button[data-sym="gold"][aria-pressed="true"]{color:var(--gold)}
+.metal button[data-sym="silver"][aria-pressed="true"]{color:var(--silver)}
+.status{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;white-space:nowrap;color:var(--warn)}
+.status::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+.status.live{color:var(--buy)}
 
-main{padding-block:14px calc(84px + env(safe-area-inset-bottom,0px))}
-main .wrap{display:flex;flex-direction:column;gap:14px}
-.view{display:flex;flex-direction:column;gap:14px}
+main{padding-block:4px calc(96px + env(safe-area-inset-bottom,0px))}
+.view{display:flex;flex-direction:column;gap:12px}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
-.card > * + *{margin-top:10px}
-.muted{color:var(--muted)}
-.small{font-size:12.5px}
-.note{font-size:12.5px;color:var(--muted);line-height:1.65}
+.card{background:var(--surface);border-radius:16px;padding:16px}
+.card > * + *{margin-top:12px}
+.sub{font-size:13px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);line-height:1.7}
 
-.notice{background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:10px;padding:10px 12px;font-size:13px}
-.notice b{color:var(--warn)}
-.notice.live{background:var(--buy-soft);border-color:color-mix(in srgb,var(--buy) 35%,transparent)}
-.notice.live b{color:var(--buy)}
-.badge-sample.live{color:var(--buy);background:var(--buy-soft);border-color:color-mix(in srgb,var(--buy) 35%,transparent)}
-.stop{background:var(--sell-soft);border:1px solid color-mix(in srgb,var(--sell) 40%,transparent);border-radius:10px;padding:10px 12px;font-size:13.5px}
-.stop b{color:var(--sell)}
+/* 細い帯の知らせ（サンプル・停止中など） */
+.banner{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
+.banner.warn{background:var(--warn-soft)} .banner.warn b{color:var(--warn)}
+.banner.stop{background:var(--sell-soft)} .banner.stop b{color:var(--sell)}
 
-.price-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.price-big{font-family:var(--f-num);font-size:32px;font-weight:600;letter-spacing:-.01em;line-height:1}
-.price-sub{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.up{color:var(--buy)} .down{color:var(--sell)}
+/* いちばん上：価格と判断 */
+.hero{padding:0;overflow:hidden}
+.hero .price-area{padding:16px 16px 12px}
+.hero .label{font-size:13px;color:var(--muted)}
+.price{font-family:var(--f-num);font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.1;margin-top:2px}
+.chg{display:inline-flex;gap:6px;align-items:baseline;font-family:var(--f-num);font-size:15px;font-weight:600;margin-top:6px}
+.chg small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:500}
+.decision{padding:16px;display:flex;flex-direction:column;gap:10px}
+.decision.buy{background:var(--buy-soft)} .decision.sell{background:var(--sell-soft)} .decision.wait{background:var(--wait-soft)}
+.decision .word{font-size:30px;font-weight:700;line-height:1.2}
+.decision.buy .word{color:var(--buy)} .decision.sell .word{color:var(--sell)} .decision.wait .word{color:var(--ink)}
+.decision .why{font-size:15px}
+.dots{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.dots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--muted);display:inline-block;opacity:.6}
+.dots i.on{opacity:1;border-color:transparent}
+.dots i.on{background:var(--buy)}
+.decision.sell .dots i.on{background:var(--sell)}
 
-.clock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
-.clock .t{flex:1 1 100%}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-weight:700;font-size:13.5px;cursor:pointer;min-height:38px}
+.btn{border:0;background:var(--sunk);border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer;min-height:46px}
 .btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.btn.buy{background:var(--buy);border-color:var(--buy);color:#fff}
-.btn.sell{background:var(--sell);border-color:var(--sell);color:#fff}
-.btn.danger{color:var(--sell);border-color:color-mix(in srgb,var(--sell) 45%,transparent)}
+.btn.primary{background:var(--ink);color:var(--surface)}
+.btn.buy{background:var(--buy);color:#fff} .btn.sell{background:var(--sell);color:#fff}
+.btn.danger{background:var(--sell-soft);color:var(--sell)}
+.btn.small{min-height:38px;padding:8px 12px;font-size:14px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.btn.block{width:100%;min-height:46px;font-size:15px}
+.btn.block{width:100%;min-height:54px;font-size:17px}
 
-.chart-box{position:relative;width:100%;height:250px}
-.chart-box canvas{position:absolute;inset:0;width:100%;height:100%}
-.chart-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 11px;font-size:12.5px;cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-left:auto}
+/* 候補価格 */
+.lvrows{display:flex;flex-direction:column}
+.lvrow{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:4px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.lvrow:first-child{border-top:0;padding-top:0}
+.lvrow .k{font-size:15px;font-weight:700}
+.lvrow .k small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.lvrow .v{font-family:var(--f-num);font-size:22px;font-weight:600;text-align:right}
+.lvrow .v small{display:block;font-size:13px;font-weight:500}
+.lvrow.tp .k{color:var(--buy)} .lvrow.sl .k{color:var(--sell)}
+
+/* チャート */
+.chart-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:6px}
+.chip{border:0;background:var(--sunk);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-left:auto}
 .legend i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
-.legend i.dash{border-top-style:dashed}
+.chart-box{position:relative;width:100%;height:300px}
+.chart-box.short{height:220px}
+.chart-box canvas{position:absolute;inset:0;width:100%;height:100%}
 
-.verdict{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.pill{font-weight:700;font-size:18px;padding:6px 16px;border-radius:999px;letter-spacing:.04em}
-.pill.buy{background:var(--buy-soft);color:var(--buy)}
-.pill.sell{background:var(--sell-soft);color:var(--sell)}
-.pill.wait{background:var(--wait-soft);color:var(--wait)}
-.verdict p{flex:1;min-width:180px;font-size:13.5px}
+/* くわしく（開くと中が見える） */
+details.more{background:var(--surface);border-radius:16px}
+details.more > summary{list-style:none;cursor:pointer;padding:16px;font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details.more > summary::-webkit-details-marker{display:none}
+details.more > summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px;transition:transform .2s}
+details.more[open] > summary::after{transform:rotate(-135deg)}
+details.more > .in{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+details.more summary small{font-weight:500;color:var(--muted);font-size:13px;margin-left:auto}
 
-.checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
-.checks li{display:grid;grid-template-columns:22px 1fr;gap:6px;font-size:13.5px;align-items:start}
-.checks .mk{font-weight:700;text-align:center;border-radius:4px;font-size:12px;line-height:20px;height:20px}
+.checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.checks li{display:grid;grid-template-columns:26px 1fr;gap:8px;font-size:15px;align-items:start}
+.checks .mk{font-weight:700;text-align:center;border-radius:50%;font-size:13px;line-height:24px;height:24px;width:24px}
 .checks .ok .mk{background:var(--buy-soft);color:var(--buy)}
 .checks .ng .mk{background:var(--sell-soft);color:var(--sell)}
 .checks .ng{color:var(--muted)}
 
-.levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.lv{border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
-.lv .k{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
-.lv .v{font-family:var(--f-num);font-size:clamp(13px,3.7vw,16px);font-weight:600;white-space:nowrap}
-.lv .d{font-size:11.5px;color:var(--muted)}
-.lv.tp{border-color:color-mix(in srgb,var(--buy) 40%,var(--line))}
-.lv.sl{border-color:color-mix(in srgb,var(--sell) 40%,var(--line))}
-.levels.ref{opacity:.6}
-
-.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
-.kv > div{min-width:0}
-.kv .k{font-size:11.5px;color:var(--muted);letter-spacing:.03em}
-.kv .v{font-family:var(--f-num);font-size:16px;font-weight:600;overflow-wrap:anywhere}
-@media (min-width:560px){.kv.four{grid-template-columns:repeat(4,minmax(0,1fr))}}
-
-.meter{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden;margin-top:4px}
-.meter span{display:block;height:100%;background:var(--muted)}
+/* 大きな数字のます目 */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{background:var(--sunk);border-radius:12px;padding:12px;min-width:0}
+.tile .k{font-size:13px;color:var(--muted)}
+.tile .v{font-family:var(--f-num);font-size:20px;font-weight:600;overflow-wrap:anywhere}
+.big{font-family:var(--f-num);font-size:36px;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+.meter{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden;margin-top:6px}
+.meter span{display:block;height:100%;background:var(--muted);border-radius:4px}
 .meter span.hot{background:var(--sell)}
+.limit{display:flex;flex-direction:column;gap:2px}
+.limit .top{display:flex;justify-content:space-between;font-size:14px}
 
+/* 取引の一覧 */
 .list{display:flex;flex-direction:column}
-.row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
-.row:first-child{border-top:0}
-.row .r{text-align:right}
-.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:0 7px;border-radius:4px;margin-right:6px}
-.tag.buy{background:var(--buy-soft);color:var(--buy)}
-.tag.sell{background:var(--sell-soft);color:var(--sell)}
-.tag.gold{color:var(--gold)} .tag.silver{color:var(--silver)}
-.empty{padding:14px 0;color:var(--muted);font-size:13.5px}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--line);align-items:center}
+.item:first-child{border-top:0;padding-top:0}
+.item .t1{font-size:15px;font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.item .t2{font-size:13px;color:var(--muted)}
+.item .pnl{font-family:var(--f-num);font-size:17px;font-weight:600;text-align:right}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px}
+.tag.buy{background:var(--buy-soft);color:var(--buy)} .tag.sell{background:var(--sell-soft);color:var(--sell)}
+.empty{color:var(--muted);font-size:15px;text-align:center;padding:8px 0}
 
-.cmp{width:100%;border-collapse:collapse;font-size:13px}
-.cmp th,.cmp td{padding:7px 6px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.cmp{width:100%;border-collapse:collapse;font-size:14px}
+.cmp th,.cmp td{padding:8px 6px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
 .cmp th:first-child,.cmp td:first-child{text-align:left;white-space:normal}
 .cmp thead th{border-top:0;font-size:12px;color:var(--muted);font-weight:500}
-.cmp td{font-family:var(--f-num)}
-.cmp td:first-child{font-family:var(--f-body)}
+.cmp td{font-family:var(--f-num)} .cmp td:first-child{font-family:var(--f-body)}
 .scroll-x{overflow-x:auto}
 
-.field{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
-.field:first-of-type{border-top:0}
-.field label{font-size:13.5px}
-.field label small{display:block;color:var(--muted);font-size:11.5px;line-height:1.5}
-.field input{width:100%;font-family:var(--f-num);font-size:16px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);text-align:right}
+/* 更新・時間を進める帯 */
+.clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.clock .t{flex:1;min-width:0;color:var(--muted)}
+.clock .t b{color:var(--ink)}
 
-.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--sell-soft);border-radius:8px;padding:10px}
-.confirm span{flex:1;min-width:160px;font-size:13px}
+/* 設定 */
+.group{background:var(--surface);border-radius:16px;overflow:hidden}
+.group > h2{padding:16px 16px 4px;font-size:15px;color:var(--muted);font-weight:700}
+.field{display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.group > h2 + .field, .group > h2 + .seg-row{border-top:0}
+.field label{font-size:15px}
+.field label small{display:block;color:var(--muted);font-size:12px;line-height:1.5;margin-top:2px}
+.field input{width:100%;font-family:var(--f-num);font-size:17px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);text-align:right}
+.group .note, .group .seg-row{padding:12px 16px;border-top:1px solid var(--line)}
+.seg2{display:flex;background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
+.seg2 button{flex:1;border:0;background:transparent;padding:10px 6px;border-radius:9px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--sell-soft);border-radius:12px;padding:12px}
+.confirm span{flex:1;min-width:160px;font-size:14px}
 
+/* 下のタブ */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-nav.tabs .in{display:grid;grid-template-columns:repeat(5,1fr);max-width:720px;margin:0 auto}
-nav.tabs button{border:0;background:transparent;padding:8px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);cursor:pointer}
-nav.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs .in{display:grid;grid-template-columns:repeat(5,1fr);max-width:640px;margin:0 auto}
+nav.tabs button{border:0;background:transparent;padding:9px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);cursor:pointer}
+nav.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
 nav.tabs button[aria-current="page"] svg{stroke:var(--gold)}
 
-.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 14px;border-radius:8px;font-size:13px;z-index:20;max-width:calc(100% - 32px);box-shadow:0 4px 16px rgb(0 0 0 / .2)}
-
-footer.disc{font-size:11.5px;color:var(--muted);line-height:1.7}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:11px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgb(0 0 0 / .25)}
+footer.disc{font-size:12px;color:var(--muted);line-height:1.7;text-align:center;padding:4px 8px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">金銀シグナル検証</div>
-    <span class="badge-sample" id="mode-badge">サンプルデータ</span>
-    <div class="seg" role="group" aria-label="銘柄">
-      <button type="button" data-sym="gold" aria-pressed="true">金スポット <small>XAU/USD</small></button>
-      <button type="button" data-sym="silver" aria-pressed="false">銀スポット <small>XAG/USD</small></button>
+    <div class="metal" role="group" aria-label="銘柄">
+      <button type="button" data-sym="gold" aria-pressed="true">金</button>
+      <button type="button" data-sym="silver" aria-pressed="false">銀</button>
     </div>
+    <span class="status" id="mode-badge">サンプル</span>
   </div>
 </header>
 
@@ -181,9 +206,9 @@ footer.disc{font-size:11.5px;color:var(--muted);line-height:1.7}
 
 <nav class="tabs" aria-label="画面の切り替え"><div class="in">
   <button type="button" data-tab="signal"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>判断</button>
-  <button type="button" data-tab="trade"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 3v3M16 3v3"/></svg>仮想取引</button>
+  <button type="button" data-tab="trade"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 3v3M16 3v3"/></svg>取引</button>
   <button type="button" data-tab="stats"><svg viewBox="0 0 24 24"><path d="M5 20V11"/><path d="M12 20V5"/><path d="M19 20v-6"/></svg>成績</button>
-  <button type="button" data-tab="bt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>過去検証</button>
+  <button type="button" data-tab="bt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>検証</button>
   <button type="button" data-tab="cfg"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>設定</button>
 </div></nav>
 
@@ -326,13 +351,13 @@ async function loadLive(){
 }
 function errText(e){
   if(!e) return "";
-  if(e.kind==="no_key") return "APIキーがまだ設定されていません（Cloudflare の設定を確認してください）";
-  if(e.kind==="upstream" && e.code===429) return "Twelve Data の無料枠の回数を使い切りました。しばらく待つか、明日また開いてください";
-  if(e.kind==="upstream" && e.code===401) return "APIキーが正しくないようです（Cloudflare に入れたキーを確認してください" + (typeof e.keyLength==="number" ? `。今入っているキーは${e.keyLength}文字。正しいキーは32文字です` : "") + (e.keyId ? `。識別番号 ${e.keyId}` : "") + "）" + (e.detail ? `［Twelve Data：${String(e.detail).slice(0,70)}］` : "");
-  if(e.kind==="upstream" && /plan|upgrad/i.test(e.detail||"")) return `${e.symbol||"この銘柄"} は Twelve Data の無料プランでは受け取れません（有料の Grow プラン以上が必要）`;
+  if(e.kind==="no_key") return "データを受け取るための鍵がまだ設定されていません（クラウドフレアの設定を確認してください）";
+  if(e.kind==="upstream" && e.code===429) return "ツエルブデータの無料の回数を使い切りました。しばらく待つか、明日また開いてください";
+  if(e.kind==="upstream" && e.code===401) return "データを受け取るための鍵が正しくないようです（クラウドフレアに入れた鍵を確認してください" + (typeof e.keyLength==="number" ? `。今入っている鍵は${e.keyLength}文字。正しい鍵は32文字です` : "") + (e.keyId ? `。識別番号 ${e.keyId}` : "") + "）";
+  if(e.kind==="upstream" && /plan|upgrad/i.test(e.detail||"")) return `${e.symbol==="XAG/USD"?"銀":e.symbol==="XAU/USD"?"金":"この銘柄"}は、ツエルブデータの無料プランでは受け取れません（有料プランが必要）`;
   if(e.kind==="network") return "インターネットに接続できませんでした";
   if(e.kind==="short") return "データの本数が足りません";
-  return "データを受け取れませんでした" + (e.detail ? "（" + String(e.detail).slice(0,80) + "）" : "");
+  return "データを受け取れませんでした";
 }
 
 /* ---------- 指標（平均線・RSI・値動きの大きさ） ---------- */
@@ -615,10 +640,7 @@ function css(n){ return getComputedStyle(document.documentElement).getPropertyVa
 let toastTimer;
 function toast(msg){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el); } el.textContent=msg; el.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.hidden=true;},2600); }
 function unreal(pos){ const h=S.cfg.cost[pos.sym].spread/2, px=midNow(pos.sym)-pos.dir*h; return { px, pnl:(px-pos.entry)*pos.dir*pos.qty*fxNow() }; }
-function modeNotice(extra){
-  if(MODE==="live") return LOAD_ERR ? "" : `<div class="notice live"><b>本物の価格（Twelve Data・1時間足）で表示中。</b>GMOクリック証券の価格とは少しずれます。${SILVER_OFF?"銀は今のプランでは受け取れないため、金だけで判断・検証しています。":""}${extra||""}</div>`;
-  return `${LOAD_ERR?`<div class="stop"><b>本物の価格を読み込めませんでした。</b>${esc(errText(LOAD_ERR))}。代わりにサンプルデータで表示しています。</div>`:""}<div class="notice"><b>サンプルデータで表示中。</b>価格はプログラムが作った架空の値動きで、実際の相場とは関係ありません。${extra||""}</div>`;
-}
+function modeNotice(){ return banners(); }
 
 /* ---------- 現在の判断（画面用） ---------- */
 function currentDecision(sym){
@@ -727,189 +749,179 @@ function curve(trades, capital, t0){ const pts=[{t:t0,v:capital}]; let v=capital
 function clockBar(){
   if(MODE==="live"){
     const TFh = new Intl.DateTimeFormat("ja-JP",{ timeZone:"Asia/Tokyo", hour:"2-digit", minute:"2-digit" });
-    return `<div class="card"><div class="clock">
-      <span class="t">最終更新 <b class="num">${TFh.format(new Date(FETCHED_AT))}</b> ・ 確定した足 <b class="num">${ft(DATA.gold.t[S.nowIdx])}</b>台まで</span>
-      <button class="btn" data-act="refresh">今すぐ更新</button>
-    </div><p class="note">開いている間は15分ごとに自動で更新します。判断は確定した1時間足で行い、候補価格は今の価格から計算します。画面を閉じている間の判断と通知は、次の段階で作ります。</p></div>`;
+    return `<section class="card"><div class="clock">
+      <span class="t">最終更新 <b class="num">${TFh.format(new Date(FETCHED_AT))}</b><br>開いている間は15分ごとに自動で更新</span>
+      <button class="btn small" data-act="refresh">今すぐ更新</button>
+    </div></section>`;
   }
-  const D=DATA.gold, end = S.nowIdx>=TOTAL-1;
-  return `<div class="card"><div class="clock">
-    <span class="t">サンプル時刻 <b class="num">${ft(D.t[S.nowIdx])}</b></span>
-    <button class="btn" data-act="adv" data-n="1" ${end?"disabled":""}>＋1時間</button>
-    <button class="btn" data-act="adv" data-n="24" ${end?"disabled":""}>＋1日</button>
-  </div><p class="note">サンプルデータでは時間を手で進めて、判断や仮想取引がどう動くかを確かめます。本物のデータにつないだ後は、ここは自動で更新されます。</p></div>`;
+  const end = S.nowIdx>=TOTAL-1;
+  return `<section class="card"><div class="clock">
+    <span class="t">サンプルの時刻<br><b class="num">${ft(DATA.gold.t[S.nowIdx])}</b></span>
+    <button class="btn small" data-act="adv" data-n="1" ${end?"disabled":""}>＋1時間</button>
+    <button class="btn small" data-act="adv" data-n="24" ${end?"disabled":""}>＋1日</button>
+  </div><p class="note">サンプルでは、時間を手で進めて動きを確かめます。</p></section>`;
 }
-function acctSummary(){
-  const a=S.acct, cfg=S.cfg, ur=a.positions.reduce((s,p)=>s+unreal(p).pnl,0);
-  const dp = a.dayKey===dayKey(tNow()) ? a.dayPnl : 0;
-  const ddPct = (a.peak-a.balance)/a.peak*100;
-  const dayUse = Math.min(100, Math.max(0,-dp)/cfg.dailyLimit*100), ddUse = Math.min(100, ddPct/cfg.maxDDPct*100);
-  return `<div class="kv four">
-    <div><div class="k">確定した資金</div><div class="v">${yen(a.balance)}</div></div>
-    <div><div class="k">保有中の評価損益</div><div class="v ${cls(ur)}">${yen(ur,true)}</div></div>
-    <div><div class="k">本日の損益（上限 −${yen(cfg.dailyLimit)}）</div><div class="v ${cls(dp)}">${yen(dp,true)}</div><div class="meter"><span class="${dayUse>=80?"hot":""}" style="width:${dayUse}%"></span></div></div>
-    <div><div class="k">最高値からの減り（上限 ${cfg.maxDDPct}％）</div><div class="v">${ddPct.toFixed(2)}％</div><div class="meter"><span class="${ddUse>=80?"hot":""}" style="width:${ddUse}%"></span></div></div>
-  </div>`;
+function banners(){
+  let h = "";
+  if(MODE!=="live") h += `<div class="banner warn"><span><b>サンプルの値動きです。</b>本物の相場とは関係ありません。${LOAD_ERR?esc(errText(LOAD_ERR))+"。":""}</span></div>`;
+  if(S.acct.halted) h += `<div class="banner stop"><span><b>仮想取引は停止中です。</b>${esc(S.acct.halted.text)}。「設定」から再開できます。</span></div>`;
+  return h;
 }
 function viewSilverOff(){
-  return `${modeNotice()}<section class="card"><h2>銀スポットは表示できません</h2>
+  return `${banners()}<section class="card"><h2>銀は今は表示できません</h2>
     <p>${esc(errText(SILVER_OFF))}。</p>
-    <p class="note">金スポットは本物の価格で使えます。上の「金スポット」を選んでください。銀も使いたい場合は、Twelve Data の有料プランにするか、銀だけ別のデータ提供元を使う方法があります。</p></section>`;
+    <p class="note">金は本物の価格で使えます。上の「金」を押してください。</p></section>`;
+}
+function levelsHtml(sym, d){
+  const lv=d.lv, tpU=Math.abs(lv.tp-lv.entry), pnlTp=d.sz.qty*tpU*fxNow(), pnlSl=d.sz.risk;
+  return `<div class="lvrows">
+    <div class="lvrow"><div class="k">入る価格<small>${d.lean==="buy"?"買う":"売る"}・${d.sz.qty>0?d.sz.qty+"オンス":"数量が決まらない"}</small></div><div class="v">${fp(sym,lv.entry)}</div></div>
+    <div class="lvrow tp"><div class="k">利確<small>ここで利益を確定</small></div><div class="v">${fp(sym,lv.tp)}<small class="up">＋${yen(pnlTp)}</small></div></div>
+    <div class="lvrow sl"><div class="k">損切り<small>ここで損失を確定</small></div><div class="v">${fp(sym,lv.sl)}<small class="down">−${yen(pnlSl)}</small></div></div>
+  </div>`;
 }
 function viewSignal(){
   if(!DATA[S.sym]) return viewSilverOff();
-  const sym=S.sym, D=DATA[sym], i=S.nowIdx, c=S.cfg.cost[sym], px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
-  const d = currentDecision(sym), label = { buy:"買い候補", sell:"売り候補", wait:"見送り" }[d.verdict];
+  const sym=S.sym, D=DATA[sym], i=S.nowIdx, px=midNow(sym), prev=D.c[Math.max(0,i-23)], chg=px-prev;
+  const d = currentDecision(sym), word = { buy:"買い候補", sell:"売り候補", wait:"見送り" }[d.verdict];
+  const okN = d.checks.filter(x=>x.ok).length, all = d.checks.length;
   let why;
-  if(d.verdict!=="wait") why = `5つの条件がすべてそろいました。下の候補価格で仮想取引を記録できます。`;
-  else if(d.sig.side!=="wait") why = `ルール上は${d.sig.side==="buy"?"買い":"売り"}の条件がそろっていますが、資金管理のルールにより見送ります。`;
-  else why = `${d.lean==="buy"?"買い":"売り"}の条件のうち、そろっていないものがあります（×の項目）。`;
-  const isRef = d.verdict==="wait";
-  const lv=d.lv, distU = Math.abs(lv.entry-lv.sl), tpU = Math.abs(lv.tp-lv.entry);
-  const pnlTp = d.sz.qty*tpU*fxNow(), pnlSl = d.sz.risk;
-  const others = S.acct.positions.filter(p=>p.sym===sym);
-  return `
-  ${modeNotice()}
-  ${S.acct.halted?`<div class="stop"><b>仮想取引は停止中です。</b>${esc(S.acct.halted.text)}。「設定」から再開できます。</div>`:""}
-  <section class="card" aria-label="価格">
-    <div class="price-row">
-      <div><div class="small muted">${SYMS[sym].name}（${SYMS[sym].code}・1トロイオンスあたりドル）</div>
-      <div class="price-big">${fp(sym,px)}</div></div>
-      <div class="num ${cls(chg)}" style="font-size:15px;font-weight:600">${chg>=0?"+":""}${fp(sym,chg)}（${chg>=0?"+":""}${(chg/prev*100).toFixed(2)}％）<span class="small muted"> 約24時間前比</span></div>
+  if(d.verdict!=="wait") why = "条件がすべてそろいました。";
+  else if(d.sig.side!=="wait") why = `条件はそろいましたが、資金管理のルールで見送ります（${esc(d.blocks[0]||"")}）。`;
+  else why = `${d.lean==="buy"?"買い":"売り"}の条件が、${all}つのうち${okN}つそろっています。`;
+  const p = curParams(S.cfg), others = S.acct.positions.filter(x=>x.sym===sym);
+  return `${banners()}
+  <section class="card hero" aria-label="価格と判断">
+    <div class="price-area">
+      <div class="label">${SYMS[sym].name}・今の価格（1オンスあたりドル）</div>
+      <div class="price">${fp(sym,px)}</div>
+      <div class="chg ${cls(chg)}">${chg>=0?"＋":"−"}${fp(sym,Math.abs(chg))}（${chg>=0?"＋":"−"}${Math.abs(chg/prev*100).toFixed(2)}％）<small>この24時間</small></div>
     </div>
-    <div class="price-sub num"><span>売値 ${fp(sym,px-c.spread/2)}</span><span>買値 ${fp(sym,px+c.spread/2)}</span><span>スプレッド ${fp(sym,c.spread)}</span></div>
+    <div class="decision ${d.verdict}">
+      <div class="word">${word}</div>
+      <div class="why">${why}</div>
+      <div class="dots" aria-label="そろった条件の数">${d.checks.map(x=>`<i class="${x.ok?"on":""}"></i>`).join("")}<span>${okN}／${all}</span></div>
+      ${d.verdict!=="wait"?`<button class="btn block ${d.verdict}" data-act="open">仮想取引に記録する</button>`:""}
+    </div>
   </section>
-  ${clockBar()}
+  ${d.verdict!=="wait"?`<section class="card"><h2>候補価格</h2>${levelsHtml(sym,d)}<p class="note">練習用の記録です。実際の注文は出ません。</p></section>`:""}
   <section class="card" aria-label="チャート">
-    <div class="chart-tools">
-      ${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}
-      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>転換線</span><span><i style="border-color:var(--muted)"></i>雲（灰色の帯）</span>`:`<span><i style="border-color:var(--${sym})"></i>短期平均(${S.cfg.params.fast}時間)</span><span><i style="border-color:var(--muted)"></i>長期平均(${S.cfg.params.slow}時間)</span>`}</div>
+    <div class="chart-head">
+      <div class="chips">${[[24,"1日"],[72,"3日"],[120,"5日"]].map(([n,l])=>`<button class="chip" data-act="range" data-n="${n}" aria-pressed="${S.range===n}">${l}</button>`).join("")}</div>
+      <div class="legend">${S.cfg.rule==="ichimoku"?`<span><i style="border-color:var(--${sym})"></i>転換線</span><span><i style="border-color:var(--muted)"></i>雲</span>`:`<span><i style="border-color:var(--${sym})"></i>短い平均線</span><span><i style="border-color:var(--muted)"></i>長い平均線</span>`}</div>
     </div>
-    <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間足チャート"></canvas></div>
-    <p class="note">1本のろうそく＝1時間の値動き。緑は上昇、赤は下落。横線は候補価格（薄い線は参考）と、保有中の仮想ポジションです。</p>
+    <div class="chart-box"><canvas id="cv-price" aria-label="${SYMS[sym].name}の1時間ごとの値動き"></canvas></div>
   </section>
-  <section class="card" aria-label="判断">
-    <div class="verdict"><span class="pill ${d.verdict}">${label}</span><p>${why}</p></div>
-    <h3>${d.lean==="buy"?"買い":"売り"}の条件チェック</h3>
+  <details class="more"><summary>判断の理由<small>${okN}／${all}つそろっている</small></summary><div class="in">
     <ul class="checks">${d.checks.map(x=>`<li class="${x.ok?"ok":"ng"}"><span class="mk">${x.ok?"○":"×"}</span><span>${esc(x.text)}</span></li>`).join("")}</ul>
     ${d.blocks.length?`<h3>資金管理のルール</h3><ul class="checks">${d.blocks.map(b=>`<li class="ng"><span class="mk">×</span><span>${esc(b)}</span></li>`).join("")}</ul>`:""}
-    <h3>${isRef?"参考：もし条件がそろったら（今は使いません）":"候補価格"}</h3>
-    <div class="levels ${isRef?"ref":""}">
-      <div class="lv"><div class="k">エントリー</div><div class="v">${fp(sym,lv.entry)}</div><div class="d">${d.lean==="buy"?"買値":"売値"}で計算</div></div>
-      <div class="lv tp"><div class="k">利確</div><div class="v">${fp(sym,lv.tp)}</div><div class="d">${d.lean==="buy"?"+":"−"}${fp(sym,tpU)}</div></div>
-      <div class="lv sl"><div class="k">損切り</div><div class="v">${fp(sym,lv.sl)}</div><div class="d">${d.lean==="buy"?"−":"+"}${fp(sym,distU)}</div></div>
-    </div>
-    <div class="kv">
-      <div><div class="k">数量（許容損失 ${yen(S.cfg.riskPerTrade)} 以内）</div><div class="v">${d.sz.qty>0?d.sz.qty+" オンス":"—"}</div></div>
-      <div><div class="k">損切り時 / 利確時（コスト込み）</div><div class="v"><span class="down">−${yen(pnlSl)}</span> / <span class="up">+${yen(pnlTp)}</span></div></div>
-    </div>
-    <p class="note">判断のルール：${RULES[S.cfg.rule].name}。損切り幅＝ふだんの1時間の値動き×${curParams(S.cfg).slMult}、利確幅＝損切り幅×${curParams(S.cfg).rr}。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`設定は毎月、直近3か月の値動きで自動で見直しています（最終：${fd(S.cfg.auto.at)}）。`:""}ドル円は${fxNow().toFixed(2)}円で換算${MODE==="live"?"（Twelve Data の最新値）":"（サンプルでは固定）"}。</p>
-    ${d.verdict!=="wait"?`<button class="btn block ${d.verdict}" data-act="open">この内容で仮想取引を記録する</button>`:`<button class="btn block" disabled>条件がそろうまで記録できません</button>`}
-    <p class="note">ここでの「記録」は練習用の仮想取引です。実際の注文は出ません。</p>
-  </section>
-  ${others.length?`<section class="card"><h3>この銘柄の保有中ポジション</h3>${posList(others)}</section>`:""}`;
+    <p class="note">ルール：${RULES[S.cfg.rule].name}。損切り幅は、ふだんの1時間の値動きの${p.slMult}倍。利確幅は、損切り幅の${p.rr}倍。${S.cfg.auto.on&&S.cfg.auto.at&&S.cfg.auto.rule===S.cfg.rule?`設定は毎月、直近3か月の値動きで自動で見直しています（最終：${fd(S.cfg.auto.at)}）。`:""}円への換算はドル円${fxNow().toFixed(2)}円。</p>
+  </div></details>
+  ${d.verdict==="wait"?`<details class="more"><summary>もし条件がそろったら（参考）</summary><div class="in">${levelsHtml(sym,d)}</div></details>`:""}
+  ${others.length?`<section class="card"><h2>保有中</h2>${posList(others)}</section>`:""}
+  ${clockBar()}`;
 }
 function posList(list){
-  if(!list.length) return `<div class="empty">保有中のポジションはありません。</div>`;
-  return `<div class="list">${list.map(p=>{ const u=unreal(p); return `<div class="row">
-    <div><span class="tag ${p.dir===1?"buy":"sell"}">${p.dir===1?"買い":"売り"}</span><span class="tag ${p.sym}">${SYMS[p.sym].name}</span><span class="num">${p.qty}オンス</span>
-      <div class="small muted num">入 ${fp(p.sym,p.entry)} ・ 利確 ${fp(p.sym,p.tp)} ・ 損切り ${fp(p.sym,p.sl)}</div>
-      <div class="small muted">${ft(p.t)} から保有</div></div>
-    <div class="r"><div class="num ${cls(u.pnl)}" style="font-weight:600">${yen(u.pnl,true)}</div>
-      <button class="btn" style="margin-top:6px" data-act="close" data-id="${p.id}">今の価格で決済</button></div></div>`; }).join("")}</div>`;
+  if(!list.length) return `<div class="empty">今は持っていません</div>`;
+  return `<div class="list">${list.map(p=>{ const u=unreal(p); return `<div class="item">
+    <div><div class="t1"><span class="tag ${p.dir===1?"buy":"sell"}">${p.dir===1?"買い":"売り"}</span>${SYMS[p.sym].name}・${p.qty}オンス</div>
+      <div class="t2 num">入った価格 ${fp(p.sym,p.entry)}</div>
+      <div class="t2 num">利確 ${fp(p.sym,p.tp)}／損切り ${fp(p.sym,p.sl)}</div></div>
+    <div><div class="pnl ${cls(u.pnl)}">${yen(u.pnl,true)}</div><button class="btn small" style="margin-top:6px" data-act="close" data-id="${p.id}">決済する</button></div></div>`; }).join("")}</div>`;
 }
 function tradeList(list, limit){
-  if(!list.length) return `<div class="empty">まだ決済した取引はありません。</div>`;
+  if(!list.length) return `<div class="empty">まだありません</div>`;
   const rows = [...list].reverse().slice(0,limit||list.length);
-  return `<div class="list">${rows.map(t=>`<div class="row">
-    <div><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span><span class="tag ${t.sym}">${SYMS[t.sym].name}</span><span class="small">${esc(t.why)}</span>
-      <div class="small muted num">${fp(t.sym,t.entry)} → ${fp(t.sym,t.exit)} ・ ${t.qty}オンス</div>
-      <div class="small muted">${ft(t.exitT)} 決済 ・ コスト ${yen(t.cost)}</div></div>
-    <div class="r num ${cls(t.net)}" style="font-weight:600">${yen(t.net,true)}</div></div>`).join("")}</div>`;
+  return `<div class="list">${rows.map(t=>`<div class="item">
+    <div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why)}</div>
+      <div class="t2">${ft(t.exitT)}・${SYMS[t.sym].name} ${t.qty}オンス</div></div>
+    <div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div>`;
 }
 function viewTrade(){
-  const a=S.acct;
-  return `
-  ${modeNotice()}
-  <div class="notice"><b>練習用の仮想取引です。</b>実際の注文は出ません。GMOクリック証券の口座にも接続していません。</div>
-  ${a.halted?`<div class="stop"><b>仮想取引は停止中です。</b>${esc(a.halted.text)}。「設定」から再開できます。</div>`:""}
-  <section class="card"><h2>口座の状態</h2>${acctSummary()}
-    <p class="note">同時に持てるのは最大${S.cfg.maxPositions}つ（今 ${a.positions.length}つ）。1回の損失は${yen(S.cfg.riskPerTrade)}以内になるよう数量を自動で決めます。</p></section>
-  ${clockBar()}
-  <section class="card"><h2>保有中のポジション</h2>${posList(a.positions)}</section>
-  <section class="card"><h2>決済した取引</h2>${tradeList(a.trades,30)}${a.trades.length>30?`<p class="note">直近30件を表示（全${a.trades.length}件）。</p>`:""}</section>`;
-}
-function statBlock(st){
-  return `<div class="kv four">
-    <div><div class="k">純損益（コスト差引後）</div><div class="v ${cls(st.net)}">${yen(st.net,true)}</div></div>
-    <div><div class="k">取引回数</div><div class="v">${st.n}回</div></div>
-    <div><div class="k">勝率</div><div class="v">${st.n?pct(st.winRate):"—"}</div></div>
-    <div><div class="k">損益の比率 <span title="利益の合計÷損失の合計">(PF)</span></div><div class="v">${!st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"損失なし"}</div></div>
-    <div><div class="k">平均の利益</div><div class="v up">${st.wins?yen(st.avgWin,true):"—"}</div></div>
-    <div><div class="k">平均の損失</div><div class="v down">${st.n-st.wins?"−"+yen(st.avgLoss):"—"}</div></div>
-    <div><div class="k">最大の落ち込み</div><div class="v">${yen(st.mdd)}</div></div>
-    <div><div class="k">取引コストの合計</div><div class="v">${yen(st.cost)}</div></div>
-  </div>`;
+  const a=S.acct, cfg=S.cfg, ur=a.positions.reduce((s,p)=>s+unreal(p).pnl,0);
+  const dp = a.dayKey===dayKey(tNow()) ? a.dayPnl : 0, loss = Math.max(0,-dp), ddPct = (a.peak-a.balance)/a.peak*100;
+  const dayUse = Math.min(100, loss/cfg.dailyLimit*100), ddUse = Math.min(100, ddPct/cfg.maxDDPct*100);
+  return `${banners()}
+  <section class="card">
+    <div class="sub">仮想の資金</div>
+    <div class="big">${yen(a.balance)}</div>
+    <div class="sub">最初から <b class="num ${cls(a.balance-cfg.capital)}">${yen(a.balance-cfg.capital,true)}</b>　保有中 <b class="num ${cls(ur)}">${yen(ur,true)}</b></div>
+    <div class="limit"><div class="top"><span>今日の損失</span><span class="num">${yen(loss)}／${yen(cfg.dailyLimit)}</span></div><div class="meter"><span class="${dayUse>=80?"hot":""}" style="width:${dayUse}%"></span></div></div>
+    <div class="limit"><div class="top"><span>一番多かった時からの減り</span><span class="num">${ddPct.toFixed(1)}％／${cfg.maxDDPct}％</span></div><div class="meter"><span class="${ddUse>=80?"hot":""}" style="width:${ddUse}%"></span></div></div>
+    <p class="note">練習用です。実際の注文は出ません。どちらかの線が右端まで行くと、その日（または停止を解除するまで）新しい取引をしません。</p>
+  </section>
+  <section class="card"><h2>保有中 <span class="sub">（${a.positions.length}／${cfg.maxPositions}つ）</span></h2>${posList(a.positions)}</section>
+  <section class="card"><h2>決済した取引</h2>${tradeList(a.trades,30)}${a.trades.length>30?`<p class="note">新しい30件を表示（全${a.trades.length}件）</p>`:""}</section>
+  ${clockBar()}`;
 }
 function viewStats(){
-  const a=S.acct, st=stats(a.trades,S.cfg.capital);
-  const by = s => stats(a.trades.filter(t=>t.sym===s), 0);
-  return `
-  ${modeNotice("ここに出る成績は、将来の成績を約束するものではありません。")}
-  <section class="card"><h2>資金の推移</h2>
-    <div class="chart-box" style="height:220px"><canvas id="cv-eq" aria-label="資金推移グラフ"></canvas></div>
-    <p class="note">決済するたびに更新します。赤い点線は「ここまで減ったら停止」の目安（最初の資金から${S.cfg.maxDDPct}％減）です。</p></section>
-  <section class="card"><h2>全体の成績</h2>${statBlock(st)}
-    <p class="note">取引コスト＝スプレッド（買値と売値の差）＋損切り時の価格のずれ＋保有日数分の費用。すべて損益から差し引き済みです。</p></section>
-  <section class="card"><h2>銘柄別</h2>
-    <div class="scroll-x"><table class="cmp"><thead><tr><th></th><th>回数</th><th>勝率</th><th>純損益</th><th>コスト</th></tr></thead><tbody>
+  const a=S.acct, st=stats(a.trades,S.cfg.capital), by = s => stats(a.trades.filter(t=>t.sym===s), 0);
+  const tile = (k,v,c="") => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+  return `${banners()}
+  <section class="card">
+    <div class="sub">仮想取引の損益（コストを引いた後）</div>
+    <div class="big ${cls(st.net)}">${yen(st.net,true)}</div>
+    <div class="sub">${st.n}回の取引${st.n?`・勝率${pct(st.winRate,0)}`:""}</div>
+    <div class="chart-box short"><canvas id="cv-eq" aria-label="資金の移り変わり"></canvas></div>
+    <p class="note">赤い点線は「ここまで減ったら停止」の目安（最初の資金の−${S.cfg.maxDDPct}％）です。</p>
+  </section>
+  <section class="card"><div class="tiles">
+    ${tile("利益÷損失", !st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"損失なし")}
+    ${tile("一番大きな落ち込み", yen(st.mdd))}
+    ${tile("平均の利益", st.wins?yen(st.avgWin,true):"—", "up")}
+    ${tile("平均の損失", st.n-st.wins?"−"+yen(st.avgLoss):"—", "down")}
+    ${tile("取引コストの合計", yen(st.cost))}
+    ${tile("取引の回数", st.n+"回")}
+  </div><p class="note">「利益÷損失」が1より大きければ、コストを引いてもプラスです。</p></section>
+  <details class="more"><summary>銘柄ごと</summary><div class="in"><div class="scroll-x"><table class="cmp"><thead><tr><th></th><th>回数</th><th>勝率</th><th>損益</th><th>コスト</th></tr></thead><tbody>
     ${activeSyms().map(s=>{ const b=by(s); return `<tr><td>${SYMS[s].name}</td><td>${b.n}</td><td>${b.n?pct(b.winRate,0):"—"}</td><td class="${cls(b.net)}">${yen(b.net,true)}</td><td>${yen(b.cost)}</td></tr>`; }).join("")}
-    </tbody></table></div></section>`;
+  </tbody></table></div></div></details>
+  <footer class="disc">ここに出る成績は、将来の成績を約束するものではありません。</footer>`;
 }
-function pstr(p){ return p.fast!=null ? `短期${p.fast}・長期${p.slow}・損切り×${p.slMult}・利確×${p.rr}` : `損切り×${p.slMult}・利確×${p.rr}・損切り幅の下限${p.minStop}ドル`; }
+function pstr(p){ return p.fast!=null ? `短い平均線${p.fast}・長い平均線${p.slow}・損切り${p.slMult}倍・利確${p.rr}倍` : `損切り${p.slMult}倍・利確${p.rr}倍・損切り幅の下限${p.minStop}ドル`; }
 function viewBT(){
   const r=S.bt, D=DATA.gold, end=S.nowIdx+1, split=WARMUP+Math.floor((end-WARMUP)*0.7);
-  const head = `
-  ${modeNotice(MODE==="live"?"検証結果は過去の話で、これからも同じになるとは限りません。":"結果は仕組みの確認用で、実際の相場での成績を表すものではありません。")}
-  <section class="card"><h2>過去データでの検証の進め方</h2>
-    <p>過去の値動きを2つに分けます。</p>
-    <ul class="checks">
-      <li class="ok"><span class="mk">1</span><span><b>調整期間</b>（前の7割：${fd(D.t[WARMUP])}〜${fd(D.t[split-1])}）<br>ここだけを使って、設定の組み合わせ${gridCombos(RULES[S.cfg.rule].grid).length}通りを試します（ルール：${RULES[S.cfg.rule].name}）。</span></li>
-      <li class="ok"><span class="mk">2</span><span><b>確認期間</b>（後ろの3割：${fd(D.t[split])}〜${fd(D.t[end-1])}）<br>選んだ設定を、調整に使っていない期間で試します。ここで成績が崩れるなら「たまたま過去に合っていただけ」の可能性が高いと判断します。</span></li>
-    </ul>
-    <p class="note">設定の選び方：一番成績が良い1つではなく、「少し設定を変えても成績が崩れにくいもの」を選びます。最高成績の設定は過去に合わせ込みすぎていることが多いためです。資金管理のルール（1回2,500円、1日1万円、5％で停止、同時2つまで）とコストも同じように適用します。</p>
-    <button class="btn primary block" data-act="runbt">検証を実行する</button>
+  const head = `${banners()}
+  <section class="card">
+    <h2>過去の値動きで試す</h2>
+    <p>前の7割の期間で設定を選び、残りの3割の期間で確かめます。後ろで成績が崩れたら、たまたま過去に合っていただけの可能性が高いです。</p>
+    <div class="sub">選ぶ期間：${fd(D.t[WARMUP])}〜${fd(D.t[split-1])}<br>確かめる期間：${fd(D.t[split])}〜${fd(D.t[end-1])}<br>ルール：${RULES[S.cfg.rule].name}（${gridCombos(RULES[S.cfg.rule].grid).length}通りの設定）</div>
+    <button class="btn primary block" data-act="runbt">試してみる</button>
   </section>`;
   if(!r) return head;
-  const verdict = r.robust.conf.n < 10 ? { cls:"wait", text:"確認期間の取引回数が少なく、判断できません" }
-    : r.robust.conf.net <= 0 ? { cls:"sell", text:"確認期間ではマイナス。この方法を使う根拠はまだ弱いです" }
-    : r.robust.conf.pf < 1.1 ? { cls:"wait", text:"確認期間ではほぼ損益ゼロ。コストに負ける可能性があります" }
-    : { cls:"buy", text:"確認期間でもプラスを保ちました。ただし今後も同じになるとは限りません" };
-  const row = (label, st) => `<tr><td>${label}</td><td>${st.n}</td><td>${st.n?pct(st.winRate,0):"—"}</td><td>${!st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"—"}</td><td class="${cls(st.net)}">${yen(st.net,true)}</td><td>${yen(st.mdd)}</td><td>${yen(st.cost)}</td></tr>`;
-  const stale = r.endT!==DATA.gold.t[S.nowIdx] ? `<p class="note">※データが新しくなったため、再実行すると期間が変わります。</p>` : "";
+  const v = r.robust.conf.n < 10 ? { c:"wait", w:"判断できません", t:"確かめる期間の取引が少なすぎます。" }
+    : r.robust.conf.net <= 0 ? { c:"sell", w:"確かめた期間でマイナス", t:"この設定を使う根拠はまだ弱いです。" }
+    : r.robust.conf.pf < 1.1 ? { c:"wait", w:"ほぼトントン", t:"コストに負けるおそれがあります。" }
+    : { c:"buy", w:"確かめた期間でもプラス", t:"ただし、これからも同じになるとは限りません。" };
+  const row = (label, st) => `<tr><td>${label}</td><td>${st.n}</td><td>${st.n?pct(st.winRate,0):"—"}</td><td>${!st.n?"—":isFinite(st.pf)?st.pf.toFixed(2):"—"}</td><td class="${cls(st.net)}">${yen(st.net,true)}</td><td>${yen(st.mdd)}</td></tr>`;
   const same = r.rule!==S.cfg.rule || JSON.stringify(r.robust.p)===JSON.stringify(curParams(S.cfg));
+  const tile = (k,st) => `<div class="tile"><div class="k">${k}</div><div class="v ${cls(st.net)}">${yen(st.net,true)}</div><div class="k">${st.n}回</div></div>`;
+  const diff = r.cond && (r.cond.riskPerTrade!==2500||r.cond.dailyLimit!==10000||r.cond.capital!==1000000);
   return head + `
-  <section class="card"><h2>結果</h2>
-    <div class="verdict"><span class="pill ${verdict.cls}" style="font-size:15px">${verdict.cls==="buy"?"確認期間でプラス":verdict.cls==="sell"?"確認期間でマイナス":"判断保留"}</span><p>${verdict.text}</p></div>
-    <p class="small">選んだ設定：<b>${pstr(r.robust.p)}</b></p>
-    ${r.cond?`<p class="note">検証の条件：資金 ${yen(r.cond.capital)}・1回の許容損失 ${yen(r.cond.riskPerTrade)}・1日の損失上限 ${yen(r.cond.dailyLimit)}・${r.cond.maxDDPct}％で停止・同時${r.cond.maxPositions}つまで・金のスプレッド ${r.cond.cost.spread}ドル${r.cond.riskPerTrade!==2500||r.cond.dailyLimit!==10000||r.cond.capital!==1000000?'　<b class="down">※初期設定（100万円・2,500円・1万円）と違います</b>':''}</p>`:""}
-    <div class="chart-box" style="height:200px"><canvas id="cv-bt" aria-label="検証の資金推移"></canvas></div>
-    <div class="scroll-x"><table class="cmp"><thead><tr><th>期間</th><th>回数</th><th>勝率</th><th>PF</th><th>純損益</th><th>最大落込</th><th>コスト</th></tr></thead><tbody>
-      ${row("調整期間",r.robust.tune)}${row("確認期間",r.robust.conf)}
-    </tbody></table></div>
-    ${r.robust.tuneHalt||r.robust.confHalt?`<p class="note">※${r.robust.tuneHalt?"調整期間":""}${r.robust.tuneHalt&&r.robust.confHalt?"・":""}${r.robust.confHalt?"確認期間":""}で5％停止ルールが発動し、その後の取引は止めています。</p>`:""}
-    ${stale}
-    ${same?`<p class="note">この設定は現在の判断に使用中です。</p>`:`<button class="btn block" data-act="usebt">この設定を「判断」に使う</button><p class="note">押すと、判断画面のルールがこの設定に変わります。今の設定：${pstr(curParams(S.cfg))}</p>`}
+  <section class="card hero">
+    <div class="decision ${v.c}"><div class="word" style="font-size:24px">${v.w}</div><div class="why">${v.t}</div></div>
+    <div class="price-area" style="display:flex;flex-direction:column;gap:12px">
+      <div class="tiles">${tile("選んだ期間",r.robust.tune)}${tile("確かめた期間",r.robust.conf)}</div>
+      <div class="chart-box short"><canvas id="cv-bt" aria-label="試した期間の資金の移り変わり"></canvas></div>
+      <div class="sub">選んだ設定：${pstr(r.robust.p)}</div>
+      ${diff?`<div class="banner warn"><span><b>注意：</b>資金管理の設定が初期設定（100万円・1回2,500円・1日1万円）と違う状態で試しています。</span></div>`:""}
+      ${same?`<p class="note">この設定は今の判断で使っています。</p>`:`<button class="btn block" data-act="usebt">この設定を判断に使う</button>`}
+    </div>
   </section>
-  <section class="card"><h2>比べるための参考</h2>
-    <div class="scroll-x"><table class="cmp"><thead><tr><th>設定</th><th>期間</th><th>回数</th><th>PF</th><th>純損益</th></tr></thead><tbody>
-      <tr><td rowspan="2">調整期間で一番成績が良かった設定<br><span class="muted small">${pstr(r.best.p)}</span></td><td>調整</td><td>${r.best.tune.n}</td><td>${isFinite(r.best.tune.pf)?r.best.tune.pf.toFixed(2):"—"}</td><td class="${cls(r.best.tune.net)}">${yen(r.best.tune.net,true)}</td></tr>
-      <tr><td>確認</td><td>${r.best.conf.n}</td><td>${isFinite(r.best.conf.pf)?r.best.conf.pf.toFixed(2):"—"}</td><td class="${cls(r.best.conf.net)}">${yen(r.best.conf.net,true)}</td></tr>
-      <tr><td rowspan="2">検証前の設定<br><span class="muted small">${pstr(r.cur.p)}</span></td><td>調整</td><td>${r.cur.tune.n}</td><td>${isFinite(r.cur.tune.pf)?r.cur.tune.pf.toFixed(2):"—"}</td><td class="${cls(r.cur.tune.net)}">${yen(r.cur.tune.net,true)}</td></tr>
-      <tr><td>確認</td><td>${r.cur.conf.n}</td><td>${isFinite(r.cur.conf.pf)?r.cur.conf.pf.toFixed(2):"—"}</td><td class="${cls(r.cur.conf.net)}">${yen(r.cur.conf.net,true)}</td></tr>
+  <details class="more"><summary>くわしい数字</summary><div class="in">
+    <div class="scroll-x"><table class="cmp"><thead><tr><th>期間</th><th>回数</th><th>勝率</th><th>利益÷損失</th><th>損益</th><th>落ち込み</th></tr></thead><tbody>
+      ${row("選んだ期間",r.robust.tune)}${row("確かめた期間",r.robust.conf)}</tbody></table></div>
+    ${r.cond?`<p class="note">試した条件：資金${yen(r.cond.capital)}・1回の許容損失${yen(r.cond.riskPerTrade)}・1日の損失上限${yen(r.cond.dailyLimit)}・${r.cond.maxDDPct}％減で停止・同時${r.cond.maxPositions}つまで・スプレッド${r.cond.cost.spread}ドル</p>`:""}
+    ${r.robust.tuneHalt||r.robust.confHalt?`<p class="note">途中で「${S.cfg.maxDDPct}％減で停止」が働き、そのあとの取引は止めています。</p>`:""}
+    ${r.endT!==DATA.gold.t[S.nowIdx]?`<p class="note">データが新しくなったので、もう一度試すと期間が変わります。</p>`:""}
+    <h3>比べるための参考</h3>
+    <div class="scroll-x"><table class="cmp"><thead><tr><th>設定</th><th>選んだ期間</th><th>確かめた期間</th></tr></thead><tbody>
+      <tr><td>選んだ期間で一番だった設定<br><span class="sub">${pstr(r.best.p)}</span></td><td class="${cls(r.best.tune.net)}">${yen(r.best.tune.net,true)}</td><td class="${cls(r.best.conf.net)}">${yen(r.best.conf.net,true)}</td></tr>
+      <tr><td>試す前の設定<br><span class="sub">${pstr(r.cur.p)}</span></td><td class="${cls(r.cur.tune.net)}">${yen(r.cur.tune.net,true)}</td><td class="${cls(r.cur.conf.net)}">${yen(r.cur.conf.net,true)}</td></tr>
     </tbody></table></div>
-    <p class="note">「調整期間で一番」の設定が確認期間で大きく崩れていたら、それが過剰最適化（過去に合わせ込みすぎ）のサインです。</p>
-  </section>`;
+    <p class="note">「一番だった設定」が確かめた期間で大きく崩れていたら、過去に合わせ込みすぎたしるしです。</p>
+  </div></details>
+  <footer class="disc">過去の結果は、将来の結果を約束するものではありません。</footer>`;
 }
 function field(id, label, hint, val, step){
   return `<div class="field"><label for="${id}">${label}${hint?`<small>${hint}</small>`:""}</label><input id="${id}" type="number" inputmode="decimal" step="${step}" value="${val}" data-path="${id.replace(/^f-/,"").replace(/-/g,".")}"></div>`;
@@ -917,68 +929,68 @@ function field(id, label, hint, val, step){
 function viewCfg(){
   const c=S.cfg, ui=S.ui;
   return `
-  <section class="card"><h2>データの出どころ</h2>
-    ${MODE==="live"
-      ? `<p><span class="badge-sample live">本物の価格</span> Twelve Data（金 XAU/USD${DATA.silver?"・銀 XAG/USD":""}・ドル円 USD/JPY、1時間足）。確定した足 ${DATA.gold.c.length.toLocaleString()}本を読み込み済み。</p>${SILVER_OFF?`<p class="note">銀：${esc(errText(SILVER_OFF))}</p>`:""}<p class="note">個人で使う無料プランのため、このページを他の人に見せたり公開したりしないでください。GMOクリック証券の画面からデータを取り込むことはしません。</p>`
-      : `<p><span class="badge-sample">サンプルデータ</span> プログラムが作った架空の値動き（1時間足）です。</p>${LOAD_ERR?`<p class="note">本物の価格を読めなかった理由：${esc(errText(LOAD_ERR))}</p>`:`<p class="note">Cloudflare に置いて APIキーを設定すると、自動で本物の価格（Twelve Data）に切り替わります。GMOクリック証券の画面からデータを取り込むことはしません。</p>`}`}
-    <p class="note">サンプルと本物の価格では、仮想取引の記録を別々に保存しています。</p></section>
-  <section class="card"><h2>資金管理のルール</h2>
-    ${field("f-riskPerTrade","1回の許容損失（円）","損切りになったときの損失がこの金額以内になるよう数量を決めます",c.riskPerTrade,500)}
-    ${field("f-dailyLimit","1日の損失上限（円）","これを超えそうな取引はその日は見送ります（日本時間で日付を区切ります）",c.dailyLimit,1000)}
-    ${field("f-maxDDPct","停止する落ち込み（％）","資金が最高値からこの割合だけ減ったら停止します",c.maxDDPct,0.5)}
-    ${field("f-maxPositions","同時に持てる数","",c.maxPositions,1)}
-    ${field("f-capital","最初の資金（円）","変更は「最初からやり直す」を押したときに反映されます",c.capital,100000)}
-  </section>
-  <section class="card"><h2>取引コスト</h2>
-    <p class="note">下の値は仮の値です。GMOクリック証券の取引画面で「金スポット」「銀スポット」のスプレッド（買値と売値の差）を見て、同じ数字を入れてください。単位はドルです。</p>
-    <h3>金スポット</h3>
-    ${field("f-cost-gold-spread","スプレッド（ドル）","",c.cost.gold.spread,0.01)}
-    ${field("f-cost-gold-slip","損切り時の価格のずれ（ドル）","損切りは不利な価格で成立しやすいため、余分に見込みます",c.cost.gold.slip,0.01)}
-    ${field("f-cost-gold-step","最小の数量（オンス）","GMOの取引単位に合わせてください（要確認）",c.cost.gold.step,0.1)}
-    ${field("f-cost-gold-swapLong","買いを1日持ち越す費用（円/オンス）","GMOの「金利調整額」の『買』を1日分にした金額。払うときはプラス、受け取るときはマイナス",c.cost.gold.swapLong,1)}
-    ${field("f-cost-gold-swapShort","売りを1日持ち越す費用（円/オンス）","同じく『売』の1日分。今は受け取りなのでマイナス",c.cost.gold.swapShort,1)}
-    <p class="note">入っている値：GMOクリック証券「金スポット」の画面（2026年11月4日）。スプレッド0.80ドル、最小数量0.1（1単位＝1オンス）、金利調整額 買−255円・売＋249円（3日分）。金利調整額は毎日変わるので、ときどき見直してください。</p>
-    <h3>銀スポット</h3>
-    ${field("f-cost-silver-spread","スプレッド（ドル）","",c.cost.silver.spread,0.001)}
-    ${field("f-cost-silver-slip","損切り時の価格のずれ（ドル）","",c.cost.silver.slip,0.001)}
-    ${field("f-cost-silver-step","最小の数量（オンス）","GMOの取引単位に合わせてください（要確認）",c.cost.silver.step,1)}
-    ${field("f-cost-silver-swapLong","買いを1日持ち越す費用（円/オンス）","",c.cost.silver.swapLong,0.1)}
-    ${field("f-cost-silver-swapShort","売りを1日持ち越す費用（円/オンス）","",c.cost.silver.swapShort,0.1)}
-    ${MODE==="sample"?field("f-usdjpy","ドル円（円）","円に換算するときに使います。サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は Twelve Data の値を自動で使います（今 ${fxNow().toFixed(2)}円）。</p>`}
-  </section>
-  <section class="card"><h2>判断のルール</h2>
-    <div class="seg" role="group" aria-label="判断のルール">
+  <section class="group"><h2>判断のルール</h2>
+    <div class="seg-row"><div class="seg2" role="group" aria-label="判断のルール">
       <button type="button" data-act="rule" data-rule="ichimoku" aria-pressed="${c.rule==="ichimoku"}">一目均衡表</button>
       <button type="button" data-act="rule" data-rule="pullback" aria-pressed="${c.rule==="pullback"}">押し目・戻り</button>
-    </div>
-    <p class="note">${c.rule==="ichimoku"?"一目均衡表＋損切り幅の下限＋日足の流れ。2021〜2026年の検証（毎月見直し・直近3か月）で一番安定していたルールです。ただし将来も同じとは限りません。":"最初に作ったルールです。検証ではコストを引くとマイナスでした。比べるために残しています。"}</p>
-    <div class="field"><label>毎月の自動見直し<small>直近3か月の本物の値動きで、毎月はじめに設定を選び直します${c.auto.at&&c.auto.rule===c.rule?`（最終：${fd(c.auto.at)}、その3か月で${c.auto.trades}回・${yen(c.auto.net,true)}）`:""}</small></label><button type="button" class="btn ${c.auto.on?"primary":""}" data-act="autotune">${c.auto.on?"オン":"オフ"}</button></div>
+    </div></div>
+    <p class="note">${c.rule==="ichimoku"?"一目均衡表＋損切り幅の下限＋日足の流れ。2021〜2026年の検証で一番安定していたルールです。将来も同じとは限りません。":"最初に作ったルールです。検証ではコストを引くとマイナスでした。比べるために残しています。"}</p>
+    <div class="field"><label>毎月の自動見直し<small>直近3か月の本物の値動きで、毎月はじめに設定を選び直します${c.auto.at&&c.auto.rule===c.rule?`（最終：${fd(c.auto.at)}）`:""}</small></label><button type="button" class="btn ${c.auto.on?"primary":""}" data-act="autotune">${c.auto.on?"オン":"オフ"}</button></div>
     ${c.rule==="ichimoku"?`
-    ${field("f-paramsI-slMult","損切り幅（ふだんの値動きの何倍）","",c.paramsI.slMult,0.5)}
-    ${field("f-paramsI-rr","利確幅（損切り幅の何倍）","",c.paramsI.rr,0.5)}
-    ${field("f-paramsI-minStop","損切り幅の下限（ドル）","これより損切り幅が小さいときは見送ります",c.paramsI.minStop,1)}`:`
-    ${field("f-params-fast","短期の平均線（時間）","",c.params.fast,1)}
-    ${field("f-params-slow","長期の平均線（時間）","",c.params.slow,1)}
-    ${field("f-params-slMult","損切り幅（ふだんの値動きの何倍）","",c.params.slMult,0.1)}
-    ${field("f-params-rr","利確幅（損切り幅の何倍）","",c.params.rr,0.1)}`}
-    <p class="note">自動見直しがオンのときは、毎月はじめに上の数字が自動で変わります。</p>
+    ${field("f-paramsI-slMult","損切り幅","ふだんの1時間の値動きの何倍か",c.paramsI.slMult,0.5)}
+    ${field("f-paramsI-rr","利確幅","損切り幅の何倍か",c.paramsI.rr,0.5)}
+    ${field("f-paramsI-minStop","損切り幅の下限（ドル）","これより小さいときは見送る",c.paramsI.minStop,1)}`:`
+    ${field("f-params-fast","短い平均線（時間）","",c.params.fast,1)}
+    ${field("f-params-slow","長い平均線（時間）","",c.params.slow,1)}
+    ${field("f-params-slMult","損切り幅","ふだんの1時間の値動きの何倍か",c.params.slMult,0.1)}
+    ${field("f-params-rr","利確幅","損切り幅の何倍か",c.params.rr,0.1)}`}
   </section>
-  <section class="card"><h2>やり直し</h2>
+  <section class="group"><h2>資金の守り方</h2>
+    ${field("f-riskPerTrade","1回の許容損失（円）","損切りになってもこの金額以内",c.riskPerTrade,500)}
+    ${field("f-dailyLimit","1日の損失上限（円）","超えそうならその日は見送る",c.dailyLimit,1000)}
+    ${field("f-maxDDPct","停止する減り方（％）","一番多かった時からこれだけ減ったら停止",c.maxDDPct,0.5)}
+    ${field("f-maxPositions","同時に持てる数","",c.maxPositions,1)}
+    ${field("f-capital","最初の資金（円）","「最初からやり直す」で反映",c.capital,100000)}
+  </section>
+  <section class="group"><h2>金の取引コスト（GMOクリック証券の画面の値）</h2>
+    ${field("f-cost-gold-spread","スプレッド（ドル）","買値と売値の差",c.cost.gold.spread,0.01)}
+    ${field("f-cost-gold-slip","損切りのずれ（ドル）","損切りは不利な価格になりやすい分",c.cost.gold.slip,0.01)}
+    ${field("f-cost-gold-step","最小の数量（オンス）","",c.cost.gold.step,0.1)}
+    ${field("f-cost-gold-swapLong","買いの持ち越し（円/日）","払うときはプラスで入力",c.cost.gold.swapLong,1)}
+    ${field("f-cost-gold-swapShort","売りの持ち越し（円/日）","受け取るときはマイナスで入力",c.cost.gold.swapShort,1)}
+    <p class="note">2026年11月4日の画面の値です。持ち越しの金額（金利調整額）は毎日変わるので、ときどき見直してください。</p>
+  </section>
+  <details class="more"><summary>銀の取引コスト・その他</summary><div class="in" style="padding:0">
+    <div class="group">
+    ${field("f-cost-silver-spread","銀のスプレッド（ドル）","",c.cost.silver.spread,0.001)}
+    ${field("f-cost-silver-slip","銀の損切りのずれ（ドル）","",c.cost.silver.slip,0.001)}
+    ${field("f-cost-silver-step","銀の最小の数量（オンス）","",c.cost.silver.step,1)}
+    ${field("f-cost-silver-swapLong","銀・買いの持ち越し（円/日）","",c.cost.silver.swapLong,0.1)}
+    ${field("f-cost-silver-swapShort","銀・売りの持ち越し（円/日）","",c.cost.silver.swapShort,0.1)}
+    ${MODE==="sample"?field("f-usdjpy","ドル円（円）","サンプルでは固定",c.usdjpy,0.5):`<p class="note">ドル円は自動で最新の値を使います（今 ${fxNow().toFixed(2)}円）。</p>`}
+    </div>
+  </div></details>
+  <section class="group"><h2>データ</h2>
+    <p class="note">${MODE==="live"?`本物の価格（ツエルブデータ・1時間ごと）を使っています。読み込んだ数：${DATA.gold.c.length.toLocaleString()}本。${SILVER_OFF?"銀は今のプランでは取れません。":""}個人で使う無料プランなので、このページを他の人に見せないでください。`:`サンプルの値動きを使っています。${LOAD_ERR?"本物の価格を読めなかった理由："+esc(errText(LOAD_ERR))+"。":""}`}GMOクリック証券の画面からデータを取り込むことはしません。サンプルと本物では、仮想取引の記録を別々に保存しています。</p>
+  </section>
+  <section class="group"><h2>やり直し</h2>
+    <div class="seg-row" style="display:flex;flex-direction:column;gap:8px">
     ${S.acct.halted?`<button class="btn block" data-act="ask" data-what="resume">停止を解除する（成績は残す）</button>`:""}
     <button class="btn danger block" data-act="ask" data-what="reset">仮想取引を最初からやり直す</button>
     ${ui.ask?`<div class="confirm"><span>${ui.ask==="reset"?"取引の記録と資金をすべて最初に戻します。元には戻せません。":"今の資金を新しい基準にして、取引を再開します。"}</span>
-      <button class="btn" data-act="ask" data-what="">やめる</button><button class="btn ${ui.ask==="reset"?"sell":"primary"}" data-act="${ui.ask}">${ui.ask==="reset"?"やり直す":"再開する"}</button></div>`:""}
-    <p class="note">記録はこの端末のブラウザの中だけに保存されます。別のiPhoneやパソコンには引き継がれません。</p>
+      <button class="btn small" data-act="ask" data-what="">やめる</button><button class="btn small ${ui.ask==="reset"?"sell":"primary"}" data-act="${ui.ask}">${ui.ask==="reset"?"やり直す":"再開する"}</button></div>`:""}
+    </div>
+    <p class="note">記録はこの端末の中だけに保存されます。別の端末には引き継がれません。</p>
   </section>`;
 }
 function footer(){
-  return `<footer class="disc">このアプリは売買の判断を練習・検証するためのものです。実際の注文はできず、証券会社の口座にも接続しません。表示する判断や検証結果は、将来の利益を約束するものではありません。実際に取引するかどうかは、ご自身で判断してください。</footer>`;
+  return S.tab==="signal"||S.tab==="trade" ? `<footer class="disc">練習・検証のためのアプリです。実際の注文はできません。利益を約束するものではありません。</footer>` : "";
 }
 
 /* ---------- 画面の更新 ---------- */
 function render(){
-  const bd=$("#mode-badge"); if(bd){ bd.textContent = MODE==="live" ? "本物の価格" : "サンプルデータ"; bd.classList.toggle("live", MODE==="live"); }
-  document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.sym===S.sym));
+  const bd=$("#mode-badge"); if(bd){ bd.textContent = MODE==="live" ? "本物の価格" : "サンプル"; bd.classList.toggle("live", MODE==="live"); }
+  document.querySelectorAll(".metal button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.sym===S.sym));
   document.querySelectorAll("nav.tabs button").forEach(b=>{ if(b.dataset.tab===S.tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   const v = { signal:viewSignal, trade:viewTrade, stats:viewStats, bt:viewBT, cfg:viewCfg }[S.tab]();
   $("#app").innerHTML = `<div class="view">${v}${footer()}</div>`;
