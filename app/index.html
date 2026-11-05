@@ -1171,15 +1171,22 @@ async function resetDemo(){
 function posBox(p, fallback){
   const c=S.cfg.cost.gold, h=c.spread/2, mid=MODE==="live"&&LIVE.gold?LIVE.gold.price:NaN, fx=fxNow();
   const exit=mid-p.dir*h, ok=Number.isFinite(exit), usd=ok?(exit-p.entry)*p.dir:0, now=ok?usd*p.qty*fx:0;
-  const dS=(p.sl-p.entry)*p.dir, sg=v=>(v>=0?"＋":"−")+Math.abs(v).toFixed(1);   // 損切りの位置（入った価格からの差。向きをそろえる）
-  const slTxt=`${p.sl0&&p.sl!==p.sl0?"決済の位置":"損切り"} ${p.sl}（${sg((p.sl-p.entry))}ドル${dS>0?"・利益を守る位置":""}）`;
-  const tpTxt=p.tp?`利確 ${p.tp}（${sg(p.tp-p.entry)}ドル）`:`利確は決めない（${p.trailFrom||10}ドル伸びたら、${p.trail||18}ドル戻した所で決済）`;
-  const bestTxt=p.best!=null&&p.best!==p.entry?`<div class="t2">いちばん伸びた所 ${p.best}（${sg((p.best-p.entry)*p.dir)}ドル）</div>`:"";
+  // 得した向きを＋、損した向きを−で書く（売りなら下がると＋）
+  const sg=v=>(v>=0?"＋":"−")+Math.abs(v).toFixed(1)+"ドル", dS=(p.sl-p.entry)*p.dir;
+  const row=(k,v,c="")=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid #222"><span class="t2">${k}</span><span class="num ${c}" style="text-align:right">${v}</span></div>`;
+  const rows=[
+    row("入った価格", p.entry),
+    ok?row("今の価格", `${exit.toFixed(2)}（${sg(usd)}）`, cls(usd)):"",
+    p.best!=null&&(p.best-p.entry)*p.dir>0?row("いちばん伸びた所", `${p.best}（${sg((p.best-p.entry)*p.dir)}）`):"",
+    dS>0?row("ここまで戻ったら利確", `${p.sl}（${sg(dS)}）`, "up"):row("ここまで行ったら損切り", `${p.sl}（${sg(dS)}）`, "down"),
+    p.tp?row("利確の価格", `${p.tp}（${sg((p.tp-p.entry)*p.dir)}）`):row("利確の価格", "決めていない"),
+  ].join("");
+  const how=p.tp?"":`<div class="t2" style="margin-top:6px">${p.trailFrom||10}ドル以上伸びたら、「いちばん伸びた所から${p.trail||18}ドル戻ったら利確」に変わります。伸びるほど、利確の位置もついてきます。</div>`;
   const basis=(p.basis&&p.basis.length)?p.basis:fallback;
   return `<div class="item"><div style="flex:1">
     <div class="t1"><span class="tag ${p.dir===1?"buy":"sell"}">${p.dir===1?"買い":"売り"}</span>保有中・${p.qty}オンス</div>
     ${ok?`<div class="big ${cls(now)}" style="font-size:28px;margin:6px 0 2px">${yen(now,true)}</div><div class="t2">今の損益（評価額）・今の${p.dir===1?"売値":"買値"} ${exit.toFixed(2)}・${usd>=0?"＋":"−"}${Math.abs(usd/0.1).toFixed(0)}ピプス</div>`:`<div class="t2">今の損益は、価格を受け取ると出ます</div>`}
-    <div class="t2 num">入った ${p.entry} ／ ${slTxt} ／ ${tpTxt}</div>${bestTxt}
+    <div style="margin-top:6px">${rows}</div>${how}
     <div class="t2">${ft(p.t)}から</div>
     ${basis.length?`<div class="t2" style="margin-top:8px"><b>入った根拠</b></div>${basis.map(b=>`<div class="t2">・${esc(b)}</div>`).join("")}`:""}
   </div></div>`;
@@ -1196,7 +1203,7 @@ function demoCard(){
     <div class="sub">${fd(d.startedAt)}から ・ ${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
     ${d.halted?`<div class="banner stop"><span><b>停止中：</b>${esc(d.halted.text)}</span></div>`:""}
     ${p?posBox(p,["1時間ごとの判断で「"+(p.dir===1?"買い":"売り")+"」が出たので入った"]):`<p class="sub">今は持っていません</p>`}
-    ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div></div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
+    ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why==="伸びたあと戻したので決済"?(t.net>0?"利確":"損切り"):t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div>${t.best!=null&&(t.best-t.entry)*t.dir>=10&&t.why!=="時間切れ"?`<div class="t2">いちばん${((t.best-t.entry)*t.dir).toFixed(1)}ドル伸びて、戻った所で決済</div>`:""}</div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
     <p class="note">毎時3分に、判断と損切り・利確を確かめます。資金・1回の許容損失・1日の上限は「設定」の値を使います。実際の注文はしません。</p>
     ${S.ui.askDemo?`<div class="confirm"><span>自動の練習の記録を消して、最初からやり直します。</span><button class="btn small" data-act="demoask" data-v="">やめる</button><button class="btn small sell" data-act="demoreset">やり直す</button></div>`:`<button class="linkbtn" data-act="demoask" data-v="1">自動の練習を最初からやり直す</button>`}
   </section>`;
@@ -1213,8 +1220,8 @@ function scalpCard(){
     ${d.halted?`<div class="banner stop"><span><b>停止中：</b>${esc(d.halted.text)}</span></div>`:""}
     ${!p&&d.log&&d.log.length&&d.log[d.log.length-1].kind==="skip"?`<p class="sub">${ft(d.log[d.log.length-1].at)}：${esc(d.log[d.log.length-1].why)}</p>`:""}
     ${p?posBox(p,["直前の30分が"+(p.dir===1?"上がった":"下がった")+"ので"+(p.dir===1?"買い":"売り"),"損切り：入る"+(p.dir===1?"−":"＋")+Math.abs(p.sl-p.entry).toFixed(2)+"ドル（"+p.qty+"枚で約"+Math.round(p.risk/1e4)+"万円）",(p.tp?"利確：入る"+(p.dir===1?"＋":"−")+Math.abs(p.tp-p.entry).toFixed(2)+"ドル（損切り幅の2倍）":"利確は決めない（伸びたら損切りの位置を追いかけて動かす）"),"4時間たっても届かなければ、その時の価格で決済（"+ft(p.t+4*3600e3)+"ごろ）"]):`<p class="sub">今は持っていません</p>`}
-    ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div></div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
-    <p class="note">向きは直前の30分が上がったら買い・下がったら売り。最初の損切りは設定の金額（15枚で5万円）。利確は決めず、10ドル伸びたら「いちばん伸びた所から18ドル戻したら決済」に損切りを動かします。最長4時間。進む方向のすぐ先（12ドル以内）に節目があれば見送り、土曜の朝は入りません。過去1年3か月の1分足では約＋450万円（スプレッド1.2ドルなら約＋185万円）でしたが、途中で最大約180万円の落ち込みがありました。実際の注文はしません。</p>
+    ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why==="伸びたあと戻したので決済"?(t.net>0?"利確":"損切り"):t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div>${t.best!=null&&(t.best-t.entry)*t.dir>=10&&t.why!=="時間切れ"?`<div class="t2">いちばん${((t.best-t.entry)*t.dir).toFixed(1)}ドル伸びて、戻った所で決済</div>`:""}</div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
+    <p class="note">決め方：直前の30分と同じ向きに入る → 損切りは5万円 → 10ドル以上伸びたら「いちばん伸びた所から18ドル戻ったら利確」 → 最長4時間。すぐ先に節目があるときと、土曜の朝は入らない。実際の注文はしません。</p>
   </section>`;
 }
 function viewStats(){
