@@ -93,7 +93,7 @@ export default {
       catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ 結果: "途中で止まりました", 理由: String(e && e.message || e) }, 500); }
     }
     if (path === "/status") return json({ checked: await d.get("checked"), last: await d.get("last"), subs: ((await d.get("subs")) || []).length });
-    if (req.method !== "POST") return json({ ok: true, name: "金銀シグナルの見張り役" });
+    if (req.method !== "POST") return json({ 名前: "金銀シグナルの見張り役", 使い方: "/run で判断を1回動かす（5分に1回まで）、/demo で自動の練習の記録、/status で最後に判断した時刻" });
     const body = await req.json().catch(() => ({}));
     if (path === "/subscribe") {
       const sub = body.subscription;
