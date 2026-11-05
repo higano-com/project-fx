@@ -102,7 +102,8 @@ export default {
       const okNum = (v, a, b) => Number.isFinite(+v) && +v >= a && +v <= b;
       if (!okNum(p.slMult, 0.5, 5) || !okNum(p.rr, 0.5, 6) || !okNum(p.minStop, 0, 100) || !okNum(c.spread, 0, 20) || !okNum(c.slip, 0, 20) || !okNum(c.step, 0.01, 10) || !okNum(r, 100, 1e7)) return json({ error: "bad_state" }, 400);
       await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r,
-        capital: okNum(body.capital, 10000, 1e10) ? +body.capital : 1000000, dailyLimit: okNum(body.dailyLimit, 100, 1e9) ? +body.dailyLimit : 150000, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
+        capital: okNum(body.capital, 10000, 1e10) ? +body.capital : 1000000, dailyLimit: okNum(body.dailyLimit, 100, 1e9) ? +body.dailyLimit : 150000,
+        fixed: body.fixed && body.fixed.on && okNum(body.fixed.qty, 0.1, 1000) && okNum(body.fixed.loss, 100, 1e8) && okNum(body.fixed.rr, 0.5, 10) ? { on: true, qty: +body.fixed.qty, loss: +body.fixed.loss, rr: +body.fixed.rr } : { on: false }, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
       return json({ ok: true });
     }
     if (path === "/demo/reset") {   // 自動の練習を最初からやり直す（合言葉が必要）
@@ -110,6 +111,10 @@ export default {
       if (!token || body.token !== token) return json({ error: "bad_token" }, 403);
       const st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
       await d.put("demo", newDemo(st.capital || 1000000, Date.now()));
+      // 数量の決め方が変わったら、自動の練習を最初からやり直す
+      const prev = (await d.get("prevFixed")) || null, nowF = JSON.stringify((await d.get("state")).fixed || {});
+      if (prev !== null && prev !== nowF) { const st2 = await d.get("state"); await d.put("demo", newDemo(st2.capital || 1000000, Date.now())); }
+      await d.put("prevFixed", nowF);
       return json({ ok: true });
     }
     if (path === "/test") {

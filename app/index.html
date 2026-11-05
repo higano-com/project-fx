@@ -309,7 +309,8 @@ const DEFAULT_CFG = {
   rule: "ichimoku",      // 判断のルール："ichimoku"（一目均衡表＋損切り幅の下限＋日足の流れ）／"pullback"（押し目・戻り）
   params: { fast:20, slow:100, slMult:1.5, rr:2.0 },      // 押し目・戻りの設定
   paramsI: { slMult:1.5, rr:2.0, minStop:6 },             // 一目均衡表の設定
-  auto: { on:true, month:"", at:0, trades:0, net:0 },     // 毎月、直近3か月の値動きで設定を自動で見直す
+  auto: { on:true, month:"", at:0, trades:0, net:0 },
+  fixed: { on:true, qty:15, loss:50000, rr:3 },          // 数量を固定（金15枚・損切り5万円、利確は損切り幅の3倍＝research/fixed15.mjs で2〜5倍がどれも良く、真ん中の3倍）     // 毎月、直近3か月の値動きで設定を自動で見直す
   goal: { amount:3500000, deadline:"2026-12-31" }        // あなたが決める目標（期限までの利益）
 };
 /* アプリが決める部分：資金に合わせて、最初に決めた条件（100万円で1回2,500円・1日1万円・5％で停止・同時2つ）と同じ割合にする。
@@ -324,7 +325,7 @@ function applyAuto(c){
   return c;
 }
 const stopAmount = c => c.capital * c.maxDDPct / 100;
-const CFG_VER = 4;
+const CFG_VER = 5;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function mergeCfg(saved, savedVer){
   const c = clone(DEFAULT_CFG);
@@ -332,6 +333,7 @@ function mergeCfg(saved, savedVer){
   if(saved.rule==="pullback" || saved.rule==="ichimoku") c.rule = (savedVer>=3 ? saved.rule : "ichimoku");
   if(saved.paramsI) for(const k in c.paramsI) if(typeof saved.paramsI[k]==="number") c.paramsI[k]=saved.paramsI[k];
   if(saved.auto && typeof saved.auto==="object") c.auto = { ...c.auto, ...saved.auto };
+  if(saved.fixed && typeof saved.fixed==="object" && savedVer>=5) c.fixed = { ...c.fixed, ...saved.fixed, rr:3 };
   if(saved.goal && typeof saved.goal==="object"){ if(typeof saved.goal.amount==="number") c.goal.amount=saved.goal.amount; if(/^\d{4}-\d{2}-\d{2}$/.test(saved.goal.deadline||"")) c.goal.deadline=saved.goal.deadline; }
   for(const k of (savedVer>=4 ? ["capital","riskPerTrade","dailyLimit","usdjpy"] : ["capital","usdjpy"])) if(typeof saved[k]==="number") c[k]=saved[k];
   // 設定の版が古い（GMOの実際の値を入れる前）なら、金のコストは新しい初期値を使う
@@ -742,8 +744,9 @@ function currentDecision(sym){
   const sig = signalAt(sym,i,p,cfg,true);
   const bOk = sig.buy.filter(x=>x.ok).length, sOk = sig.sell.filter(x=>x.ok).length;
   const lean = sig.side!=="wait" ? sig.side : (bOk>=sOk ? "buy" : "sell");
-  const lv = levels(lean, midNow(sym), sig.stopDist, p, c.spread);
-  const sz = sizeFor(sym, sig.stopDist, cfg, fxNow());
+  if(cfg.fixed && cfg.fixed.on){ sig.atrStop = sig.stopDist; sig.stopDist = Math.max(1, cfg.fixed.loss/(cfg.fixed.qty*fxNow()) - c.slip); }
+  const lv = levels(lean, midNow(sym), sig.stopDist, cfg.fixed && cfg.fixed.on ? { ...p, rr:cfg.fixed.rr } : p, c.spread);
+  const sz = cfg.fixed && cfg.fixed.on ? { qty:cfg.fixed.qty, perUnit:(sig.stopDist+c.slip)*fxNow(), risk:(sig.stopDist+c.slip)*fxNow()*cfg.fixed.qty } : sizeFor(sym, sig.stopDist, cfg, fxNow());
   { const step=cfg.cost[sym].step, perOz=midNow(sym)*fxNow()/20, mq=Math.floor(cfg.capital*0.5/perOz/step+1e-9)*step;
     if(sz.qty > mq){ sz.qty=Math.max(0,+mq.toFixed(4)); sz.risk=sz.qty*sz.perUnit; sz.capped=true; } }
   const dp = a.dayKey===dayKey(t) ? a.dayPnl : 0, openRisk = a.positions.reduce((s,x)=>s+x.risk,0);
@@ -1256,6 +1259,8 @@ function viewCfg(){
     ${field("f-capital","GMOの口座の金額（円）",`＝${(c.capital/1e4).toLocaleString("ja-JP")}万円。今、口座に入っている金額`,c.capital,10000)}
     ${field("f-riskPerTrade","1回の許容損失（円）",`＝口座の${(c.riskPerTrade/c.capital*100).toFixed(1)}％。損切りになってもこの金額まで`,c.riskPerTrade,1000)}
     ${field("f-dailyLimit","1日の損失上限（円）",`＝口座の${(c.dailyLimit/c.capital*100).toFixed(1)}％。超えそうならその日は見送る`,c.dailyLimit,1000)}
+    <div class="field"><label>数量の決め方<small>${c.fixed.on?`固定：金${c.fixed.qty}枚・損切り${yen(c.fixed.loss)}（損切りの幅 約${(c.fixed.loss/(c.fixed.qty*fxNow())-c.cost.gold.slip).toFixed(1)}ドル）・利確は自動（損切り幅の${c.fixed.rr}倍）`:"自動：1回の許容損失に収まるように決める"}</small></label><button type="button" class="btn ${c.fixed.on?"primary":""}" data-act="fixedtoggle">${c.fixed.on?"固定":"自動"}</button></div>
+    ${c.fixed.on?`${field("f-fixed-qty","数量（枚＝オンス）","",c.fixed.qty,0.1)}${field("f-fixed-loss","損切りの金額（円）","損切りになったら、この金額の損",c.fixed.loss,1000)}`:""}
     ${field("f-goal-amount","目標の利益（円）",`＝${(c.goal.amount/1e4).toLocaleString("ja-JP")}万円`,c.goal.amount,100000)}
     <div class="field"><label for="f-deadline">期限<small>${c.goal.deadline.replace(/^(\d+)-(\d+)-(\d+)$/,(m,y,mo,d)=>`${y}年${+mo}月${+d}日`)}</small></label><input id="f-deadline" type="date" value="${c.goal.deadline}" data-date="goal.deadline"></div>
     ${c.riskPerTrade/c.capital>=0.05?`<p class="note"><span class="warn-box" style="display:block"><b>1回の許容損失が口座の${(c.riskPerTrade/c.capital*100).toFixed(1)}％です。</b>とても大きい額です。一般には1回で口座の1〜2％までが目安と言われます。損切りが数回続くだけで、口座が大きく減ります。</span></p>`
@@ -1368,7 +1373,7 @@ async function pushState(){
   if(!WORKER || MODE!=="live") return;
   if(!S.notifyToken) return;
   const a=S.acct, t=Date.now(), dp=a.dayKey===dayKey(t)?a.dayPnl:0;
-  try{ await fetch(WORKER+"/state",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ token:S.notifyToken, paramsI:S.cfg.paramsI, cost:S.cfg.cost.gold, riskPerTrade:S.cfg.riskPerTrade, capital:S.cfg.capital, dailyLimit:S.cfg.dailyLimit, stop:{ halted:!!a.halted, dayOver: dp <= -S.cfg.dailyLimit, full: a.positions.length>=S.cfg.maxPositions }, version:S.cfg.auto.at||0 }) }); }catch(e){}
+  try{ await fetch(WORKER+"/state",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ token:S.notifyToken, paramsI:S.cfg.paramsI, cost:S.cfg.cost.gold, riskPerTrade:S.cfg.riskPerTrade, capital:S.cfg.capital, dailyLimit:S.cfg.dailyLimit, fixed:S.cfg.fixed, stop:{ halted:!!a.halted, dayOver: dp <= -S.cfg.dailyLimit, full: a.positions.length>=S.cfg.maxPositions }, version:S.cfg.auto.at||0 }) }); }catch(e){}
 }
 async function enableNotify(){
   if(!WORKER){ toast("通知の準備がまだできていません"); return; }
@@ -1471,6 +1476,7 @@ document.addEventListener("click", e=>{
   }
   else if(act==="usebt" && S.bt && S.bt.rule===S.cfg.rule){ S.cfg[RULES[S.cfg.rule].pk]=clone(S.bt.robust.p); save(); render(); toast("判断のルールを検証で選んだ設定に変えました"); }
   else if(act==="notify-on"){ enableNotify(); }
+  else if(act==="fixedtoggle"){ S.cfg.fixed.on=!S.cfg.fixed.on; save(); render(); pushState(); toast(S.cfg.fixed.on?"数量を固定にしました":"数量を自動にしました"); }
   else if(act==="demoask"){ S.ui.askDemo=!!b.dataset.v; render(); }
   else if(act==="demoreset"){ resetDemo(); }
   else if(act==="notify-test"){ testNotify(); }
@@ -1494,7 +1500,8 @@ document.addEventListener("change", e=>{
   if(S.cfg.cost.gold.step<=0) S.cfg.cost.gold.step=0.1;
   if(S.cfg.cost.silver.step<=0) S.cfg.cost.silver.step=1;
   save(); toast("保存しました");
-  if(["capital","riskPerTrade","dailyLimit","goal"].includes(path[0])) setTimeout(render, 0);   // 入力欄を離れた直後に書き換えると失敗するので、少し後で
+  if(["capital","riskPerTrade","dailyLimit","goal","fixed"].includes(path[0])) setTimeout(render, 0);
+  if(["capital","riskPerTrade","dailyLimit","fixed"].includes(path[0])) pushState();   // 入力欄を離れた直後に書き換えると失敗するので、少し後で
 });
 document.addEventListener("input", e=>{
   const g=e.target;
