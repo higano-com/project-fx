@@ -1,13 +1,13 @@
-確かめた時刻: 2026-11-05T12:55:04Z
+確かめた時刻: 2026-11-05T13:02:04Z
 === /
 {"名前":"金銀シグナルの見張り役","使い方":"/run で判断を1回動かす（5分に1回まで）、/demo で自動の練習の記録、/status で最後に判断した時刻"}
 === /status
-{"checked":{"at":1793882948188,"error":"鍵（TWELVEDATA_API_KEY）が見張り役に設定されていない"},"last":null,"subs":2}
+{"checked":{"at":1793883308144,"side":"wait","barT":1793876400000},"last":null,"subs":2}
 === /demo
-{"demo":null}
+{"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]}}
 === /run
 {"結果":"動きました","判断":"待ち","自動の練習":"動いています","理由":"なし"}
 === /status
-{"checked":{"at":1793883308144,"side":"wait","barT":1793876400000},"last":null,"subs":2}
+{"checked":{"at":1793883727624,"side":"wait","barT":1793880000000},"last":null,"subs":2}
 === /demo
 {"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]}}
