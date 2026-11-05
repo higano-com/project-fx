@@ -7,12 +7,12 @@ import { rolling } from "./rolling.mjs";
 const B = prepare(loadCsv("data/xau_usd_1h.csv"), loadCsv("data/usd_jpy_1h.csv"));
 FILTERS.bigBar = { opts: [0, 0.6, 1.0], fn: (B, i, s, v) => !v || Math.abs(B.c[i] - B.o[i]) > v * B.atr[i] };
 const S = compose(STRATEGIES.ichimoku, { bigBar: 0.6 }, ["minStop", "daily"]);
-const RISK = 30000, DAILY = 150000;
+const RISK = +(process.argv[2] || 30000), DAILY = 150000;   // 1回の許容損失（円）を引数で指定できる
 const man = v => (v / 1e4).toFixed(1) + "万円";
 const runs = [0, 7, 14, 21].map(o => rolling(B, S, o));
-for (const cap of [1000000, 3000000]) {
+for (const cap of [1000000, 3000000, 5000000]) {
   const stopAmt = Math.min(DAILY * 2, cap * 0.2);
-  console.log(`\n■ 口座${man(cap)}・1回3万円（口座の${(RISK / cap * 100).toFixed(1)}％）・停止ライン −${man(stopAmt)}`);
+  console.log(`\n■ 口座${man(cap)}・1回${man(RISK)}（口座の${(RISK / cap * 100).toFixed(1)}％）・停止ライン −${man(stopAmt)}`);
   runs.forEach((tr, k) => {
     let eq = 0, pk = 0, dd = 0, streak = 0, maxStreak = 0, stopped = null;
     for (const t of tr) {
