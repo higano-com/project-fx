@@ -13,17 +13,17 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Twelve Data から1分足を取得（約5か月分）
+      - name: Twelve Data から1分足を取得（約1年半分）
         env:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
           INTERVAL: "1min"
-          PAGES: "30"
+          PAGES: "120"
         run: node scripts/fetch-data.mjs
       - name: data/ を保存
         run: |
