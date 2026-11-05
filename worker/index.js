@@ -83,10 +83,14 @@ export default {
     }
     if (path === "/run") {   // 手で判断を1回動かす（無料の回数を守るため、5分に1回まで）
       const lr = (await d.get("lastRun")) || 0;
-      if (Date.now() - lr < 5 * 60e3) return json({ error: "5分に1回までです", next: new Date(lr + 5 * 60e3).toISOString() }, 429);
+      if (Date.now() - lr < 5 * 60e3) return json({ 結果: "5分に1回までです。少し待ってから開き直してください" }, 429);
       await d.put("lastRun", Date.now());
-      try { const r = await check(env, false); return json({ ok: true, result: r, demo: !!(await d.get("demo")) }); }
-      catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ error: "途中で止まった", message: String(e && e.message || e) }, 500); }
+      try {
+        const r = await check(env, false), demo = await d.get("demo");
+        const word = r.error === "no_key" ? "鍵が設定されていません" : r.error ? "価格を受け取れませんでした" : r.side === "buy" ? "買い" : r.side === "sell" ? "売り" : "待ち";
+        return json({ 結果: r.error ? "うまく動きませんでした" : "動きました", 判断: word, 自動の練習: demo ? "動いています" : "まだ作られていません", 理由: r.error ? (r.message || r.error) : "なし" });
+      }
+      catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ 結果: "途中で止まりました", 理由: String(e && e.message || e) }, 500); }
     }
     if (path === "/status") return json({ checked: await d.get("checked"), last: await d.get("last"), subs: ((await d.get("subs")) || []).length });
     if (req.method !== "POST") return json({ ok: true, name: "金銀シグナルの見張り役" });
