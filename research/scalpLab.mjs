@@ -34,7 +34,7 @@ export const BASE = { dir: "prev30", stop: 21.4, trail: 18, from: 10, hold: 240,
 export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
   const H = cost.sp / 2, SLIP = cost.slip, tr = [];
   const P = cfg.sr ? piv(cfg.sr.tf, cfg.sr.s) : null, T30 = TF["30"], T60 = TF["60"], T240 = TF["240"];
-  let pos = null, coolUntil = 0, dayK = "", dayN = 0;
+  let pos = null, coolUntil = 0, dayK = "", dayN = 0, streak = 0, dayLoss = 0, lossDay = "";
   for (let k = 0; k < N; k++) {
     const t = T[k];
     if (pos) {
@@ -52,7 +52,11 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
           else { px = c; why = "時間切れ"; }
         }
       }
-      if (px !== null) { const usd = (px - pos.entry) * d; tr.push({ t: pos.t, usd, why }); if (why === "損切り" && cfg.cool) coolUntil = t + cfg.cool * 60e3; pos = null; }
+      if (px !== null) { const usd = (px - pos.entry) * d; tr.push({ t: pos.t, usd, why }); if (why === "損切り" && cfg.cool) coolUntil = t + cfg.cool * 60e3;
+        streak = usd < 0 ? streak + 1 : 0; if (cfg.streak && streak >= cfg.streak[0]) { coolUntil = Math.max(coolUntil, t + cfg.streak[1] * 60e3); streak = 0; }
+        const lk = new Date(t + 2 * 3600e3).toISOString().slice(0, 10); if (lk !== lossDay) { lossDay = lk; dayLoss = 0; } dayLoss += usd * YEN;
+        if (cfg.dayStop && dayLoss <= -cfg.dayStop) coolUntil = Math.max(coolUntil, (Math.floor((t + 2 * 3600e3) / 86400e3) + 1) * 86400e3 - 2 * 3600e3);
+        pos = null; }
     }
     if (pos) continue;
     const mm = new Date(t).getUTCMinutes();
@@ -71,6 +75,7 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
     if (cfg.agree4h && !cfg.dir.startsWith("agree")) { const j = T240.idx.get(Math.floor(t / 14400e3) * 14400e3) - 1; if (!(j >= 50)) continue; if ((T240.B[j].c > T240.e20[j] ? 1 : -1) !== dir) continue; }
     if (cfg.noWd && cfg.noWd.includes(new Date(t + 9 * 3600e3).getUTCDay())) continue;
     if (cfg.minMove && Math.abs(b.c - b.o) < cfg.minMove * atr) continue;
+    if (cfg.minEff) { let rng = 0; for (let j = i - 7; j <= i; j++) rng += T30.B[j].h - T30.B[j].l; const eff = Math.abs(b.c - T30.B[i - 7].o) / Math.max(1, rng / 8 * 8); if (eff < cfg.minEff) continue; }   // 直近4時間の進み具合
     if (cfg.vol && (atr < cfg.vol[0] || atr > cfg.vol[1])) continue;
     const dk = new Date(t + 2 * 3600e3).toISOString().slice(0, 10); if (dk !== dayK) { dayK = dk; dayN = 0; }
     if (cfg.maxDay && dayN >= cfg.maxDay) continue;
