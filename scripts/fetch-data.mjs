@@ -9,11 +9,12 @@ if (!KEY) {
   console.log("TWELVEDATA_API_KEY が GitHub の Secrets に設定されていないため、取得をスキップしました。");
   process.exit(0);
 }
-const SYMBOLS = [
-  { symbol: "XAU/USD", file: "xau_usd_1h.csv" },
-  { symbol: "USD/JPY", file: "usd_jpy_1h.csv" },
-];
-const MAX_PAGES = 10;            // 1回5000本 × 最大10回（1時間足で約7年分まで）
+// INTERVAL=1min のときは、金の1分足を集める（短い時間のレンジの検証用）
+const INTERVAL = process.env.INTERVAL || "1h";
+const SYMBOLS = INTERVAL === "1min"
+  ? [{ symbol: "XAU/USD", file: "xau_usd_1min.csv" }]
+  : [{ symbol: "XAU/USD", file: "xau_usd_1h.csv" }, { symbol: "USD/JPY", file: "usd_jpy_1h.csv" }];
+const MAX_PAGES = +(process.env.PAGES || 10);   // 1回5000本 × 最大PAGES回
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fmt = t => new Date(t).toISOString().slice(0, 16).replace("T", " ");
 
@@ -24,7 +25,7 @@ for (const { symbol, file } of SYMBOLS) {
   let end = null, note = "";
   for (let page = 0; page < MAX_PAGES; page++) {
     const url = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(symbol) +
-      "&interval=1h&outputsize=5000&timezone=UTC&order=desc" + (end ? "&end_date=" + encodeURIComponent(end) : "") +
+      "&interval=" + INTERVAL + "&outputsize=5000&timezone=UTC&order=desc" + (end ? "&end_date=" + encodeURIComponent(end) : "") +
       "&apikey=" + KEY;
     let j = null;
     for (let tryNo = 0; tryNo < 4; tryNo++) {   // 「1分あたりの回数」を超えたら1分待って取り直す
@@ -48,12 +49,12 @@ for (const { symbol, file } of SYMBOLS) {
     }
     console.log(`${symbol}: ${page + 1}回目 ${j.values.length}本（${fmt(oldest)} まで）`);
     if (j.values.length < 5000) { note = "これより前のデータはありません"; break; }
-    end = fmt(oldest - 3600e3) + ":00";
+    end = fmt(oldest - (INTERVAL === "1min" ? 60e3 : 3600e3)) + ":00";
   }
   const list = [...rows.values()].sort((a, b) => a[0] - b[0]);
   const csv = "time_utc,open,high,low,close\n" + list.map(r => [fmt(r[0]), ...r.slice(1)].join(",")).join("\n") + "\n";
   writeFileSync("data/" + file, csv);
   summary[symbol] = { bars: list.length, from: list.length ? fmt(list[0][0]) : null, to: list.length ? fmt(list[list.length - 1][0]) : null, note };
 }
-writeFileSync("data/summary.json", JSON.stringify({ fetchedAt: new Date().toISOString(), source: "Twelve Data (1h, UTC)", ...summary }, null, 2) + "\n");
+writeFileSync(INTERVAL === "1min" ? "data/summary_1min.json" : "data/summary.json", JSON.stringify({ fetchedAt: new Date().toISOString(), source: "Twelve Data (1h, UTC)", ...summary }, null, 2) + "\n");
 console.log(JSON.stringify(summary, null, 2));
