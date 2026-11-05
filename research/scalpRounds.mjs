@@ -4,7 +4,7 @@
 import { writeFileSync } from "node:fs";
 import { score, BASE, man, START, CHECK, FINAL, END } from "./scalpLab.mjs";
 const d = t => new Date(t).toISOString().slice(0, 10);
-const H = (a, b) => { const o = []; for (let h = a; h !== b; h = (h + 1) % 24) o.push(h); return o; };
+const H = (a, b) => { const o = []; for (let h = a; o.length === 0 || (h % 24 !== b % 24 && o.length < 24); h++) o.push(h % 24); return o; };   // a時〜b時の前まで
 const rounds = [
   ["向きの決め方", [["直前の1時間", c => ({ ...c, dir: "prev60" })], ["30分と1時間がそろう", c => ({ ...c, dir: "both" })], ["30分の足が2本続けて同じ向き", c => ({ ...c, dir: "two30" })], ["平均線の上下", c => ({ ...c, dir: "ema" })], ["逆張り", c => ({ ...c, dir: "fade" })]]],
   ["4時間の流れとそろえる", [["そろうときだけ", c => ({ ...c, agree4h: true })]]],
