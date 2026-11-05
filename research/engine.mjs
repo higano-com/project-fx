@@ -247,11 +247,19 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
   const trades = []; let pos = null, pend = null;
   const h = COST.spread / 2;
   for (let i = from; i < to; i++) {
+    if (pend && pend.trig != null) {   // 高値（安値）を抜けたときだけ入る。抜けなければ取り消し
+      const hit = pend.dir === 1 ? B.h[i] >= pend.trig : B.l[i] <= pend.trig;
+      if (!hit) pend = null;
+      else pend.entryPx = pend.dir === 1 ? Math.max(B.o[i], pend.trig) : Math.min(B.o[i], pend.trig);
+    }
     if (pend) {
-      const entry = B.o[i] + pend.dir * h, qty = RISK / ((pend.stop + COST.slip) * B.fx[i]);
-      pos = { i, t: B.t[i], dir: pend.dir, entry, sl: entry - pend.dir * pend.stop, tp: entry + pend.dir * pend.stop * pend.rr, qty, stopFrac: pend.stop / entry, regime: B.regime[pend.i], stop0: pend.stop, be: pend.be || 0, trail: pend.trail || 0, hold: pend.hold || maxHold };
+      const entry = (pend.entryPx ?? B.o[i]) + pend.dir * h, qty = RISK / ((pend.stop + COST.slip) * B.fx[i]);
+      pos = { i, t: B.t[i], dir: pend.dir, entry, sl: entry - pend.dir * pend.stop, tp: entry + pend.dir * pend.stop * pend.rr, qty, stopFrac: pend.stop / entry, regime: B.regime[pend.i], stop0: pend.stop, be: pend.be || 0, trail: pend.trail || 0, hold: pend.hold || maxHold,
+        half: pend.half || 0, halfDone: false, realized: 0, rest: 1, add: pend.add || 0, added: null, addNext: false };
       pend = null;
     }
+    // 買い増し：前の足で条件を満たしたら、この足の始値で同じ数量を足す（損切りは最初に入った価格へ）
+    if (pos && pos.addNext && !pos.added) { pos.added = { entry: B.o[i] + pos.dir * h, qty: pos.qty }; pos.addNext = false; pos.sl = pos.entry; }
     if (pos && flat && flat[i] && i > pos.i) {   // 発表の前に決済（その足の始値で）
       const px = B.o[i] - pos.dir * h, days = rollovers(pos.t, B.t[i]);
       const swap = (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.qty * days;
@@ -269,7 +277,12 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
         if (o >= pos.sl) { px = o + COST.slip; why = "損切り"; } else if (hi >= pos.sl) { px = pos.sl + COST.slip; why = "損切り"; }
         else if (o <= pos.tp) { px = o; why = "利確"; } else if (lo <= pos.tp) { px = pos.tp; why = "利確"; }
       }
+      if (px === null && pos.half && !pos.halfDone) {
+        const tp1 = pos.entry + pos.dir * pos.stop0 * pos.half, hit = pos.dir === 1 ? B.h[i] - h >= tp1 : B.l[i] + h <= tp1;
+        if (hit) { pos.realized += (tp1 - pos.entry) * pos.dir * pos.qty * 0.5 * B.fx[i]; pos.rest = 0.5; pos.halfDone = true; pos.sl = pos.entry; }
+      }
       if (!px && i - pos.i >= pos.hold) { px = B.c[i] - pos.dir * h; why = "時間切れ"; }
+      if (px === null && pos.add && !pos.added && !pos.addNext && (B.c[i] - pos.entry) * pos.dir / pos.stop0 >= pos.add) pos.addNext = true;
       // 足が終わったところで損切りを動かす（次の足から有効。先の値動きは見ない）
       if (px === null && (pos.be || pos.trail)) {
         const gainR = (B.c[i] - pos.entry) * pos.dir / pos.stop0;
@@ -281,7 +294,8 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
       if (px !== null) {
         const days = rollovers(pos.t, B.t[i]);
         const swap = (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.qty * days;
-        const net = (px - pos.entry) * pos.dir * pos.qty * B.fx[i] - swap;
+        let net = pos.realized + (px - pos.entry) * pos.dir * pos.qty * pos.rest * B.fx[i] - swap;
+        if (pos.added) net += (px - pos.added.entry) * pos.dir * pos.added.qty * B.fx[i] - (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.added.qty * days;
         trades.push({ t: pos.t, t1: B.t[i], dir: pos.dir, R: net / RISK, usd: (px - pos.entry) * pos.dir, why, regime: pos.regime, stopFrac: pos.stopFrac, hours: i - pos.i });
         pos = null;
       }
@@ -289,7 +303,7 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
     if (!pos && !pend && i < to - 1) {
       if (COST.spread > 0) {
         const s = strat.fn(B, i, p);
-        if (s && (s.noCostCheck || COST.spread <= 0.1 * s.stop)) pend = { ...s, i };   // noCostCheck：コストの確認をしない（検証で比べるとき用）
+        if (s && (s.noCostCheck || COST.spread <= 0.1 * s.stop)) { pend = { ...s, i }; if (s.trigBuf != null) pend.trig = s.dir === 1 ? B.h[i] + s.trigBuf * B.atr[i] : B.l[i] - s.trigBuf * B.atr[i]; }   // noCostCheck：コストの確認をしない（検証で比べるとき用）
       }
     }
   }
