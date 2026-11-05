@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: 見張り役を読む
         run: |
+          sleep 90   # 見張り役の更新が終わるのを待つ
           mkdir -p data/raw
           W=https://kingin-mihari.higano-com.workers.dev
           {
