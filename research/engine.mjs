@@ -282,7 +282,7 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
         const days = rollovers(pos.t, B.t[i]);
         const swap = (pos.dir === 1 ? COST.swapLong : COST.swapShort) * pos.qty * days;
         const net = (px - pos.entry) * pos.dir * pos.qty * B.fx[i] - swap;
-        trades.push({ t: pos.t, t1: B.t[i], dir: pos.dir, R: net / RISK, why, regime: pos.regime, stopFrac: pos.stopFrac, hours: i - pos.i });
+        trades.push({ t: pos.t, t1: B.t[i], dir: pos.dir, R: net / RISK, usd: (px - pos.entry) * pos.dir, why, regime: pos.regime, stopFrac: pos.stopFrac, hours: i - pos.i });
         pos = null;
       }
     }
