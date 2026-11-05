@@ -4,6 +4,7 @@
 // ・登録などの記録は、このワーカー専用の保管場所（Durable Object）に置く
 import { sendPush, makeVapidKeys } from "../lib/webpush.js";
 import { computeSignal } from "../lib/signal.js";
+import { newDemo, demoStep } from "../lib/demo.js";
 
 const SUBJECT = "https://project-fx-24u.pages.dev";
 const DEFAULT_STATE = { paramsI: { slMult: 1.5, rr: 2, minStop: 6 }, cost: { spread: 0.8, slip: 0.1, step: 0.1 }, riskPerTrade: 2500 };
@@ -49,6 +50,10 @@ async function check(env, force) {
   const fx = await td("price?symbol=USD%2FJPY");
   st.fx = +fx.price || 155;
   const sig = computeSignal(bars, Date.now(), st);
+  // 自動の練習の取引（仮想のお金だけ。実際の注文はしない）
+  let demo = await d.get("demo"); if (!demo) demo = newDemo(st.capital || 1000000, Date.now());
+  const demoEvents = demoStep(demo, bars, Date.now(), sig, st);
+  await d.put("demo", demo);
   // アプリと同じ停止の確認（停止中・今日の上限・保有の数がいっぱいなら通知しない）
   if (sig.side !== "wait" && st.stop && (st.stop.halted || st.stop.dayOver || st.stop.full)) { await d.put("checked", { at: Date.now(), side: "wait", reason: "停止の確認", barT: sig.barT }); return { ...sig, side: "wait", reason: "停止の確認" }; }
   const last = (await d.get("last")) || {};
@@ -71,6 +76,11 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     const d = db(env);
     if (path === "/vapid") return json({ publicKey: (await vapid(env)).publicKey });
+    if (path === "/demo") {   // 自動の練習の記録（読むだけ）
+      const demo = await d.get("demo");
+      if (!demo) return json({ demo: null });
+      return json({ demo: { ...demo, trades: demo.trades.slice(-50), log: demo.log.slice(-20) } });
+    }
     if (path === "/status") return json({ checked: await d.get("checked"), last: await d.get("last"), subs: ((await d.get("subs")) || []).length });
     if (req.method !== "POST") return json({ ok: true, name: "金銀シグナルの見張り役" });
     const body = await req.json().catch(() => ({}));
@@ -91,7 +101,15 @@ export default {
       const p = body.paramsI || {}, c = body.cost || {}, r = +body.riskPerTrade, stop = body.stop || {};
       const okNum = (v, a, b) => Number.isFinite(+v) && +v >= a && +v <= b;
       if (!okNum(p.slMult, 0.5, 5) || !okNum(p.rr, 0.5, 6) || !okNum(p.minStop, 0, 100) || !okNum(c.spread, 0, 20) || !okNum(c.slip, 0, 20) || !okNum(c.step, 0.01, 10) || !okNum(r, 100, 1e7)) return json({ error: "bad_state" }, 400);
-      await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
+      await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r,
+        capital: okNum(body.capital, 10000, 1e10) ? +body.capital : 1000000, dailyLimit: okNum(body.dailyLimit, 100, 1e9) ? +body.dailyLimit : 150000, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
+      return json({ ok: true });
+    }
+    if (path === "/demo/reset") {   // 自動の練習を最初からやり直す（合言葉が必要）
+      const token = await d.get("token");
+      if (!token || body.token !== token) return json({ error: "bad_token" }, 403);
+      const st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
+      await d.put("demo", newDemo(st.capital || 1000000, Date.now()));
       return json({ ok: true });
     }
     if (path === "/test") {

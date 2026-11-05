@@ -1153,10 +1153,39 @@ function goalCard(){
     <p class="note">見込みは、設定を選ぶのに使っていない期間の約280回の取引（2021〜2026年）から計算した目安で、約束ではありません。判断の方法はまだ検証中で、これからの練習の記録で確かめます。</p>
   </section>`;
 }
+/* 自動の練習の取引（見張り役が24時間、仮想のお金で行う） */
+let DEMO = null, DEMO_AT = 0;
+async function loadDemo(){
+  if(!WORKER) return;
+  try{ const r=await fetch(WORKER+"/demo",{ cache:"no-store" }); const j=await r.json(); DEMO=j.demo; DEMO_AT=Date.now(); }catch(e){ DEMO=DEMO||null; DEMO_AT=Date.now(); }
+  if(S.tab==="stats") render();
+}
+async function resetDemo(){
+  if(!WORKER || !S.notifyToken){ toast("先に「設定」で通知を受け取る設定をしてください"); return; }
+  try{ await pushState(); const r=await fetch(WORKER+"/demo/reset",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ token:S.notifyToken }) }); if(!r.ok) throw 0; toast("自動の練習を最初からやり直しました"); S.ui={}; loadDemo(); }catch(e){ toast("やり直せませんでした"); }
+}
+function demoCard(){
+  if(!WORKER) return "";
+  if(Date.now()-DEMO_AT>60e3) setTimeout(loadDemo,0);
+  const d=DEMO;
+  if(!d) return `<section class="card"><h2>自動の練習（24時間）</h2><p class="note">見張り役が毎時、判断に合わせて仮想のお金で取引を記録します。最初の記録までお待ちください。実際の注文はしません。</p></section>`;
+  const pnl=d.balance-d.capital, w=d.trades.filter(t=>t.net>0).length, pips=d.trades.reduce((a,t)=>a+t.pips,0), p=d.pos;
+  return `<section class="card">
+    <h2>自動の練習（24時間）</h2>
+    <div class="big ${cls(pnl)}">${yen(pnl,true)}</div>
+    <div class="sub">${fd(d.startedAt)}から ・ ${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
+    ${d.halted?`<div class="banner stop"><span><b>停止中：</b>${esc(d.halted.text)}</span></div>`:""}
+    ${p?`<div class="item"><div><div class="t1"><span class="tag ${p.dir===1?"buy":"sell"}">${p.dir===1?"買い":"売り"}</span>保有中・${p.qty}オンス</div><div class="t2 num">入った ${p.entry} ／ 損切り ${p.sl} ／ 利確 ${p.tp}</div><div class="t2">${ft(p.t)}から</div></div></div>`:`<p class="sub">今は持っていません</p>`}
+    ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div></div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
+    <p class="note">毎時3分に、判断と損切り・利確を確かめます。資金・1回の許容損失・1日の上限は「設定」の値を使います。実際の注文はしません。</p>
+    ${S.ui.askDemo?`<div class="confirm"><span>自動の練習の記録を消して、最初からやり直します。</span><button class="btn small" data-act="demoask" data-v="">やめる</button><button class="btn small sell" data-act="demoreset">やり直す</button></div>`:`<button class="linkbtn" data-act="demoask" data-v="1">自動の練習を最初からやり直す</button>`}
+  </section>`;
+}
 function viewStats(){
   const a=S.acct, st=stats(a.trades,S.cfg.capital);
   const tile = (k,v,c="") => `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
   return `${banners()}
+  ${demoCard()}
   ${goalCard()}
   ${a.trades.length||a.positions.length?`<section class="card">
     <h2>練習の記録</h2>
@@ -1339,7 +1368,7 @@ async function pushState(){
   if(!WORKER || MODE!=="live") return;
   if(!S.notifyToken) return;
   const a=S.acct, t=Date.now(), dp=a.dayKey===dayKey(t)?a.dayPnl:0;
-  try{ await fetch(WORKER+"/state",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ token:S.notifyToken, paramsI:S.cfg.paramsI, cost:S.cfg.cost.gold, riskPerTrade:S.cfg.riskPerTrade, stop:{ halted:!!a.halted, dayOver: dp <= -S.cfg.dailyLimit, full: a.positions.length>=S.cfg.maxPositions }, version:S.cfg.auto.at||0 }) }); }catch(e){}
+  try{ await fetch(WORKER+"/state",{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ token:S.notifyToken, paramsI:S.cfg.paramsI, cost:S.cfg.cost.gold, riskPerTrade:S.cfg.riskPerTrade, capital:S.cfg.capital, dailyLimit:S.cfg.dailyLimit, stop:{ halted:!!a.halted, dayOver: dp <= -S.cfg.dailyLimit, full: a.positions.length>=S.cfg.maxPositions }, version:S.cfg.auto.at||0 }) }); }catch(e){}
 }
 async function enableNotify(){
   if(!WORKER){ toast("通知の準備がまだできていません"); return; }
@@ -1442,6 +1471,8 @@ document.addEventListener("click", e=>{
   }
   else if(act==="usebt" && S.bt && S.bt.rule===S.cfg.rule){ S.cfg[RULES[S.cfg.rule].pk]=clone(S.bt.robust.p); save(); render(); toast("判断のルールを検証で選んだ設定に変えました"); }
   else if(act==="notify-on"){ enableNotify(); }
+  else if(act==="demoask"){ S.ui.askDemo=!!b.dataset.v; render(); }
+  else if(act==="demoreset"){ resetDemo(); }
   else if(act==="notify-test"){ testNotify(); }
   else if(act==="rule"){ S.cfg.rule=b.dataset.rule; S.bt=null; autoTune(true); save(); render(); toast(`判断のルールを「${RULES[S.cfg.rule].name}」にしました`); }
   else if(act==="autotune"){ S.cfg.auto.on=!S.cfg.auto.on; if(S.cfg.auto.on) autoTune(true); save(); render(); toast(S.cfg.auto.on?"毎月の自動見直しを始めました":"毎月の自動見直しを止めました"); }
