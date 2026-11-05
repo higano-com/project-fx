@@ -1,13 +1,13 @@
-確かめた時刻: 2026-11-05T13:04:09Z
+確かめた時刻: 2026-11-05T13:15:30Z
 === /
 {"名前":"金銀シグナルの見張り役","使い方":"/run で判断を1回動かす（5分に1回まで）、/demo で自動の練習の記録、/status で最後に判断した時刻"}
 === /status
 {"checked":{"at":1793883837820,"side":"wait","barT":1793880000000},"last":null,"subs":2}
 === /demo
-{"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]}}
+{"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]},"scalp":null}
 === /run
-{"結果":"5分に1回までです。少し待ってから開き直してください"}
+{"結果":"動きました","判断":"待ち","自動の練習":"動いています","三十分ごとの練習":"動いています","理由":"なし"}
 === /status
-{"checked":{"at":1793883837820,"side":"wait","barT":1793880000000},"last":null,"subs":2}
+{"checked":{"at":1793884534397,"side":"wait","barT":1793880000000},"last":null,"subs":2}
 === /demo
-{"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]}}
+{"demo":{"startedAt":1793883307799,"capital":1000000,"balance":1000000,"peak":1000000,"pos":null,"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSigBar":0,"log":[]},"scalp":{"startedAt":1793884534164,"capital":1000000,"balance":1000000,"peak":1000000,"pos":{"t":1793884534164,"barFrom":1793884560000,"dir":-1,"qty":15,"entry":4119.23,"sl":4140.17,"tp":4077.36,"risk":50000},"trades":[],"dayKey":"","dayPnl":0,"halted":null,"lastSlot":1793883600000,"log":[{"at":1793884534164,"kind":"open","pos":{"t":1793884534164,"barFrom":1793884560000,"dir":-1,"qty":15,"entry":4119.23,"sl":4140.17,"tp":4077.36,"risk":50000}}]}}
