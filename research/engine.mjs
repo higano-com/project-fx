@@ -289,7 +289,7 @@ export function runStrategy(B, strat, p, { from = 500, to = B.n, maxHold = 120, 
     if (!pos && !pend && i < to - 1) {
       if (COST.spread > 0) {
         const s = strat.fn(B, i, p);
-        if (s && COST.spread <= 0.1 * s.stop) pend = { ...s, i };
+        if (s && (s.noCostCheck || COST.spread <= 0.1 * s.stop)) pend = { ...s, i };   // noCostCheck：コストの確認をしない（検証で比べるとき用）
       }
     }
   }

@@ -27,7 +27,7 @@ function rangeStrat(B) {
       const sl = dir === 1 ? ll - p.buf : hh + p.buf, target = dir === 1 ? ll + w * (0.2 + p.tgt * 0.8) : hh - w * (0.2 + p.tgt * 0.8);
       const stop = Math.abs(c - sl), tpd = (target - c) * dir;
       if (tpd <= 0 || stop <= 0) return null;
-      return { dir, stop, rr: tpd / stop, hold: p.hold };
+      return { dir, stop, rr: tpd / stop, hold: p.hold, noCostCheck: true };   // 幅が小さい売買なので、コストの確認は外して実際の損益で比べる
     },
   };
 }
