@@ -34,6 +34,7 @@ export const BASE = { dir: "prev30", stop: 21.4, trail: 18, from: 10, hold: 240,
 export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
   const H = cost.sp / 2, SLIP = cost.slip, tr = [];
   const P = cfg.sr ? piv(cfg.sr.tf, cfg.sr.s) : null, T30 = TF["30"], T60 = TF["60"], T240 = TF["240"];
+  let pend = null;   // 押し目・抜けを待っている注文
   let pos = null, coolUntil = 0, dayK = "", dayN = 0, streak = 0, dayLoss = 0, lossDay = "";
   for (let k = 0; k < N; k++) {
     const t = T[k];
@@ -59,6 +60,12 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
         pos = null; }
     }
     if (pos) continue;
+    if (pend) {   // 待っている注文：届いたら入る、時間が過ぎたら取り消す
+      const L = pend.level, d = pend.dir; let fill = false;
+      if (pend.kind === "pull") fill = d === 1 ? Ll[k] <= L : Hh[k] >= L; else fill = d === 1 ? Hh[k] >= L : Ll[k] <= L;
+      if (fill) { const entry = L + d * H + (pend.kind === "brk" ? d * SLIP : 0); pos = { ...pend.pos, t, entry, sl: entry - d * pend.stop, tp: pend.tpD ? entry + d * pend.tpD : null, best: entry }; pend = null; dayN++; continue; }
+      if (t >= pend.until) pend = null; else continue;
+    }
     const mm = new Date(t).getUTCMinutes();
     if (!((cfg.mins || [3, 33]).includes(mm)) || !jstOpen(t) || t < coolUntil) continue;
     if (cfg.hours && !cfg.hours.includes(jh(t))) continue;
@@ -75,6 +82,11 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
     if (cfg.agree4h && !cfg.dir.startsWith("agree")) { const j = T240.idx.get(Math.floor(t / 14400e3) * 14400e3) - 1; if (!(j >= 50)) continue; if ((T240.B[j].c > T240.e20[j] ? 1 : -1) !== dir) continue; }
     if (cfg.noWd && cfg.noWd.includes(new Date(t + 9 * 3600e3).getUTCDay())) continue;
     if (cfg.minMove && Math.abs(b.c - b.o) < cfg.minMove * atr) continue;
+    if (cfg.maxMove && Math.abs(b.c - b.o) > cfg.maxMove * atr) continue;
+    if (cfg.slow) { const j = T240.idx.get(Math.floor(t / 14400e3) * 14400e3) - 1; if (!(j >= 60)) continue;
+      // 切り替え：直近 regN 本の4時間足が一方向に動いているとき（進んだ割合が regMin 以上）だけ、流れとそろえる
+      let use = true; if (cfg.regN) { let rng = 0; for (let q = j - cfg.regN + 1; q <= j; q++) rng += T240.B[q].h - T240.B[q].l; use = Math.abs(T240.B[j].c - T240.B[j - cfg.regN + 1].o) / rng >= cfg.regMin; }
+      if (use && (T240.e50[j] > T240.e50[j - cfg.slow] ? 1 : -1) !== dir) continue; }   // 大きな流れ（4時間足の長い平均線の傾き）
     if (cfg.minEff) { let rng = 0; for (let j = i - 7; j <= i; j++) rng += T30.B[j].h - T30.B[j].l; const eff = Math.abs(b.c - T30.B[i - 7].o) / Math.max(1, rng / 8 * 8); if (eff < cfg.minEff) continue; }   // 直近4時間の進み具合
     if (cfg.vol && (atr < cfg.vol[0] || atr > cfg.vol[1])) continue;
     const dk = new Date(t + 2 * 3600e3).toISOString().slice(0, 10); if (dk !== dayK) { dayK = dk; dayN = 0; }
@@ -88,6 +100,12 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
     }
     let stop = cfg.stopAtr ? Math.min(cfg.stop, cfg.stopAtr * atr) : cfg.stop;
     const trail = cfg.trailAtr ? cfg.trailAtr * atr : cfg.trail, from = cfg.fromAtr ? cfg.fromAtr * atr : cfg.from;
+    if (cfg.pull || cfg.brk) {
+      const mid = C[k], level = cfg.pull ? mid - dir * cfg.pull : (dir === 1 ? b.h : b.l) + dir * (cfg.brk || 0);
+      pend = { kind: cfg.pull ? "pull" : "brk", dir, level, until: t + (cfg.wait || 15) * 60e3, stop, tpD: cfg.tp || 0, pos: { dir, trail, from, hold: cfg.hold } };
+      if (cfg.brk && (dir === 1 ? mid >= level : mid <= level)) pend.level = mid;   // もう抜けていれば、今の価格で
+      continue;
+    }
     pos = { t, dir, entry, sl: entry - dir * stop, tp: cfg.tp ? entry + dir * cfg.tp : null, best: entry, trail, from, hold: cfg.hold };
     dayN++;
   }
