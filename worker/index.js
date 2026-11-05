@@ -39,16 +39,24 @@ async function pushAll(env, msg) {
   return results;
 }
 const fmt = v => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const APP = "https://project-fx-24u.pages.dev";   // アプリの中継役（鍵はこちらに入っている）
 async function check(env, force) {
-  const key = String(env.TWELVEDATA_API_KEY || "").replace(/[^A-Za-z0-9]/g, "");
-  if (!key) { await db(env).put("checked", { at: Date.now(), error: "鍵（TWELVEDATA_API_KEY）が見張り役に設定されていない" }); return { error: "no_key" }; }
   const d = db(env), st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
-  const td = async (path) => (await fetch("https://api.twelvedata.com/" + path + "&apikey=" + key)).json();
-  const s = await td("time_series?symbol=XAU%2FUSD&interval=1h&outputsize=2000&timezone=UTC&order=asc");
-  if (!s || s.status !== "ok") { const message = String((s && s.message) || "").split(key).join("***"); await d.put("checked", { at: Date.now(), error: "価格を受け取れなかった", message }); return { error: "upstream", message }; }
-  const bars = s.values.map(v => [Date.parse(v.datetime.replace(" ", "T") + "Z"), +v.open, +v.high, +v.low, +v.close]);
-  const fx = await td("price?symbol=USD%2FJPY");
-  st.fx = +fx.price || 155;
+  // 価格はアプリの中継役から受け取る（見張り役に鍵がなくても動く。無料の回数も節約できる）
+  let bars, price, fxv;
+  try {
+    const sr = await (await fetch(APP + "/api/series?symbol=XAU%2FUSD&interval=1h")).json();
+    const pr = await (await fetch(APP + "/api/price?symbol=XAU%2FUSD")).json();
+    const fr = await (await fetch(APP + "/api/series?symbol=USD%2FJPY&interval=1h")).json();
+    if (!Array.isArray(sr.values) || !Number.isFinite(pr.price)) throw new Error("価格の形がおかしい");
+    bars = [...sr.values].sort((a, b) => a[0] - b[0]).slice(-2000); price = pr.price;
+    fxv = Array.isArray(fr.values) && fr.values.length ? [...fr.values].sort((a, b) => a[0] - b[0]).at(-1)[4] : 155;
+  } catch (e) { await d.put("checked", { at: Date.now(), error: "価格を受け取れなかった", message: String(e && e.message || e) }); return { error: "upstream", message: String(e && e.message || e) }; }
+  // 今の価格を、まだ確定していない今の足に反映する
+  const now = Date.now(), hour = Math.floor(now / 3600e3) * 3600e3, L = bars[bars.length - 1];
+  if (L[0] === hour) { L[4] = price; L[2] = Math.max(L[2], price); L[3] = Math.min(L[3], price); }
+  else if (L[0] < hour) bars.push([hour, price, price, price, price]);
+  st.fx = fxv;
   const sig = computeSignal(bars, Date.now(), st);
   // 自動の練習の取引（仮想のお金だけ。実際の注文はしない）
   let demo = await d.get("demo"); if (!demo) demo = newDemo(st.capital || 1000000, Date.now());
@@ -87,7 +95,7 @@ export default {
       await d.put("lastRun", Date.now());
       try {
         const r = await check(env, false), demo = await d.get("demo");
-        const word = r.error === "no_key" ? "鍵が設定されていません" : r.error ? "価格を受け取れませんでした" : r.side === "buy" ? "買い" : r.side === "sell" ? "売り" : "待ち";
+        const word = r.error ? "価格を受け取れませんでした" : r.side === "buy" ? "買い" : r.side === "sell" ? "売り" : "待ち";
         return json({ 結果: r.error ? "うまく動きませんでした" : "動きました", 判断: word, 自動の練習: demo ? "動いています" : "まだ作られていません", 理由: r.error ? (r.message || r.error) : "なし" });
       }
       catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ 結果: "途中で止まりました", 理由: String(e && e.message || e) }, 500); }
