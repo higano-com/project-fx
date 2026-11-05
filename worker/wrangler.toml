@@ -3,9 +3,9 @@ name = "kingin-mihari"
 main = "index.js"
 compatibility_date = "2025-09-01"
 
-# 毎時3分に判断する（1時間の足が確定した直後）
+# 毎時3分に判断する（1時間の足が確定した直後）。33分は30分ごとの練習だけ
 [triggers]
-crons = ["3 * * * *"]
+crons = ["3,33 * * * *"]
 
 # 登録などを置く、このワーカー専用の保管場所
 [[durable_objects.bindings]]

@@ -5,6 +5,7 @@
 import { sendPush, makeVapidKeys } from "../lib/webpush.js";
 import { computeSignal } from "../lib/signal.js";
 import { newDemo, demoStep } from "../lib/demo.js";
+import { newScalp, scalpStep } from "../lib/scalp.js";
 
 const SUBJECT = "https://project-fx-24u.pages.dev";
 const DEFAULT_STATE = { paramsI: { slMult: 1.5, rr: 2, minStop: 6 }, cost: { spread: 0.8, slip: 0.1, step: 0.1 }, riskPerTrade: 2500 };
@@ -40,6 +41,21 @@ async function pushAll(env, msg) {
 }
 const fmt = v => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const APP = "https://project-fx-24u.pages.dev";   // アプリの中継役（鍵はこちらに入っている）
+// 30分ごとの練習（毎時3分と33分）。1分足で損切り・利確を確かめ、持っていなければ入る
+async function scalpRun(env, price, fxv) {
+  const d = db(env), st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
+  try {
+    if (!Number.isFinite(price)) price = (await (await fetch(APP + "/api/price?symbol=XAU%2FUSD")).json()).price;
+    if (!Number.isFinite(fxv)) { const fr = await (await fetch(APP + "/api/series?symbol=USD%2FJPY&interval=1h")).json(); fxv = Array.isArray(fr.values) && fr.values.length ? [...fr.values].sort((a, b) => a[0] - b[0]).at(-1)[4] : 155; }
+    const mr = await (await fetch(APP + "/api/series?symbol=XAU%2FUSD&interval=1min")).json();
+    if (!Array.isArray(mr.values) || !Number.isFinite(price)) throw new Error("価格の形がおかしい");
+    const m1 = [...mr.values].sort((a, b) => a[0] - b[0]);
+    let sc = await d.get("scalp"); if (!sc) sc = newScalp(st.capital || 1000000, Date.now());
+    const ev = scalpStep(sc, m1, Date.now(), price, { ...st, fx: fxv, fixed: st.fixed && st.fixed.on ? st.fixed : null });
+    await d.put("scalp", sc);
+    return ev;
+  } catch (e) { await d.put("scalpChecked", { at: Date.now(), error: "価格を受け取れなかった", message: String(e && e.message || e) }); return null; }
+}
 async function check(env, force) {
   const d = db(env), st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
   // 価格はアプリの中継役から受け取る（見張り役に鍵がなくても動く。無料の回数も節約できる）
@@ -62,6 +78,7 @@ async function check(env, force) {
   let demo = await d.get("demo"); if (!demo) demo = newDemo(st.capital || 1000000, Date.now());
   const demoEvents = demoStep(demo, bars, Date.now(), sig, st);
   await d.put("demo", demo);
+  await scalpRun(env, price, fxv);
   // アプリと同じ停止の確認（停止中・今日の上限・保有の数がいっぱいなら通知しない）
   if (sig.side !== "wait" && st.stop && (st.stop.halted || st.stop.dayOver || st.stop.full)) { await d.put("checked", { at: Date.now(), side: "wait", reason: "停止の確認", barT: sig.barT }); return { ...sig, side: "wait", reason: "停止の確認" }; }
   const last = (await d.get("last")) || {};
@@ -78,7 +95,10 @@ async function check(env, force) {
 }
 
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(check(env, false).catch(async e => { await db(env).put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); })); },
+  async scheduled(event, env, ctx) {
+    // 33分のときは30分ごとの練習だけ（1時間足の判断は3分のときだけ）
+    if (new Date(event.scheduledTime || Date.now()).getUTCMinutes() >= 30) { ctx.waitUntil(scalpRun(env)); return; }
+    ctx.waitUntil(check(env, false).catch(async e => { await db(env).put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); })); },
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -86,8 +106,9 @@ export default {
     if (path === "/vapid") return json({ publicKey: (await vapid(env)).publicKey });
     if (path === "/demo") {   // 自動の練習の記録（読むだけ）
       const demo = await d.get("demo");
-      if (!demo) return json({ demo: null });
-      return json({ demo: { ...demo, trades: demo.trades.slice(-50), log: demo.log.slice(-20) } });
+      if (!demo) return json({ demo: null, scalp: await d.get("scalp") });
+      const sc = await d.get("scalp");
+      return json({ demo: { ...demo, trades: demo.trades.slice(-50), log: demo.log.slice(-20) }, scalp: sc ? { ...sc, trades: sc.trades.slice(-50), log: sc.log.slice(-20) } : null });
     }
     if (path === "/run") {   // 手で判断を1回動かす（無料の回数を守るため、5分に1回まで）
       const lr = (await d.get("lastRun")) || 0;
@@ -96,7 +117,7 @@ export default {
       try {
         const r = await check(env, false), demo = await d.get("demo");
         const word = r.error ? "価格を受け取れませんでした" : r.side === "buy" ? "買い" : r.side === "sell" ? "売り" : "待ち";
-        return json({ 結果: r.error ? "うまく動きませんでした" : "動きました", 判断: word, 自動の練習: demo ? "動いています" : "まだ作られていません", 理由: r.error ? (r.message || r.error) : "なし" });
+        return json({ 結果: r.error ? "うまく動きませんでした" : "動きました", 判断: word, 自動の練習: demo ? "動いています" : "まだ作られていません", 三十分ごとの練習: (await d.get("scalp")) ? "動いています" : "まだ作られていません", 理由: r.error ? (r.message || r.error) : "なし" });
       }
       catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ 結果: "途中で止まりました", 理由: String(e && e.message || e) }, 500); }
     }
@@ -123,6 +144,10 @@ export default {
       await d.put("state", { paramsI: { slMult: +p.slMult, rr: +p.rr, minStop: +p.minStop }, cost: { spread: +c.spread, slip: +c.slip, step: +c.step }, riskPerTrade: r,
         capital: okNum(body.capital, 10000, 1e10) ? +body.capital : 1000000, dailyLimit: okNum(body.dailyLimit, 100, 1e9) ? +body.dailyLimit : 150000,
         fixed: body.fixed && body.fixed.on && okNum(body.fixed.qty, 0.1, 1000) && okNum(body.fixed.loss, 100, 1e8) && okNum(body.fixed.rr, 0.5, 10) ? { on: true, qty: +body.fixed.qty, loss: +body.fixed.loss, rr: +body.fixed.rr } : { on: false }, stop: { halted: !!stop.halted, dayOver: !!stop.dayOver, full: !!stop.full }, version: +body.version || 0, at: Date.now() });
+      // 数量の決め方が変わったら、自動の練習を最初からやり直す
+      const prev = (await d.get("prevFixed")) || null, st2 = await d.get("state"), nowF = JSON.stringify(st2.fixed || {});
+      if (prev !== null && prev !== nowF) { await d.put("demo", newDemo(st2.capital || 1000000, Date.now())); await d.put("scalp", newScalp(st2.capital || 1000000, Date.now())); }
+      await d.put("prevFixed", nowF);
       return json({ ok: true });
     }
     if (path === "/demo/reset") {   // 自動の練習を最初からやり直す（合言葉が必要）
@@ -130,10 +155,7 @@ export default {
       if (!token || body.token !== token) return json({ error: "bad_token" }, 403);
       const st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
       await d.put("demo", newDemo(st.capital || 1000000, Date.now()));
-      // 数量の決め方が変わったら、自動の練習を最初からやり直す
-      const prev = (await d.get("prevFixed")) || null, nowF = JSON.stringify((await d.get("state")).fixed || {});
-      if (prev !== null && prev !== nowF) { const st2 = await d.get("state"); await d.put("demo", newDemo(st2.capital || 1000000, Date.now())); }
-      await d.put("prevFixed", nowF);
+      await d.put("scalp", newScalp(st.capital || 1000000, Date.now()));
       return json({ ok: true });
     }
     if (path === "/test") {
