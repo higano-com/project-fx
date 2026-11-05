@@ -41,11 +41,11 @@ async function pushAll(env, msg) {
 const fmt = v => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 async function check(env, force) {
   const key = String(env.TWELVEDATA_API_KEY || "").replace(/[^A-Za-z0-9]/g, "");
-  if (!key) return { error: "no_key" };
+  if (!key) { await db(env).put("checked", { at: Date.now(), error: "鍵（TWELVEDATA_API_KEY）が見張り役に設定されていない" }); return { error: "no_key" }; }
   const d = db(env), st = { ...DEFAULT_STATE, ...((await d.get("state")) || {}) };
   const td = async (path) => (await fetch("https://api.twelvedata.com/" + path + "&apikey=" + key)).json();
   const s = await td("time_series?symbol=XAU%2FUSD&interval=1h&outputsize=2000&timezone=UTC&order=asc");
-  if (!s || s.status !== "ok") return { error: "upstream", message: String((s && s.message) || "").split(key).join("***") };
+  if (!s || s.status !== "ok") { const message = String((s && s.message) || "").split(key).join("***"); await d.put("checked", { at: Date.now(), error: "価格を受け取れなかった", message }); return { error: "upstream", message }; }
   const bars = s.values.map(v => [Date.parse(v.datetime.replace(" ", "T") + "Z"), +v.open, +v.high, +v.low, +v.close]);
   const fx = await td("price?symbol=USD%2FJPY");
   st.fx = +fx.price || 155;
@@ -70,7 +70,7 @@ async function check(env, force) {
 }
 
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(check(env, false)); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(check(env, false).catch(async e => { await db(env).put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); })); },
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -80,6 +80,13 @@ export default {
       const demo = await d.get("demo");
       if (!demo) return json({ demo: null });
       return json({ demo: { ...demo, trades: demo.trades.slice(-50), log: demo.log.slice(-20) } });
+    }
+    if (path === "/run") {   // 手で判断を1回動かす（無料の回数を守るため、5分に1回まで）
+      const lr = (await d.get("lastRun")) || 0;
+      if (Date.now() - lr < 5 * 60e3) return json({ error: "5分に1回までです", next: new Date(lr + 5 * 60e3).toISOString() }, 429);
+      await d.put("lastRun", Date.now());
+      try { const r = await check(env, false); return json({ ok: true, result: r, demo: !!(await d.get("demo")) }); }
+      catch (e) { await d.put("checked", { at: Date.now(), error: "途中で止まった", message: String(e && e.message || e) }); return json({ error: "途中で止まった", message: String(e && e.message || e) }, 500); }
     }
     if (path === "/status") return json({ checked: await d.get("checked"), last: await d.get("last"), subs: ((await d.get("subs")) || []).length });
     if (req.method !== "POST") return json({ ok: true, name: "金銀シグナルの見張り役" });
