@@ -59,6 +59,11 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
         if (cfg.dayStop && dayLoss <= -cfg.dayStop) coolUntil = Math.max(coolUntil, (Math.floor((t + 2 * 3600e3) / 86400e3) + 1) * 86400e3 - 2 * 3600e3);
         pos = null; }
     }
+    // 途中で向きが変わったら（30分の区切りで）：rev=1 いつでも乗りかえ、rev=2 負けているときだけ乗りかえ、rev=3 負けているときだけ決済
+    if (pos && cfg.rev && [3, 33].includes(new Date(t).getUTCMinutes()) && t - pos.t >= 25 * 60e3) {
+      const i2 = T30.idx.get(Math.floor(t / 1800e3) * 1800e3) - 1, b2 = T30.B[i2], nd = b2 && (b2.c > b2.o ? 1 : -1), cur = (C[k] - pos.dir * H - pos.entry) * pos.dir;
+      if (nd && nd !== pos.dir && (cfg.rev === 1 || cur < 0)) { tr.push({ t: pos.t, usd: cur, why: "向きが変わった" }); pos = null; if (cfg.rev === 3) continue; }
+    }
     if (pos) continue;
     if (pend) {   // 待っている注文：届いたら入る、時間が過ぎたら取り消す
       const L = pend.level, d = pend.dir; let fill = false;
