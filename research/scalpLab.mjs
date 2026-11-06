@@ -94,6 +94,8 @@ export function run(cfg, cost = { sp: 0.8, slip: 0.1 }) {
       if (use && (T240.e50[j] > T240.e50[j - cfg.slow] ? 1 : -1) !== dir) continue; }   // 大きな流れ（4時間足の長い平均線の傾き）
     if (cfg.minEff) { let rng = 0; for (let j = i - 7; j <= i; j++) rng += T30.B[j].h - T30.B[j].l; const eff = Math.abs(b.c - T30.B[i - 7].o) / Math.max(1, rng / 8 * 8); if (eff < cfg.minEff) continue; }   // 直近4時間の進み具合
     if (cfg.vol && (atr < cfg.vol[0] || atr > cfg.vol[1])) continue;
+    if (cfg.rng24) { let hh = -Infinity, ll = Infinity; for (let j = i - 47; j <= i; j++) { hh = Math.max(hh, T30.B[j].h); ll = Math.min(ll, T30.B[j].l); } if (hh - ll < cfg.rng24) continue; }   // 直近24時間の幅が小さければ見送り
+    if (cfg.noEv) { if (!run.ev) run.ev = cfg.noEv.list; if (run.ev.some(e => t >= e.t - cfg.noEv.before * 60e3 && t < e.t + cfg.noEv.after * 60e3)) continue; }   // 経済指標の前後は入らない
     const dk = new Date(t + 2 * 3600e3).toISOString().slice(0, 10); if (dk !== dayK) { dayK = dk; dayN = 0; }
     if (cfg.maxDay && dayN >= cfg.maxDay) continue;
     const entry = C[k] + dir * H;
