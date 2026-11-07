@@ -1200,7 +1200,7 @@ function demoCard(){
   return `<section class="card">
     <h2>自動の練習（24時間）</h2>
     <div class="big ${cls(pnl)}">${yen(pnl,true)}</div>
-    <div class="sub">${fd(d.startedAt)}から ・ ${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
+    <div class="sub">${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
     ${d.halted?`<div class="banner stop"><span><b>停止中：</b>${esc(d.halted.text)}</span></div>`:""}
     ${p?posBox(p,["1時間ごとの判断で「"+(p.dir===1?"買い":"売り")+"」が出たので入った"]):`<p class="sub">今は持っていません</p>`}
     ${d.trades.length?`<details class="more" style="background:var(--sunk)"><summary>決済した取引<small>${d.trades.length}件</small></summary><div class="in"><div class="list">${[...d.trades].reverse().slice(0,30).map(t=>`<div class="item"><div><div class="t1"><span class="tag ${t.dir===1?"buy":"sell"}">${t.dir===1?"買い":"売り"}</span>${esc(t.why==="伸びたあと戻したので決済"?(t.net>0?"利確":"損切り"):t.why)}</div><div class="t2">${ft(t.t1)}・${t.qty}オンス・${t.pips>=0?"＋":"−"}${Math.abs(t.pips)}ピプス</div>${t.best!=null&&(t.best-t.entry)*t.dir>=10&&t.why!=="時間切れ"?`<div class="t2">いちばん${((t.best-t.entry)*t.dir).toFixed(1)}ドル伸びて、戻った所で決済</div>`:""}</div><div class="pnl ${cls(t.net)}">${yen(t.net,true)}</div></div>`).join("")}</div></div></details>`:""}
@@ -1216,7 +1216,7 @@ function scalpCard(){
   return `<section class="card">
     <h2>30分ごとの練習</h2>
     <div class="big ${cls(pnl)}">${yen(pnl,true)}</div>
-    <div class="sub">${fd(d.startedAt)}から ・ ${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
+    <div class="sub">${d.trades.length}回・勝ち${w}回 ・ ${pips>=0?"＋":"−"}${Math.abs(pips).toLocaleString("ja-JP")}ピプス</div>
     ${d.halted?`<div class="banner stop"><span><b>停止中：</b>${esc(d.halted.text)}</span></div>`:""}
     ${!p&&d.log&&d.log.length&&d.log[d.log.length-1].kind==="skip"?`<p class="sub">${ft(d.log[d.log.length-1].at)}：${esc(d.log[d.log.length-1].why)}</p>`:""}
     ${p?posBox(p,["直前の30分が"+(p.dir===1?"上がった":"下がった")+"ので"+(p.dir===1?"買い":"売り"),"損切り：入る"+(p.dir===1?"−":"＋")+Math.abs(p.sl-p.entry).toFixed(2)+"ドル（"+p.qty+"枚で約"+Math.round(p.risk/1e4)+"万円）",(p.tp?"利確：入る"+(p.dir===1?"＋":"−")+Math.abs(p.tp-p.entry).toFixed(2)+"ドル（損切り幅の2倍）":"利確は決めない（伸びたら損切りの位置を追いかけて動かす）"),"4時間たっても届かなければ、その時の価格で決済（"+ft(p.t+4*3600e3)+"ごろ）"]):`<p class="sub">今は持っていません</p>`}
