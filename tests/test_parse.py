@@ -29,7 +29,13 @@ K_TEXT = "\n".join([
     "  F   3 4000 鈴　木　一　郎 20   11  6.70   3    F.01     .  .",
     "",
     "        単勝     1          150",
+    "        複勝     1          100  2          130  ",
+    "        ２連単   1-2        460  人気     2 ",
+    "        ２連複   1-2        300  人気     1 ",
+    "        拡連複   1-2        150  人気     1 ",
+    "                 1-4        310  人気     5 ",
     "        ３連単   1-2-4     1230  人気     3",
+    "        ３連複   1-2-4      450  人気     2 ",
     "12KEND",
 ])
 
@@ -55,4 +61,6 @@ def test_parse_results():
     assert res.iloc[2].finish_raw == "F" and res.iloc[2].finish != res.iloc[2].finish  # NaN
     p = pay.iloc[0]
     assert (p.trifecta, p.trifecta_pay, p.win_lane, p.win_pay) == ("1-2-4", 1230, 1, 150)
+    assert (p.trifecta_pop, p.trio, p.trio_pay, p.exacta, p.exacta_pop) == (3, "1-2-4", 450, "1-2", 2)
+    assert (p.place1_lane, p.place1_pay, p.place2_lane, p.place2_pay, p.quinella_pay) == (1, 100, 2, 130, 300)
     assert (p.race_type, p.weather, p.wind_dir, p.wind, p.wave) == ("予選", "晴", "北西", 3, 3)

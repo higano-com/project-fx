@@ -39,7 +39,11 @@ def _fixed_fields(s: str, widths) -> list[str] | None:
         pos += w
     return out
 _K_RESULT = re.compile(r"^\s*(0[1-6]|[A-Z]\d?)\s+([1-6])\s+(\d{4})\s+(.*)$")
-_TRIFECTA = re.compile(r"3連単\s+([1-6])-([1-6])-([1-6])\s+(\d+)")
+_TRIFECTA = re.compile(r"3連単\s+([1-6])-([1-6])-([1-6])\s+(\d+)(?:\s+人気\s+(\d+))?")
+# 券種名 -> 列名の頭 (人気つき)
+_BETS = {"3連複": "trio", "2連単": "exacta", "2連複": "quinella"}
+_BET_RE = re.compile(r"^\s*(3連複|2連単|2連複)\s+([1-6](?:-[1-6]){1,2})\s+(\d+)(?:\s+人気\s+(\d+))?")
+_PLACE = re.compile(r"^\s*複勝\s+([1-6])\s+(\d+)(?:\s+([1-6])\s+(\d+))?")
 _WIN = re.compile(r"^\s*単勝\s+([1-6])\s+(\d+)")
 _FLOAT2 = re.compile(r"^\d?\.\d\d$")
 _K_RACE_INFO = re.compile(r"^\s*\d{1,2}R\s+(\S+).*?H\d+m\s+(\S+)\s+風\s+(\S+)\s+(\d+)m\s+波\s+(\d+)cm")
@@ -155,6 +159,19 @@ def parse_results(text: str, race_date: date) -> tuple[pd.DataFrame, pd.DataFram
             p = payouts.setdefault(key, {})
             p["trifecta"] = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
             p["trifecta_pay"] = int(m.group(4))
+            if m.group(5):
+                p["trifecta_pop"] = int(m.group(5))
+        elif m := _BET_RE.match(norm):
+            p = payouts.setdefault(key, {})
+            col = _BETS[m.group(1)]
+            p[col], p[f"{col}_pay"] = m.group(2), int(m.group(3))
+            if m.group(4):
+                p[f"{col}_pop"] = int(m.group(4))
+        elif m := _PLACE.match(norm):
+            p = payouts.setdefault(key, {})
+            p["place1_lane"], p["place1_pay"] = int(m.group(1)), int(m.group(2))
+            if m.group(3):
+                p["place2_lane"], p["place2_pay"] = int(m.group(3)), int(m.group(4))
         elif m := _WIN.match(norm):
             p = payouts.setdefault(key, {})
             p["win_lane"] = int(m.group(1))
