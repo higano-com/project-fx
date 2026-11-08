@@ -40,7 +40,7 @@ def fetch_race_odds(d: date, venue: int, race_no: int, timeout: float = 60) -> l
     return rows
 
 
-def fetch_many(races: list[tuple[date, int, int]], out_csv: Path, workers: int = 3, sleep: float = 1.0) -> None:
+def fetch_many(races: list[tuple[date, int, int]], out_csv: Path, workers: int = 1, sleep: float = 2.0) -> None:
     """races を取得して out_csv に追記する。取得済みのレースは飛ばす."""
     out_csv = Path(out_csv)
     done = set()
@@ -65,6 +65,5 @@ def fetch_many(races: list[tuple[date, int, int]], out_csv: Path, workers: int =
     with ThreadPoolExecutor(workers) as ex:
         for i, rows in enumerate(ex.map(job, todo), 1):
             w.writerows(rows)
-            if i % 20 == 0:
-                f.flush()
+            f.flush()  # 途中で止めても取得済みの分は残す
     f.close()
