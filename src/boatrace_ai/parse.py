@@ -21,11 +21,21 @@ _B_VENUE = re.compile(r"^(\d{2})BBGN")
 _K_VENUE = re.compile(r"^(\d{2})KBGN")
 _RACE = re.compile(r"^\s*(\d{1,2})R\s")
 _DIST = re.compile(r"H(\d{3,4})m")
-_B_ENTRY = re.compile(
-    r"^([1-6]) (\d{4})(.{4})\s*(\d{2})(.{2})\s*(\d{2})([AB][12])\s*"
-    r"(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+"
-    r"(\d+)\s+(\d+\.\d+)\s+(\d+)\s+(\d+\.\d+)"
-)
+_B_ENTRY = re.compile(r"^([1-6]) (\d{4})(.{4})(\d{2})(.{2})(\d{2})([AB][12])")
+# 級別の直後から: 全国勝率, 全国2率, 当地勝率, 当地2率, ﾓｰﾀｰNO, ﾓｰﾀｰ2率, ﾎﾞｰﾄNO, ﾎﾞｰﾄ2率
+# 例 "9.30100.00" や "37.31111" のように数字が隙間なく並ぶことがあるので固定長で切る
+_B_NUM_WIDTHS = (5, 6, 5, 6, 3, 6, 3, 6)
+
+
+def _fixed_fields(s: str, widths) -> list[str] | None:
+    out, pos = [], 0
+    for w in widths:
+        f = s[pos:pos + w].strip()
+        if not f:
+            return None
+        out.append(f)
+        pos += w
+    return out
 _K_RESULT = re.compile(r"^\s*(0[1-6]|[A-Z]\d?)\s+([1-6])\s+(\d{4})\s+(.*)$")
 _TRIFECTA = re.compile(r"3連単\s+([1-6])-([1-6])-([1-6])\s+(\d+)")
 _WIN = re.compile(r"^\s*単勝\s+([1-6])\s+(\d+)")
@@ -67,8 +77,8 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
             continue
         if race_no is None:
             continue
-        if m := _B_ENTRY.match(line):
-            g = m.groups()
+        if (m := _B_ENTRY.match(line)) and (nums := _fixed_fields(line[m.end():], _B_NUM_WIDTHS)):
+            g = m.groups() + tuple(nums)
             rows.append(
                 dict(
                     date=pd.Timestamp(race_date), venue=venue, race_no=race_no,

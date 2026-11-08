@@ -13,6 +13,8 @@ B_TEXT = "\n".join([
     "-" * 79,
     "1 4444山田太郎34東京52A1 6.50 45.00 6.80 50.00 12 35.00 34 32.00 1 2        ",
     "2 3210佐藤　花45大阪47B1 4.20 25.10 3.90 20.00  5 41.20  8 29.50",
+    # 実データで見つかった、数字が隙間なく並ぶケース
+    "3 3876中辻崇人47福岡52A1 7.98 72.00 9.30100.00 70 36.07111 27.94             12",
     "12BEND",
 ])
 
@@ -34,13 +36,15 @@ K_TEXT = "\n".join([
 
 def test_parse_program():
     df = parse_program(B_TEXT, date(2024, 4, 1))
-    assert len(df) == 2
+    assert len(df) == 3
     r = df.iloc[0]
     assert (r.venue, r.race_no, r.lane, r.reg_no) == (12, 1, 1, 4444)
     assert r["name"] == "山田太郎" and r.grade == "A1" and r.class_num == 4
     assert (r.nat_win, r.motor_no, r.motor_2, r.boat_2) == (6.50, 12, 35.00, 32.00)
     assert r.distance == 1800
     assert df.iloc[1].motor_no == 5 and df.iloc[1]["name"] == "佐藤花"
+    r3 = df.iloc[2]
+    assert (r3.loc_win, r3.loc_2, r3.motor_no, r3.boat_no, r3.boat_2) == (9.30, 100.0, 70, 111, 27.94)
 
 
 def test_parse_results():

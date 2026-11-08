@@ -9,7 +9,7 @@ import urllib.request
 from datetime import date, timedelta
 from pathlib import Path
 
-BASE_URL = "http://www1.mbrace.or.jp/od2"
+BASE_URL = "https://www1.mbrace.or.jp/od2"
 
 
 def file_url(kind: str, d: date) -> str:
