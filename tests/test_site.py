@@ -1,6 +1,8 @@
 import json
 from datetime import date
 
+import pytest
+
 from boatrace_ai.features import build_training_table
 from boatrace_ai.model import BoatRaceModel
 from boatrace_ai.parse import load_dir
@@ -27,3 +29,12 @@ def test_build_site(tmp_path):
 
     # 2回目は予想を作り直さない
     assert build_site(tmp_path / "m.pkl", raw, out, [date(2024, 1, 12)]) == []
+
+
+def test_build_site_fails_without_app(tmp_path, monkeypatch):
+    """画面ファイルが見つからない時は、黙って進まずにエラーにする."""
+    import boatrace_ai.site as site
+    monkeypatch.setattr(site, "APP_DIR", tmp_path / "none")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        site.find_app_dir()

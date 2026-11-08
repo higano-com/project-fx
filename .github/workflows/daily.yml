@@ -63,7 +63,9 @@ jobs:
           fi
 
       - name: アプリ組み立て
-        run: boatrace-ai site --model models/model.pkl --data data/raw --out site --back 2 --ahead 1
+        run: |
+          boatrace-ai site --model models/model.pkl --data data/raw --out site --back 2 --ahead 1 --app app
+          test -f site/index.html  # 画面本体が入っていなければ失敗させる
 
       - uses: actions/cache/save@v4
         if: always()

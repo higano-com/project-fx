@@ -98,9 +98,23 @@ def cmd_site(a):
 
     today = a.date or date.today()
     dates = [today + timedelta(days=i) for i in range(-a.back, a.ahead + 1)]
-    for line in build_site(Path(a.model), Path(a.data), Path(a.out), dates, keep_days=a.keep):
+    for line in build_site(Path(a.model), Path(a.data), Path(a.out), dates, keep_days=a.keep, app_dir=a.app):
         print(line)
     print(f"site -> {a.out}")
+
+
+def cmd_analyze(a):
+    from .analyze import run
+    from .parse import load_dir
+
+    programs, results, payouts = load_dir(Path(a.data))
+    dates = sorted(programs["date"].unique())
+    test_from = pd.Timestamp(a.test_from) if a.test_from else dates[int(len(dates) * 0.6)]
+    _, text = run(programs, results, payouts, test_from)
+    print(text)
+    if a.out:
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.out).write_text(text, encoding="utf-8")
 
 
 def main(argv=None):
@@ -150,7 +164,14 @@ def main(argv=None):
     s.add_argument("--back", type=int, default=2, help="基準日の何日前から")
     s.add_argument("--ahead", type=int, default=1, help="基準日の何日後まで")
     s.add_argument("--keep", type=int, default=30, help="サイトに残す日数")
+    s.add_argument("--app", help="画面ファイル(index.html)のフォルダ (省略時は ./app)")
     s.set_defaults(func=cmd_site)
+
+    s = sub.add_parser("analyze", help="的中率が上がる条件を調べる")
+    s.add_argument("--data", default="data/raw")
+    s.add_argument("--test-from", help="この日以降で検証 (省略時は後ろ40%%)")
+    s.add_argument("--out", help="結果を保存するファイル")
+    s.set_defaults(func=cmd_analyze)
 
     a = p.parse_args(argv)
     a.func(a)
