@@ -42,6 +42,7 @@ _K_RESULT = re.compile(r"^\s*(0[1-6]|[A-Z]\d?)\s+([1-6])\s+(\d{4})\s+(.*)$")
 _TRIFECTA = re.compile(r"3連単\s+([1-6])-([1-6])-([1-6])\s+(\d+)")
 _WIN = re.compile(r"^\s*単勝\s+([1-6])\s+(\d+)")
 _FLOAT2 = re.compile(r"^\d?\.\d\d$")
+_K_RACE_INFO = re.compile(r"^\s*\d{1,2}R\s+(\S+).*?H\d+m\s+(\S+)\s+風\s+(\S+)\s+(\d+)m\s+波\s+(\d+)cm")
 
 
 def _nfkc(s: str) -> str:
@@ -130,6 +131,11 @@ def parse_results(text: str, race_date: date) -> tuple[pd.DataFrame, pd.DataFram
         norm = _nfkc(line)
         if (m := _RACE.match(norm)) and venue is not None:
             race_no = int(m.group(1))
+            if im := _K_RACE_INFO.match(norm):
+                payouts.setdefault((venue, race_no), {}).update(
+                    race_type=im.group(1), weather=im.group(2), wind_dir=im.group(3),
+                    wind=int(im.group(4)), wave=int(im.group(5)),
+                )
             continue
         if race_no is None:
             continue

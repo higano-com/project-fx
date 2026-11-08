@@ -55,3 +55,4 @@ def test_parse_results():
     assert res.iloc[2].finish_raw == "F" and res.iloc[2].finish != res.iloc[2].finish  # NaN
     p = pay.iloc[0]
     assert (p.trifecta, p.trifecta_pay, p.win_lane, p.win_pay) == ("1-2-4", 1230, 1, 150)
+    assert (p.race_type, p.weather, p.wind_dir, p.wind, p.wave) == ("予選", "晴", "北西", 3, 3)
