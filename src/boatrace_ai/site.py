@@ -22,7 +22,15 @@ from .model import BoatRaceModel
 from .parse import load_dir, parse_results, read_text
 from .predict import predict_program, to_app_json
 
-APP_DIR = Path(__file__).resolve().parents[2] / "app"
+APP_DIR = Path(__file__).resolve().parents[2] / "app"  # 開発環境 (pip install -e) 用
+
+
+def find_app_dir(app_dir: Path | None = None) -> Path:
+    """画面ファイル(index.html など)のあるフォルダを探す. 見つからなければエラー."""
+    for cand in ([Path(app_dir)] if app_dir else []) + [Path.cwd() / "app", APP_DIR]:
+        if (cand / "index.html").exists():
+            return cand
+    raise FileNotFoundError("app/index.html が見つかりません (--app で場所を指定してください)")
 STATIC_FILES = ["index.html", "sw.js", "manifest.webmanifest", "icons"]
 
 
@@ -60,7 +68,8 @@ def attach_results(day: dict, data_dir: Path, d: date) -> bool:
     return True
 
 
-def build_site(model_path: Path, data_dir: Path, out_dir: Path, dates: list[date], keep_days: int = 30) -> list[str]:
+def build_site(model_path: Path, data_dir: Path, out_dir: Path, dates: list[date], keep_days: int = 30,
+               app_dir: Path | None = None) -> list[str]:
     data_dir, out_dir = Path(data_dir), Path(out_dir)
     (out_dir / "data").mkdir(parents=True, exist_ok=True)
     model = BoatRaceModel.load(Path(model_path))
@@ -99,8 +108,9 @@ def build_site(model_path: Path, data_dir: Path, out_dir: Path, dates: list[date
     (out_dir / "days.json").write_text(json.dumps(dict(days=days, model=getattr(model, "meta", {})),
                                                   ensure_ascii=False), encoding="utf-8")
 
+    app = find_app_dir(app_dir)
     for name in STATIC_FILES:
-        src = APP_DIR / name
+        src = app / name
         if src.is_dir():
             shutil.copytree(src, out_dir / name, dirs_exist_ok=True)
         elif src.exists():

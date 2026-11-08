@@ -98,7 +98,7 @@ def cmd_site(a):
 
     today = a.date or date.today()
     dates = [today + timedelta(days=i) for i in range(-a.back, a.ahead + 1)]
-    for line in build_site(Path(a.model), Path(a.data), Path(a.out), dates, keep_days=a.keep):
+    for line in build_site(Path(a.model), Path(a.data), Path(a.out), dates, keep_days=a.keep, app_dir=a.app):
         print(line)
     print(f"site -> {a.out}")
 
@@ -164,6 +164,7 @@ def main(argv=None):
     s.add_argument("--back", type=int, default=2, help="基準日の何日前から")
     s.add_argument("--ahead", type=int, default=1, help="基準日の何日後まで")
     s.add_argument("--keep", type=int, default=30, help="サイトに残す日数")
+    s.add_argument("--app", help="画面ファイル(index.html)のフォルダ (省略時は ./app)")
     s.set_defaults(func=cmd_site)
 
     s = sub.add_parser("analyze", help="的中率が上がる条件を調べる")
