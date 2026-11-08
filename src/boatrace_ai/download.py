@@ -37,13 +37,22 @@ def download_day(d: date, out_dir: Path, kinds: tuple[str, ...] = ("B", "K"), ov
         if path.exists() and not overwrite:
             saved.append(path)
             continue
-        try:
-            with urllib.request.urlopen(file_url(kind, d), timeout=30) as resp:
-                raw = resp.read()
-        except urllib.error.HTTPError as e:
-            if e.code == 404:  # 開催なし・未公開
-                continue
-            raise
+        raw = None
+        for attempt in range(4):  # 一時的な通信エラーは少し待ってやり直す
+            try:
+                with urllib.request.urlopen(file_url(kind, d), timeout=30) as resp:
+                    raw = resp.read()
+                break
+            except urllib.error.HTTPError as e:
+                if e.code == 404:  # 開催なし・未公開
+                    break
+                raise
+            except (ConnectionError, TimeoutError, urllib.error.URLError):
+                if attempt == 3:
+                    raise
+                time.sleep(2 ** (attempt + 1))
+        if raw is None:
+            continue
         try:
             text = _extract_lzh(raw)
         except Exception:  # 未公開日に HTML が返る場合など
