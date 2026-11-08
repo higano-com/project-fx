@@ -1,0 +1,16 @@
+{
+  "name": "ボートレースAI予想",
+  "short_name": "ボートAI",
+  "description": "番組表と過去成績からAIが各艇の1着確率と3連単の買い目を出します",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef3f6",
+  "theme_color": "#0a3b57",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

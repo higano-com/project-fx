@@ -44,7 +44,11 @@ def download_day(d: date, out_dir: Path, kinds: tuple[str, ...] = ("B", "K"), ov
             if e.code == 404:  # 開催なし・未公開
                 continue
             raise
-        path.write_bytes(_extract_lzh(raw))
+        try:
+            text = _extract_lzh(raw)
+        except Exception:  # 未公開日に HTML が返る場合など
+            continue
+        path.write_bytes(text)
         saved.append(path)
     return saved
 

@@ -1,0 +1,89 @@
+# 毎日の予想・結果の更新と、スマホアプリ(GitHub Pages)の公開
+name: daily-update
+
+on:
+  schedule:
+    - cron: "40 21 * * *"  # 日本時間 06:40 当日の予想
+    - cron: "50 13 * * *"  # 日本時間 22:50 当日の結果
+    - cron: "20 15 * * *"  # 日本時間 00:20 遅れた結果 + 翌日の予想
+  workflow_dispatch:
+    inputs:
+      retrain:
+        description: "モデルを学習し直す"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install .
+
+      # 取得済みデータ・モデル・過去の予想を前回の実行から引き継ぐ
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/raw
+            models
+            site/data
+          key: boat-${{ github.run_id }}
+          restore-keys: boat-
+
+      - name: データ取得
+        run: |
+          n=$(ls data/raw 2>/dev/null | wc -l)
+          # 初回(データがほぼ無い時)は2年分をまとめて取得する。数時間かかる
+          if [ "$n" -lt 300 ]; then back=730; else back=3; fi
+          boatrace-ai download --start "$(date -d "-${back} days" +%F)" --end "$(date -d '+1 day' +%F)" --out data/raw --sleep 0.5
+
+      - name: 学習 (初回・毎週月曜の朝・手動指定時)
+        run: |
+          if [ ! -f models/model.pkl ] || [ "${{ inputs.retrain }}" = "true" ] || { [ "$(date +%u)" = "1" ] && [ "$(date +%H)" -lt 12 ]; }; then
+            boatrace-ai train --data data/raw --model models/model.pkl
+          fi
+
+      - name: アプリ組み立て
+        run: boatrace-ai site --model models/model.pkl --data data/raw --out site --back 2 --ahead 1
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            data/raw
+            models
+            site/data
+          key: boat-${{ github.run_id }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

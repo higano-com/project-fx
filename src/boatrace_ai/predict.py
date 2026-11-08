@@ -13,10 +13,13 @@ from .parse import date_from_filename, load_dir, parse_program, read_text
 from .venues import venue_name
 
 
-def predict_program(model: BoatRaceModel, program_path: Path, history_dir: Path | None):
+def predict_program(model: BoatRaceModel, program_path: Path, history_dir: Path | None = None,
+                    history=None):
+    """番組表ファイルを予測する. history(成績DataFrame)を渡せば history_dir は読まない."""
     program_path = Path(program_path)
     programs = parse_program(read_text(program_path), date_from_filename(program_path))
-    history = load_dir(Path(history_dir))[1] if history_dir else None
+    if history is None and history_dir:
+        history = load_dir(Path(history_dir))[1]
     df = build_features(programs, history)
     p_win = model.predict_win(df)
     return df.assign(p_win=p_win), race_predictions(df, p_win)

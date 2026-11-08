@@ -37,15 +37,31 @@ boatrace-ai train --data data/raw --model models/model.pkl --test-from 2024-10-0
 boatrace-ai predict --program data/raw/b241225.txt --data data/raw --venue 12
 ```
 
-# 4) アプリ用JSONを書き出す (app/index.html が読み込む)
-boatrace-ai export --program data/raw/b241225.txt --data data/raw --out app/predictions.json
 ```
 
-`app/index.html` は予想を見るためのページです。場名・締切時刻・各艇の1着確率・3連単上位5点を表示します。
+## スマホアプリ
+
+`app/` はホーム画面に追加して使える Web アプリです。
+
+- **予想:** 場とレース番号を選び、各艇の1着確率、3連単のおすすめ5点、締切までの残り時間を見る
+- **結果:** その日の答え合わせ（AI本命の的中率、上位5点の的中率、仮想収支）
+- **マイ買い目:** 買い目を保存すると、結果が出たあと的中と収支を自動で計算（端末内に保存）
 
 ```bash
-cd app && python -m http.server 8000   # http://localhost:8000 で表示
+# サイトを組み立てる (site/ に出力。今日の前後の予想 + 確定した結果)
+boatrace-ai site --model models/model.pkl --data data/raw --out site
+cd site && python -m http.server 8000   # http://localhost:8000
 ```
+
+### 毎日の自動更新 (GitHub Actions)
+
+`.github/workflows/daily.yml` が日本時間の 06:40 / 22:50 / 00:20 に動き、
+データの取得 → (月曜朝は学習し直し) → サイトの組み立て → GitHub Pages への公開 を行います。
+
+- 初回はデータを2年分まとめて取得するため、数時間かかります。
+- データ・モデル・過去の予想は Actions のキャッシュで引き継ぎます。7日間動かないと消えるので、そのときは初回からやり直しになります。
+- 使う前に、リポジトリの Settings → Pages → Source を「GitHub Actions」にしてください。
+- スケジュール実行はデフォルトブランチ(main)でのみ動きます。
 
 ネットワークなしで試すなら合成データ(本物と同じ書式)で一通り動きます:
 

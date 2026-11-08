@@ -91,6 +91,18 @@ def cmd_export(a):
     print(f"{len(preds)} races -> {a.out}")
 
 
+def cmd_site(a):
+    from datetime import timedelta
+
+    from .site import build_site
+
+    today = a.date or date.today()
+    dates = [today + timedelta(days=i) for i in range(-a.back, a.ahead + 1)]
+    for line in build_site(Path(a.model), Path(a.data), Path(a.out), dates, keep_days=a.keep):
+        print(line)
+    print(f"site -> {a.out}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="boatrace-ai", description="ボートレース着順予測AI")
     sub = p.add_subparsers(required=True)
@@ -129,6 +141,16 @@ def main(argv=None):
     s.add_argument("--data", default="data/raw")
     s.add_argument("--out", default="app/predictions.json")
     s.set_defaults(func=cmd_export)
+
+    s = sub.add_parser("site", help="スマホアプリ(静的サイト)を組み立てる")
+    s.add_argument("--model", default="models/model.pkl")
+    s.add_argument("--data", default="data/raw")
+    s.add_argument("--out", default="site")
+    s.add_argument("--date", type=_date, help="基準日 (省略時は今日)")
+    s.add_argument("--back", type=int, default=2, help="基準日の何日前から")
+    s.add_argument("--ahead", type=int, default=1, help="基準日の何日後まで")
+    s.add_argument("--keep", type=int, default=30, help="サイトに残す日数")
+    s.set_defaults(func=cmd_site)
 
     a = p.parse_args(argv)
     a.func(a)
