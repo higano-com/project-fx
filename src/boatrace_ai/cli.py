@@ -49,31 +49,46 @@ def cmd_train(a):
           f"  test={test.groupby(['date','venue','race_no']).ngroups}  (test from {test_from.date()})")
 
     model = BoatRaceModel().fit(train, valid)
-    model.save(Path(a.model))
-    print(f"model -> {a.model}\n")
+    n_races = lambda t: int(t.groupby(["date", "venue", "race_no"]).ngroups)
+    model.meta = dict(
+        trained_at=pd.Timestamp.now().strftime("%Y-%m-%d"),
+        data_from=f"{table['date'].min():%Y-%m-%d}", data_to=f"{table['date'].max():%Y-%m-%d}",
+        train_races=n_races(train) + n_races(valid), test_races=n_races(test),
+    )
     if len(test):
-        print(run_backtest(model, test, payouts, train))
+        report = run_backtest(model, test, payouts, train)
+        model.meta.update(top1_acc=round(report.top1_acc, 4), lane1_acc=round(report.lane1_acc, 4),
+                          win_roi=round(report.win_roi, 4))
+        print(report)
+    model.save(Path(a.model))
+    print(f"\nmodel -> {a.model}")
     print("\n特徴量重要度 (上位10):")
     print(model.feature_importance().head(10).round(0).to_string())
 
 
 def cmd_predict(a):
-    from .features import build_features
-    from .model import BoatRaceModel, race_predictions
-    from .parse import date_from_filename, load_dir, parse_program, read_text
+    from .model import BoatRaceModel
+    from .predict import predict_program
+    from .venues import venue_name
 
     model = BoatRaceModel.load(Path(a.model))
-    prog_path = Path(a.program)
-    programs = parse_program(read_text(prog_path), date_from_filename(prog_path))
-    history = load_dir(Path(a.data))[1] if a.data else None
-    df = build_features(programs, history)
-    preds = race_predictions(df, model.predict_win(df))
+    _, preds = predict_program(model, Path(a.program), Path(a.data) if a.data else None)
     for (d, venue, race_no), pr in preds.items():
         if a.venue and venue != a.venue:
             continue
         wp = "  ".join(f"{lane}:{p:.0%}" for lane, p in sorted(pr["win_probs"].items()))
         tri = ", ".join(f"{c}({p:.1%})" for c, p in pr["trifecta"].head(a.top).itertuples(index=False))
-        print(f"{d.date()} 場{venue:02d} {race_no:2d}R | 1着率 {wp}\n    3連単: {tri}")
+        print(f"{d.date()} {venue_name(venue)} {race_no:2d}R | 1着率 {wp}\n    3連単: {tri}")
+
+
+def cmd_export(a):
+    from .model import BoatRaceModel
+    from .predict import predict_program, to_app_json, write_app_json
+
+    model = BoatRaceModel.load(Path(a.model))
+    df, preds = predict_program(model, Path(a.program), Path(a.data) if a.data else None)
+    write_app_json(to_app_json(df, preds, model), Path(a.out))
+    print(f"{len(preds)} races -> {a.out}")
 
 
 def main(argv=None):
@@ -107,6 +122,13 @@ def main(argv=None):
     s.add_argument("--venue", type=int)
     s.add_argument("--top", type=int, default=5)
     s.set_defaults(func=cmd_predict)
+
+    s = sub.add_parser("export", help="アプリ用の予測JSONを書き出す")
+    s.add_argument("--program", required=True, help="b*.txt")
+    s.add_argument("--model", default="models/model.pkl")
+    s.add_argument("--data", default="data/raw")
+    s.add_argument("--out", default="app/predictions.json")
+    s.set_defaults(func=cmd_export)
 
     a = p.parse_args(argv)
     a.func(a)

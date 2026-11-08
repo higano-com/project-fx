@@ -37,6 +37,16 @@ boatrace-ai train --data data/raw --model models/model.pkl --test-from 2024-10-0
 boatrace-ai predict --program data/raw/b241225.txt --data data/raw --venue 12
 ```
 
+# 4) アプリ用JSONを書き出す (app/index.html が読み込む)
+boatrace-ai export --program data/raw/b241225.txt --data data/raw --out app/predictions.json
+```
+
+`app/index.html` は予想を見るためのページです。場名・締切時刻・各艇の1着確率・3連単上位5点を表示します。
+
+```bash
+cd app && python -m http.server 8000   # http://localhost:8000 で表示
+```
+
 ネットワークなしで試すなら合成データ(本物と同じ書式)で一通り動きます:
 
 ```bash

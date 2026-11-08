@@ -21,6 +21,8 @@ _B_VENUE = re.compile(r"^(\d{2})BBGN")
 _K_VENUE = re.compile(r"^(\d{2})KBGN")
 _RACE = re.compile(r"^\s*(\d{1,2})R\s")
 _DIST = re.compile(r"H(\d{3,4})m")
+_DEADLINE = re.compile(r"締切予定\s*(\d{1,2}):(\d{2})")
+_RACE_NAME = re.compile(r"^\s*\d{1,2}R\s+(\S+)")
 _B_ENTRY = re.compile(r"^([1-6]) (\d{4})(.{4})(\d{2})(.{2})(\d{2})([AB][12])")
 # 級別の直後から: 全国勝率, 全国2率, 当地勝率, 当地2率, ﾓｰﾀｰNO, ﾓｰﾀｰ2率, ﾎﾞｰﾄNO, ﾎﾞｰﾄ2率
 # 例 "9.30100.00" や "37.31111" のように数字が隙間なく並ぶことがあるので固定長で切る
@@ -64,7 +66,7 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
     """番組表 -> 1行=1艇 の DataFrame."""
     rows = []
     venue = race_no = None
-    distance = None
+    distance = deadline = race_name = None
     for line in text.splitlines():
         if m := _B_VENUE.match(line):
             venue, race_no = int(m.group(1)), None
@@ -74,6 +76,10 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
             race_no = int(m.group(1))
             dm = _DIST.search(norm)
             distance = int(dm.group(1)) if dm else None
+            tm = _DEADLINE.search(norm)
+            deadline = f"{int(tm.group(1)):02d}:{tm.group(2)}" if tm else None
+            nm = _RACE_NAME.match(norm)
+            race_name = nm.group(1) if nm else None
             continue
         if race_no is None:
             continue
@@ -82,7 +88,7 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
             rows.append(
                 dict(
                     date=pd.Timestamp(race_date), venue=venue, race_no=race_no,
-                    distance=distance, lane=int(g[0]), reg_no=int(g[1]),
+                    distance=distance, deadline=deadline, race_name=race_name, lane=int(g[0]), reg_no=int(g[1]),
                     name=g[2].replace("　", "").strip(), age=int(g[3]),
                     branch=g[4].strip(), weight=int(g[5]), grade=g[6],
                     class_num=CLASS_MAP.get(g[6], 0),
