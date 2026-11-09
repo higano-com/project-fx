@@ -46,6 +46,7 @@
   --nav: #12232eee; --chip-ring: #4b6372; color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55;
@@ -193,6 +194,24 @@ button { font: inherit; color: inherit; }
 .row .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .row .right b { font-size: .95rem; }
 .row .del { font-size: .75rem; color: var(--muted); text-decoration: underline; }
+/* 結果タブ: 横に1行でまとめる */
+.ksum { display: flex; gap: 6px; }
+.ksum > div { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 4px; text-align: center; display: flex; flex-direction: column; }
+.ksum span { font-size: .62rem; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.ksum b { font-size: 1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ksum b.plus { color: var(--good); } .ksum b.minus { color: var(--bad); }
+.kline { font-size: .72rem; color: var(--muted); text-align: center; margin-top: -6px; }
+.krow { box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 34px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--line); }
+.krow:first-of-type { border-top: 0; }
+.krow .r { font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.krow .c { display: flex; align-items: center; gap: 2px; }
+.krow .c .lane.sm { width: 20px; height: 20px; font-size: .72rem; }
+.krow .c .arrow { font-size: .6rem; }
+.krow .y { text-align: right; font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.krow .mk { display: flex; gap: 3px; }
+.krow .mk i { font-style: normal; font-size: .62rem; font-weight: 700; padding: 1px 5px; border-radius: 999px; }
+.krow .mk i.hit { background: var(--good-soft); color: var(--good); } .krow .mk i.miss { background: var(--line); color: var(--muted); }
+.list h3.kh { padding: 5px 10px; font-size: .8rem; }
 .empty { color: var(--muted); text-align: center; padding: 28px 12px; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
 .note { color: var(--muted); font-size: .8rem; line-height: 1.7; }
 .note p { margin: 0 0 6px; }
@@ -563,35 +582,34 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     let n = 0, fav = 0, lane1 = 0, top5 = 0, ret = 0;
     const lists = d.venues.map((v) => {
       const rows = v.races.filter((r) => r.result && r.result.trifecta).map((r) => {
-        const res = r.result;
-        const f = favorite(r);
-        const hitFav = res.order[0] === f.lane;
-        const hit5 = r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta);
+        const res = r.result, rv = view(r);       // 展示込み・補正済みの最新の予想で採点
+        const hitFav = res.order[0] === favorite(rv).lane;
+        const hit5 = rv.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta);
         n++; if (hitFav) fav++; if (res.order[0] === 1) lane1++; if (hit5) { top5++; ret += res.trifecta_pay; }
-        return `<button class="btn row" type="button" data-go="${v.code}-${r.no}">
-          <span class="r num">${r.no}R</span>
-          <span class="mid">${comboChips(res.trifecta)}</span>
-          <span class="right"><b class="num">${yen(res.trifecta_pay)}</b>
-            <span><span class="mark ${hitFav ? "hit" : "miss"}">本命</span> <span class="mark ${hit5 ? "hit" : "miss"}">5点</span></span></span>
+        return `<button class="btn krow" type="button" data-go="${v.code}-${r.no}">
+          <span class="r">${r.no}R</span>
+          <span class="c">${comboChips(res.trifecta)}</span>
+          <span class="y">${yen(res.trifecta_pay)}</span>
+          <span class="mk"><i class="${hitFav ? "hit" : "miss"}">本命</i><i class="${hit5 ? "hit" : "miss"}">5点</i></span>
         </button>`;
       }).join("");
-      return rows ? `<section class="list"><h3>${esc(v.name)}</h3>${rows}</section>` : "";
+      return rows ? `<section class="list"><h3 class="kh">${esc(v.name)}</h3>${rows}</section>` : "";
     }).join("");
 
     if (!n) {
-      $("view").innerHTML = `<div class="empty">この日の結果はまだありません。<br>レースが終わった日の夜に自動で反映されます。</div>${modelNote()}`;
+      $("view").innerHTML = `<div class="empty">この日の結果はまだありません。<br>レースが終わったあと、公式の成績が出たら反映されます。</div>${modelNote()}`;
       return;
     }
-    const cost = n * 5 * BET;
-    const profit = ret - cost;
+    const cost = n * 5 * BET, profit = ret - cost;
     $("view").innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="summary">
-          <div class="stat"><span>AI本命の1着的中</span><b class="num">${pct(fav / n)}</b><small class="num">${fav}/${n}R ・ 1号艇固定なら ${pct(lane1 / n)}</small></div>
-          <div class="stat"><span>3連単 上位5点の的中</span><b class="num">${pct(top5 / n)}</b><small class="num">${top5}/${n}R</small></div>
-          <div class="stat"><span>上位5点を全レース買ったら</span><b class="num ${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b><small class="num">投資 ${yen(cost)} ・ 払戻 ${yen(ret)}</small></div>
-          <div class="stat"><span>回収率</span><b class="num ${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b><small>100%を超えるとプラス</small></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="ksum">
+          <div><span>本命1着</span><b>${pct(fav / n)}</b></div>
+          <div><span>5点的中</span><b>${pct(top5 / n)}</b></div>
+          <div><span>回収率</span><b class="${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b></div>
+          <div><span>収支</span><b class="${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b></div>
         </div>
+        <div class="kline num">${n}R ・ 1号艇固定 ${pct(lane1 / n)} ・ 投資${yen(cost)} 払戻${yen(ret)}(3連単上位5点を全レース)</div>
         ${lists}
         ${modelNote()}
       </div>`;
