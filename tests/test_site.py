@@ -38,3 +38,17 @@ def test_build_site_fails_without_app(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError):
         site.find_app_dir()
+
+
+def test_claude_page_embeds_data(tmp_path):
+    from boatrace_ai.claude_page import build_claude_page
+
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    (site / "days.json").write_text(json.dumps({"days": [{"date": "2024-01-01"}], "model": {}}), encoding="utf-8")
+    (site / "data" / "2024-01-01.json").write_text(json.dumps({"date": "2024-01-01", "venues": [], "note": "</script>"}), encoding="utf-8")
+    out = build_claude_page(site_dir=site, app_html=__import__("pathlib").Path("app/index.html"), out=tmp_path / "c.html")
+    html = out.read_text(encoding="utf-8")
+    assert "window.__BOAT_DATA__ = {" in html
+    assert "<!doctype" not in html and "serviceWorker.register" not in html and 'rel="manifest"' not in html
+    assert "<\\/script>" in html  # データ中の </script> は無害化されている

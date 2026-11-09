@@ -117,6 +117,13 @@ def cmd_analyze(a):
         Path(a.out).write_text(text, encoding="utf-8")
 
 
+def cmd_claude_page(a):
+    from .claude_page import build_claude_page
+
+    out = build_claude_page(Path(a.app), Path(a.site), Path(a.out))
+    print(f"Claude page -> {out} ({out.stat().st_size // 1024} KB)")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="boatrace-ai", description="ボートレース着順予測AI")
     sub = p.add_subparsers(required=True)
@@ -172,6 +179,12 @@ def main(argv=None):
     s.add_argument("--test-from", help="この日以降で検証 (省略時は後ろ40%%)")
     s.add_argument("--out", help="結果を保存するファイル")
     s.set_defaults(func=cmd_analyze)
+
+    s = sub.add_parser("claude-page", help="データを埋め込んだ Claude のページ用アプリを作る")
+    s.add_argument("--app", default="app/index.html")
+    s.add_argument("--site", default="site", help="boatrace-ai site の出力フォルダ")
+    s.add_argument("--out", default="site/claude.html")
+    s.set_defaults(func=cmd_claude_page)
 
     a = p.parse_args(argv)
     a.func(a)

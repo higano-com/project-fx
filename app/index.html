@@ -152,6 +152,16 @@ button { font: inherit; color: inherit; }
 .maker .pick[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 2px var(--accent); }
 .maker-foot { display: flex; align-items: center; gap: 10px; }
 .maker-foot .p { color: var(--muted); font-size: .85rem; display: flex; align-items: center; gap: 4px; }
+.ex { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+.ex summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--accent); }
+.exgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.exgrid label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.exgrid input { width: 100%; min-width: 0; font: inherit; font-size: 1rem; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-variant-numeric: tabular-nums; }
+.exfoot { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.exfoot .sub2 { color: var(--muted); font-size: .78rem; flex: 1 1 160px; }
+.ghost { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); font-weight: 700; }
+.pill.exon { background: var(--accent); color: var(--accent-fg); }
+.boat .was { font-size: .7rem; color: var(--muted); font-weight: 400; display: block; }
 .primary { margin-left: auto; padding: 9px 18px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); font-weight: 700; }
 .primary[aria-disabled="true"] { opacity: .4; pointer-events: none; }
 
@@ -303,13 +313,40 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     return [v.code, v.races[0].no];
   }
 
+  // ---------- 展示タイムで予想を補正 ----------
+  // 2023年のデータで学習: 点数 = a*log(AI確率) + b*(展示タイム-レース平均) + c*(展示1位)
+  const EXW = [1.0532, -3.8527, 0.0735];
+  let exStore = store.get("ex-v1", {});
+  const exKey = (r) => `${S.date}-${S.venue}-${r.no}`;
+  function adjusted(r) {
+    const ex = exStore[exKey(r)];
+    if (!ex || ex.length !== 6 || ex.some((x) => !(x > 5 && x < 9))) return null;
+    const mean = ex.reduce((a, b) => a + b, 0) / 6, min = Math.min(...ex);
+    const sc = r.boats.map((b) => {
+      const e = ex[b.lane - 1];
+      return EXW[0] * Math.log(Math.max(b.p_win, 1e-6)) + EXW[1] * (e - mean) + EXW[2] * (e === min ? 1 : 0);
+    });
+    const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), sum = z.reduce((a, b) => a + b, 0);
+    const boats = r.boats.map((b, i) => ({ ...b, p_win: z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1] }));
+    const p = Object.fromEntries(boats.map((b) => [b.lane, b.p_win]));
+    const L = boats.map((b) => b.lane), tri = [];
+    for (const i of L) for (const j of L) for (const k of L) {
+      if (i === j || j === k || i === k) continue;
+      tri.push({ combo: `${i}-${j}-${k}`, prob: p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j])) });
+    }
+    tri.sort((a, b) => b.prob - a.prob);
+    return { ...r, boats, trifecta: tri.slice(0, 10), adjusted: true };
+  }
+
   // ---------- 予想タブ ----------
   function renderYoso() {
     const d = day();
     if (!d.venues.find((v) => v.code === S.venue)) [S.venue, S.race] = defaultSelection();
     const v = d.venues.find((x) => x.code === S.venue);
     if (!v.races.find((r) => r.no === S.race)) S.race = v.races[0].no;
-    const r = v.races.find((x) => x.no === S.race);
+    const r0 = v.races.find((x) => x.no === S.race);
+    const r = adjusted(r0) || r0;
+    const exVals = exStore[exKey(r0)] || [];
     const n = jst();
     const nextNo = (v.races.find((x) => raceState(x) === "open") || {}).no;
 
@@ -348,7 +385,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
         <div class="who"><b>${esc(b.name)}</b><span><span class="grade ${esc(b.grade)}">${esc(b.grade)}</span> ${esc(b.branch)} 勝率<span class="num">${b.nat_win.toFixed(2)}</span> モ<span class="num">${b.motor_2.toFixed(0)}%</span></span></div>
-        <div class="pct num">${pct(b.p_win)}</div>
+        <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
         <div class="track" aria-hidden="true"><div class="fill" style="width:${(b.p_win / max) * 100}%"></div></div>
       </div>`).join("");
 
@@ -373,10 +410,19 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${r.adjusted ? '<span class="pill exon">展示込み</span>' : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
+          <details class="ex" ${r.adjusted ? "" : ""}>
+            <summary>${r.adjusted ? "展示タイムを入れ直す" : "展示タイムを入れて予想を更新"}</summary>
+            <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>
+            <div class="exfoot">
+              <button class="btn primary" type="button" id="exApply">展示込みで再計算</button>
+              ${r.adjusted ? '<button class="btn ghost" type="button" id="exClear">元に戻す</button>' : ""}
+              <span class="sub2">公式サイトやアプリの「直前情報」に出る6艇の展示タイムを入れてください</span>
+            </div>
+          </details>
           <div class="sub"><h3>3連単 AIのおすすめ</h3><small>確率の高い順</small></div>
           <div class="combos">${combos}</div>
           <div class="sub"><h3>自分で買い目を作る</h3><small>${myCombo ? "AI確率 " + pct(harville(r, myCombo), 1) : "1〜3着を選ぶ"}</small></div>
@@ -401,6 +447,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       S.pick = S.pick.map((x, j) => (j === i ? (x === l ? null : l) : x === l ? null : x));
       render();
     }));
+    $("exApply").addEventListener("click", () => {
+      const vals = [1, 2, 3, 4, 5, 6].map((l) => parseFloat(($("ex-" + l).value || "").replace(/[^0-9.]/g, "")));
+      if (vals.some((x) => !(x > 5 && x < 9))) { $("ex-" + (vals.findIndex((x) => !(x > 5 && x < 9)) + 1)).focus(); return; }
+      exStore[exKey(r0)] = vals; store.set("ex-v1", exStore); render();
+    });
+    if ($("exClear")) $("exClear").addEventListener("click", () => { delete exStore[exKey(r0)]; store.set("ex-v1", exStore); render(); });
     $("addMine").addEventListener("click", () => { if (myCombo) { addBet(v, r, myCombo); S.pick = [null, null, null]; render(); } });
     const sel = $("venues").querySelector('[aria-pressed="true"]');
     if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
