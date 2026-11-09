@@ -359,7 +359,9 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const n = jst();
     const nextNo = (v.races.find((x) => raceState(x) === "open") || {}).no;
 
-    const venues = d.venues.map((x) => {
+    // 場の並び: 次のレースの締切が早い順(全レース終わった場は右端)
+    const nextDl = (x) => { const nx = x.races.find((y) => raceState(y) === "open"); return nx && nx.deadline ? nx.deadline : "99:99"; };
+    const venues = [...d.venues].sort((a, b) => nextDl(a).localeCompare(nextDl(b))).map((x) => {
       const nx = x.races.find((y) => raceState(y) === "open");
       const sub = nx ? `${nx.no}R ${nx.deadline || ""}` : "終了";
       return `<button class="btn venue" type="button" data-v="${x.code}" aria-pressed="${x.code === S.venue}"><b>${esc(x.name)}</b><span class="num">${esc(sub)}</span></button>`;
