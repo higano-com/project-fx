@@ -319,7 +319,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   let exStore = store.get("ex-v1", {});
   const exKey = (r) => `${S.date}-${S.venue}-${r.no}`;
   function adjusted(r) {
-    const ex = exStore[exKey(r)];
+    const ex = exStore[exKey(r)] || r.ex_times;  // 手入力 > 自動取得
     if (!ex || ex.length !== 6 || ex.some((x) => !(x > 5 && x < 9))) return null;
     const mean = ex.reduce((a, b) => a + b, 0) / 6, min = Math.min(...ex);
     const sc = r.boats.map((b) => {
@@ -327,7 +327,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       return EXW[0] * Math.log(Math.max(b.p_win, 1e-6)) + EXW[1] * (e - mean) + EXW[2] * (e === min ? 1 : 0);
     });
     const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), sum = z.reduce((a, b) => a + b, 0);
-    const boats = r.boats.map((b, i) => ({ ...b, p_win: z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1] }));
+    const boats = r.boats.map((b, i) => ({ ...b, p_win: z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1],
+      st: r.st_ex ? r.st_ex[b.lane - 1] : null, course: r.course_ex ? r.course_ex[b.lane - 1] : null }));
     const p = Object.fromEntries(boats.map((b) => [b.lane, b.p_win]));
     const L = boats.map((b) => b.lane), tri = [];
     for (const i of L) for (const j of L) for (const k of L) {
@@ -335,7 +336,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       tri.push({ combo: `${i}-${j}-${k}`, prob: p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j])) });
     }
     tri.sort((a, b) => b.prob - a.prob);
-    return { ...r, boats, trifecta: tri.slice(0, 10), adjusted: true };
+    return { ...r, boats, trifecta: tri.slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };
   }
 
   // ---------- 予想タブ ----------
@@ -346,7 +347,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     if (!v.races.find((r) => r.no === S.race)) S.race = v.races[0].no;
     const r0 = v.races.find((x) => x.no === S.race);
     const r = adjusted(r0) || r0;
-    const exVals = exStore[exKey(r0)] || [];
+    const exVals = exStore[exKey(r0)] || r0.ex_times || [];
     const n = jst();
     const nextNo = (v.races.find((x) => raceState(x) === "open") || {}).no;
 
@@ -384,7 +385,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const boats = r.boats.map((b) => `
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
-        <div class="who"><b>${esc(b.name)}</b><span><span class="grade ${esc(b.grade)}">${esc(b.grade)}</span> ${esc(b.branch)} 勝率<span class="num">${b.nat_win.toFixed(2)}</span> モ<span class="num">${b.motor_2.toFixed(0)}%</span></span></div>
+        <div class="who"><b>${esc(b.name)}</b><span><span class="grade ${esc(b.grade)}">${esc(b.grade)}</span> ${esc(b.branch)} 勝率<span class="num">${b.nat_win.toFixed(2)}</span> モ<span class="num">${b.motor_2.toFixed(0)}%</span>${b.ex != null ? ` 展示<span class="num">${b.ex.toFixed(2)}</span>` : ""}${b.st ? ` ST<span class="num">${esc(b.st)}</span>` : ""}${b.course && b.course !== b.lane ? ` 進入<span class="num">${b.course}</span>` : ""}</span></div>
         <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
         <div class="track" aria-hidden="true"><div class="fill" style="width:${(b.p_win / max) * 100}%"></div></div>
       </div>`).join("");
@@ -410,16 +411,16 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}${r.adjusted ? '<span class="pill exon">展示込み</span>' : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
           <details class="ex" ${r.adjusted ? "" : ""}>
-            <summary>${r.adjusted ? "展示タイムを入れ直す" : "展示タイムを入れて予想を更新"}</summary>
+            <summary>${r.auto ? "展示は自動で反映済み(手で直すときはここ)" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを入れて予想を更新"}</summary>
             <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>
             <div class="exfoot">
               <button class="btn primary" type="button" id="exApply">展示込みで再計算</button>
-              ${r.adjusted ? '<button class="btn ghost" type="button" id="exClear">元に戻す</button>' : ""}
+              ${r.adjusted && !r.auto ? '<button class="btn ghost" type="button" id="exClear">元に戻す</button>' : ""}
               <span class="sub2">公式サイトやアプリの「直前情報」に出る6艇の展示タイムを入れてください</span>
             </div>
           </details>

@@ -64,3 +64,23 @@ def test_parse_results():
     assert (p.trifecta_pop, p.trio, p.trio_pay, p.exacta, p.exacta_pop) == (3, "1-2-4", 450, "1-2", 2)
     assert (p.place1_lane, p.place1_pay, p.place2_lane, p.place2_pay, p.quinella_pay) == (1, 100, 2, 130, 300)
     assert (p.race_type, p.weather, p.wind_dir, p.wind, p.wave) == ("予選", "晴", "北西", 3, 3)
+
+
+def test_parse_beforeinfo():
+    from boatrace_ai.beforeinfo import parse_beforeinfo
+
+    rows = "".join(
+        f'<td class="is-boatColor{l} is-fs14" rowspan="4">{l}</td><td>x</td><td rowspan="2">52.0kg</td>\n'
+        f'  <td rowspan="4">6.{60 + l}</td>\n  <td rowspan="4">-0.5</td>'
+        for l in range(1, 7)
+    )
+    st = "".join(
+        f'<span class="table1_boatImage1Number is-type{l}">{l}</span><span>..</span>'
+        f'<span class="table1_boatImage1Time">.1{l}</span>'
+        for l in (2, 1, 3, 4, 5, 6)
+    )
+    info = parse_beforeinfo(rows + st)
+    assert info["ex_times"] == [6.61, 6.62, 6.63, 6.64, 6.65, 6.66]
+    assert info["tilts"] == [-0.5] * 6
+    assert info["st_ex"][:2] == [".11", ".12"] and info["course_ex"][:2] == [2, 1]
+    assert parse_beforeinfo("<html>まだ</html>") is None
