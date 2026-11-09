@@ -6,6 +6,7 @@ B_TEXT = "\n".join([
     "STARTB",
     "12BBGN",
     "ボートレース住之江　　＊＊＊　番組表　＊＊＊",
+    "   第　３日          ２０２４年　４月　１日",
     "   １Ｒ  予選　　　　        Ｈ１８００ｍ  電話投票締切予定１５：１７",
     "-" * 79,
     "艇 選手 選手  年 支 体級    全国      当地     モーター   ボート   今節成績  早",
@@ -48,6 +49,7 @@ def test_parse_program():
     assert r["name"] == "山田太郎" and r.grade == "A1" and r.class_num == 4
     assert (r.nat_win, r.motor_no, r.motor_2, r.boat_2) == (6.50, 12, 35.00, 32.00)
     assert r.distance == 1800
+    assert r.day_no == 3
     assert df.iloc[1].motor_no == 5 and df.iloc[1]["name"] == "佐藤花"
     r3 = df.iloc[2]
     assert (r3.loc_win, r3.loc_2, r3.motor_no, r3.boat_no, r3.boat_2) == (9.30, 100.0, 70, 111, 27.94)
