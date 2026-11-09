@@ -94,13 +94,14 @@ button { font: inherit; color: inherit; }
 
 /* レース詳細 */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.rhead { display: flex; align-items: flex-start; gap: 12px; }
+.rhead { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
 .rhead .big { font-family: var(--display); font-size: 2.1rem; line-height: 1; }
 .rhead .big small { font-size: 1rem; }
 .rhead .info { display: flex; flex-direction: column; min-width: 0; }
 .rhead .info b { font-size: 1.05rem; }
 .rhead .info span { color: var(--muted); font-size: .85rem; }
-.pills { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pills { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+@media (max-width: 480px) { .pills { margin-left: 0; width: 100%; justify-content: flex-start; } }
 .pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .pill.solid { background: var(--good-soft); color: var(--good); }
 .pill.mid { background: var(--accent-soft); color: var(--accent); }
@@ -116,13 +117,20 @@ button { font: inherit; color: inherit; }
 .mark.miss { background: var(--bad-soft); color: var(--bad); }
 
 .boats { display: flex; flex-direction: column; gap: 9px; }
-.boat { display: grid; grid-template-columns: 34px minmax(0, 1fr) 58px; grid-template-rows: auto auto; column-gap: 10px; row-gap: 4px; align-items: center; }
+.boat { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 5px; align-items: start; padding-block: 4px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.boat:last-child { border-bottom: 0; }
 .boat .lane { grid-row: span 2; }
-.boat .who { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-.boat .who b { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boat .who span { color: var(--muted); font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boat .pct { grid-row: span 2; text-align: right; font-weight: 700; font-size: 1.15rem; }
-.boat .track { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.boat .who { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.boat .who .nm { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.boat .who b { font-size: 1.08rem; line-height: 1.3; }
+.boat .who .gr { font-size: .75rem; font-weight: 700; color: var(--muted); }
+.boat .who .gr.A1 { color: var(--hot); }
+.boat .facts { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.boat .facts span { font-size: .74rem; color: var(--muted); background: var(--bg); border-radius: 6px; padding: 1px 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.boat .facts span.good { color: var(--good); background: var(--good-soft); font-weight: 700; }
+.boat .facts span.warn { color: var(--hot); background: var(--hot-soft); font-weight: 700; }
+.boat .pct { grid-row: span 2; text-align: right; font-weight: 700; font-size: 1.2rem; line-height: 1.2; min-width: 52px; }
+.boat .track { grid-column: 2 / 4;  height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
 .boat .fill { height: 100%; background: var(--bar); border-radius: 4px; }
 .boat.top .fill { background: var(--hot); }
 .boat.top .pct { color: var(--hot); }
@@ -382,13 +390,30 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
         <span class="mark ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}">上位5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "ハズレ"}</span>
       </div>` : (r.result && r.result.void ? `<div class="result"><span class="t">結果</span><span>不成立・中止など</span></div>` : "");
 
-    const boats = r.boats.map((b) => `
+    const exs = r.boats.map((b) => b.ex).filter((x) => x != null);
+    const exRank = (x) => (x == null ? null : 1 + exs.filter((y) => y < x).length);
+    const stNum = (t) => { const m = /^(F)?\.?(\d+)$/.exec(String(t || "").replace("0.", ".")); return m ? (m[1] ? -1 : parseFloat("0." + m[2])) : null; };
+    const boats = r.boats.map((b) => {
+      const er = exRank(b.ex), sv = stNum(b.st);
+      const facts = [
+        `${esc(b.branch)}`,
+        `勝率 ${b.nat_win.toFixed(2)}`,
+        `モーター ${b.motor_2.toFixed(0)}%`,
+        b.ex != null ? `<span class="${er === 1 ? "good" : er >= 5 ? "warn" : ""}">展示 ${b.ex.toFixed(2)} (${er}位)</span>` : "",
+        b.st ? `<span class="${sv === -1 || (sv != null && sv <= .05) ? "good" : sv >= .25 ? "warn" : ""}">ST ${esc(b.st)}</span>` : "",
+        b.course && b.course !== b.lane ? `<span class="warn">進入 ${b.course}コース</span>` : "",
+      ].filter(Boolean).map((f) => (f.startsWith("<span") ? f : `<span>${f}</span>`)).join("");
+      return `
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
-        <div class="who"><b>${esc(b.name)}</b><span><span class="grade ${esc(b.grade)}">${esc(b.grade)}</span> ${esc(b.branch)} 勝率<span class="num">${b.nat_win.toFixed(2)}</span> モ<span class="num">${b.motor_2.toFixed(0)}%</span>${b.ex != null ? ` 展示<span class="num">${b.ex.toFixed(2)}</span>` : ""}${b.st ? ` ST<span class="num">${esc(b.st)}</span>` : ""}${b.course && b.course !== b.lane ? ` 進入<span class="num">${b.course}</span>` : ""}</span></div>
+        <div class="who">
+          <div class="nm"><b>${esc(b.name)}</b><span class="gr ${esc(b.grade)}">${esc(b.grade)}</span></div>
+          <div class="facts">${facts}</div>
+        </div>
         <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
         <div class="track" aria-hidden="true"><div class="fill" style="width:${(b.p_win / max) * 100}%"></div></div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
     const combos = r.trifecta.slice(0, 5).map((t) => {
       const saved = bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === t.combo);
@@ -416,7 +441,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           ${resultHtml}
           <div class="boats">${boats}</div>
           <details class="ex" ${r.adjusted ? "" : ""}>
-            <summary>${r.auto ? "展示は自動で反映済み(手で直すときはここ)" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを入れて予想を更新"}</summary>
+            <summary>${r.auto ? "展示を手で直す" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを手で入れる"}</summary>
             <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>
             <div class="exfoot">
               <button class="btn primary" type="button" id="exApply">展示込みで再計算</button>
