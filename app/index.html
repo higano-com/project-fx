@@ -378,7 +378,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     });
     return { ...r, boats, hasValue: any };
   }
-  const TRI_EV_MIN = 1.2, TRI_P_MIN = 0.01;
+  // 2023年の3連単オッズでの検証: 大穴(確率1〜2%)は損。確率3%以上・50倍以下・期待値1.0以上に絞る
+  const TRI_EV_MIN = 1.0, TRI_P_MIN = 0.03, TRI_ODDS_MAX = 50;
   function retri(r) {
     if (r.adjusted) return r;
     const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
@@ -386,10 +387,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   }
   function withTriOdds(r) {
     if (!r.tri_odds) return r;
-    // 期待値の計算には、単勝オッズと混ぜた確率(あれば)を使う
-    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.pb != null ? b.pb : b.p_win, 1e-6)]));
+    // 3連単は、オッズと混ぜない展示込みAIの確率の方が検証で良かった
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
     const triValue = triList(p).map((t) => ({ ...t, odds: r.tri_odds[t.combo], ev: t.prob * (r.tri_odds[t.combo] || 0) }))
-      .filter((t) => t.odds && t.prob >= TRI_P_MIN && t.ev >= TRI_EV_MIN)
+      .filter((t) => t.odds && t.odds <= TRI_ODDS_MAX && t.prob >= TRI_P_MIN && t.ev >= TRI_EV_MIN)
       .sort((a, b) => b.ev - a.ev).slice(0, 5);
     return { ...r, triValue };
   }
