@@ -302,11 +302,26 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const top = Math.max(...r.boats.map((b) => b.p_win));
     return top >= 0.6 ? ["solid", "堅い"] : top >= 0.4 ? ["mid", "本命あり"] : ["mixed", "混戦"];
   }
+  // 3連単の確率: 1着確率から計算。2着・3着は人気薄を過大評価しないよう補正(2023年の着順で決定)
+  const LAM = [0.670, 0.433];
+  function triProb(p, i, j, k) {
+    const L = Object.keys(p).map(Number);
+    const s2 = L.filter((x) => x !== i).reduce((a, x) => a + Math.pow(p[x], LAM[0]), 0);
+    const s3 = L.filter((x) => x !== i && x !== j).reduce((a, x) => a + Math.pow(p[x], LAM[1]), 0);
+    return p[i] * Math.pow(p[j], LAM[0]) / s2 * Math.pow(p[k], LAM[1]) / s3;
+  }
+  function triList(p) {
+    const L = Object.keys(p).map(Number), out = [];
+    for (const i of L) for (const j of L) for (const k of L) {
+      if (i === j || j === k || i === k) continue;
+      out.push({ combo: `${i}-${j}-${k}`, prob: triProb(p, i, j, k) });
+    }
+    return out.sort((a, b) => b.prob - a.prob);
+  }
   function harville(r, combo) {
-    const p = Object.fromEntries(r.boats.map((b) => [b.lane, b.p_win]));
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
     const [i, j, k] = combo.split("-").map(Number);
-    if (!p[i] || !p[j] || !p[k]) return 0;
-    return p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j]));
+    return p[i] && p[j] && p[k] ? triProb(p, i, j, k) : 0;
   }
   const favorite = (r) => r.boats.reduce((a, b) => (b.p_win > a.p_win ? b : a));
 
@@ -341,14 +356,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), sum = z.reduce((a, b) => a + b, 0);
     const boats = r.boats.map((b, i) => ({ ...b, p_win: z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1],
       st: r.st_ex ? r.st_ex[b.lane - 1] : null, course: r.course_ex ? r.course_ex[b.lane - 1] : null }));
-    const p = Object.fromEntries(boats.map((b) => [b.lane, b.p_win]));
-    const L = boats.map((b) => b.lane), tri = [];
-    for (const i of L) for (const j of L) for (const k of L) {
-      if (i === j || j === k || i === k) continue;
-      tri.push({ combo: `${i}-${j}-${k}`, prob: p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j])) });
-    }
-    tri.sort((a, b) => b.prob - a.prob);
-    return { ...r, boats, trifecta: tri.slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };
+    const p = Object.fromEntries(boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
+    return { ...r, boats, trifecta: triList(p).slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };
   }
 
   // ---------- オッズと組み合わせた期待値 ----------
@@ -369,7 +378,22 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     });
     return { ...r, boats, hasValue: any };
   }
-  const view = (r) => withOdds(adjusted(r) || r);
+  const TRI_EV_MIN = 1.2, TRI_P_MIN = 0.01;
+  function retri(r) {
+    if (r.adjusted) return r;
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
+    return { ...r, trifecta: triList(p).slice(0, 10) };
+  }
+  function withTriOdds(r) {
+    if (!r.tri_odds) return r;
+    // 期待値の計算には、単勝オッズと混ぜた確率(あれば)を使う
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.pb != null ? b.pb : b.p_win, 1e-6)]));
+    const triValue = triList(p).map((t) => ({ ...t, odds: r.tri_odds[t.combo], ev: t.prob * (r.tri_odds[t.combo] || 0) }))
+      .filter((t) => t.odds && t.prob >= TRI_P_MIN && t.ev >= TRI_EV_MIN)
+      .sort((a, b) => b.ev - a.ev).slice(0, 5);
+    return { ...r, triValue };
+  }
+  const view = (r) => withTriOdds(withOdds(retri(adjusted(r) || r)));
 
   // ---------- 予想タブ ----------
   function renderYoso() {
@@ -394,7 +418,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const grid = v.races.map((x) => {
       const st = raceState(x);
       const cls = st === "done" ? "done" : x.no === nextNo && n.date === S.date ? "next" : "";
-      const hv = view(x).hasValue;
+      const vx = view(x), hv = (vx.triValue && vx.triValue.length) || vx.hasValue;
       return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}">${hv ? '<i class="vdot" aria-label="期待値プラスの艇あり"></i>' : ""}<b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
     }).join("");
 
@@ -465,7 +489,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}${r.hasValue ? '<span class="pill value">期待値+あり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${(r.triValue && r.triValue.length) ? '<span class="pill value">3連単 狙い目あり</span>' : r.hasValue ? '<span class="pill value">期待値+あり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
@@ -479,6 +503,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
               <span class="sub2">公式サイトやアプリの「直前情報」に出る6艇の展示タイムを入れてください</span>
             </div>
           </details>
+          ${r.tri_odds ? `<div class="sub"><h3>3連単 期待値の高い買い目</h3><small>${esc(r.odds_time || "")}時点のオッズ</small></div>
+          <div class="combos">${(r.triValue || []).length ? r.triValue.map((t) => {
+            const saved = bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === t.combo);
+            return `<div class="combo">${comboChips(t.combo)}<span class="cp num">${pct(t.prob, 1)} ・ ${t.odds.toFixed(1)}倍 ・ 期待値${t.ev.toFixed(2)}</span>
+              <button class="btn add" type="button" data-combo="${t.combo}" aria-pressed="${saved}">${saved ? "保存済み" : "＋買い目"}</button></div>`;
+          }).join("") : '<p class="note" style="margin:0">このレースは期待値${TRI_EV_MIN}以上の買い目がありません(見送り候補)。</p>'}</div>
+          <p class="note" style="margin:0">3連単の期待値はまだ検証中の参考値です。過去の3連単オッズで効果を確かめています。</p>` : ""}
           <div class="sub"><h3>3連単 AIのおすすめ</h3><small>確率の高い順</small></div>
           <div class="combos">${combos}</div>
           <div class="sub"><h3>自分で買い目を作る</h3><small>${myCombo ? "AI確率 " + pct(harville(r, myCombo), 1) : "1〜3着を選ぶ"}</small></div>

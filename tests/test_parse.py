@@ -84,3 +84,16 @@ def test_parse_beforeinfo():
     assert info["tilts"] == [-0.5] * 6
     assert info["st_ex"][:2] == [".11", ".12"] and info["course_ex"][:2] == [2, 1]
     assert parse_beforeinfo("<html>まだ</html>") is None
+
+
+def test_parse_trifecta_odds():
+    from boatrace_ai.odds import parse_trifecta_odds
+
+    # 行ごとに6列(1着=1..6)。値には行番号*10+列番号を入れて、位置の対応を確かめる
+    cells = "".join(f'<td class="oddsPoint ">{row * 10 + col + 1}.0</td>' for row in range(20) for col in range(6))
+    o = parse_trifecta_odds(cells)
+    assert len(o) == 120
+    assert o["1-2-3"] == 1.0 and o["2-1-3"] == 2.0      # 0行目: 1着の列ごと
+    assert o["1-2-4"] == 11.0                           # 1行目: 2着2・3着4
+    assert o["1-3-2"] == 41.0                           # 4行目: 2着3・3着2
+    assert parse_trifecta_odds('<td class="oddsPoint">1.0</td>') == {}

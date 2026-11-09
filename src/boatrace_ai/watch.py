@@ -15,7 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .beforeinfo import fetch_beforeinfo
-from .odds import fetch_race_odds
+from .odds import fetch_race_odds, fetch_trifecta_odds
 from .claude_page import build_claude_page
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -81,6 +81,23 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                             first_pending = first_pending or now
                             urgent = True
                         log(f"{now:%H:%M:%S} {v['name']}{r['no']}R オッズ{'あり' if r.get('odds') else 'まだ'}")
+                # --- 締切の数分前の3連単オッズ (1レース1回) ---
+                tkey = ("tri",) + key
+                if not r.get("tri_odds") and timedelta(minutes=ODDS_MIN_LEFT) <= dl - now <= timedelta(minutes=ODDS_MAX_LEFT):
+                    n, last = tries.get(tkey, [0, None])
+                    if n < 3 and not (last and (now - last).total_seconds() < 60):
+                        try:
+                            tri = fetch_trifecta_odds(race_day, v["code"], r["no"], timeout=20)
+                        except Exception as e:
+                            tri = {}
+                            log(f"3連単オッズ取得失敗 {v['name']}{r['no']}R: {e}")
+                        tries[tkey] = [n + 1, now]
+                        time.sleep(REQUEST_GAP)
+                        if len(tri) >= 100:
+                            r["tri_odds"], r["odds_time"] = tri, now.strftime("%H:%M")
+                            pending.append(f"{v['name']}{r['no']}R(3連単オッズ)")
+                            first_pending = first_pending or now
+                            urgent = True
                 # --- 展示 ---
                 if r.get("ex_times"):
                     continue
