@@ -83,7 +83,8 @@ class ExPredictor:
         self.model = BoatRaceModel.load(Path(model_path))
         program_path = Path(program_path)
         programs = parse_program(read_text(program_path), date_from_filename(program_path))
-        self.feat = build_features(programs, load_dir(Path(history_dir))[1])
+        self.history = load_dir(Path(history_dir))[1]
+        self.feat = build_features(programs, self.history)
 
     def predict(self, venue: int, race_no: int, ex_times: list, course_ex: list | None = None,
                 weather: dict | None = None) -> list | None:
@@ -92,6 +93,9 @@ class ExPredictor:
             return None
         g = g.assign(exhibit=ex_times, course_ex=course_ex if course_ex and len(course_ex) == 6 else g["lane"].tolist())
         g = add_exhibit_features(g)
+        # 選手×コースは、展示の進入コースで引き直す
+        from .features import COURSE_HIST, add_course_history
+        g = add_course_history(g.drop(columns=[c for c in COURSE_HIST if c in g]), self.history, "course_ex")
         weather = weather or {}
         g["wind_f"] = float(weather["wind"]) if weather.get("wind") is not None else float("nan")
         g["wave_f"] = float(weather["wave"]) if weather.get("wave") is not None else float("nan")

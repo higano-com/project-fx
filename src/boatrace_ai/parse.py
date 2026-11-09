@@ -111,9 +111,10 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
 def _parse_result_tail(tail: str) -> dict:
     """着/艇/登番 以降(選手名, ﾓｰﾀｰ, ﾎﾞｰﾄ, 展示, 進入, ST, ﾀｲﾑ) を読む."""
     toks = tail.split()
-    out = dict(exhibit=None, course=None, st=None)
+    out = dict(exhibit=None, course=None, st=None, motor_no=None, boat_no=None)
     for i in range(len(toks) - 2):
         if toks[i].isdigit() and toks[i + 1].isdigit() and _FLOAT2.match(toks[i + 2]):
+            out["motor_no"], out["boat_no"] = int(toks[i]), int(toks[i + 1])
             out["exhibit"] = float(toks[i + 2])
             rest = toks[i + 3:]
             if rest and rest[0] in "123456" and len(rest[0]) == 1:

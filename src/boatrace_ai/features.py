@@ -86,6 +86,63 @@ def add_history(entries: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values("_row").drop(columns="_row").reset_index(drop=True)
 
 
+COURSE_HIST = ["hc_n", "hc_win_rate", "hc_top3_rate", "hc_avg_st"]
+MOTOR_HIST = ["mh_n", "mh_avg_finish", "mh_top2_rate", "mh_avg_ex"]
+
+
+def add_course_history(entries: pd.DataFrame, results: pd.DataFrame, course_col: str = "course_ex") -> pd.DataFrame:
+    """選手 × 実際の進入コースの過去成績 (その日より前). entries の course_col で引く."""
+    df = entries.copy()
+    if results is None or results.empty or "course" not in results:
+        for c in COURSE_HIST:
+            df[c] = 0.0 if c.endswith("_n") else float("nan")
+        return df
+    r = results.dropna(subset=["course"]).copy()
+    r["course"] = r["course"].astype(int)
+    cum = _daily_cumulative(r, ["reg_no", "course"], "hc").rename(columns={"date": "_hdate", "course": "_course"})
+    cum["hc_avg_st"] = float("nan")
+    st = r.dropna(subset=["st"]).groupby(["reg_no", "course", "date"])["st"].agg(["sum", "count"]).reset_index().sort_values("date")
+    st[["s", "c"]] = st.groupby(["reg_no", "course"])[["sum", "count"]].cumsum()
+    st = st.assign(hc_avg_st=st.s / st.c)[["reg_no", "course", "date", "hc_avg_st"]].rename(columns={"date": "_hdate", "course": "_course"})
+    cum = cum.drop(columns="hc_avg_st").merge(st, on=["reg_no", "_course", "_hdate"], how="left").sort_values("_hdate")
+    df["_row"] = range(len(df))
+    df["_course"] = df[course_col].fillna(df["lane"]).astype(int)
+    df = pd.merge_asof(df.sort_values("date"), cum, left_on="date", right_on="_hdate", by=["reg_no", "_course"],
+                       direction="backward", allow_exact_matches=False).drop(columns=["_hdate"])
+    df["hc_n"] = df["hc_n"].fillna(0.0)
+    return df.sort_values("_row").drop(columns=["_row", "_course"]).reset_index(drop=True)
+
+
+def add_motor_history(entries: pd.DataFrame, results: pd.DataFrame, days: int = 60) -> pd.DataFrame:
+    """モーターの最近の調子: 同じ場・同じモーター番号の直近 days 日の成績 (その日より前)."""
+    df = entries.copy()
+    if results is None or results.empty or "motor_no" not in results:
+        for c in MOTOR_HIST:
+            df[c] = 0.0 if c.endswith("_n") else float("nan")
+        return df
+    r = results.dropna(subset=["motor_no"]).copy()
+    r["motor_no"] = r["motor_no"].astype(int)
+    r["_fin"] = r["finish"].fillna(7.0)
+    r["_top2"] = (r["finish"] <= 2).astype(float)
+    daily = (r.groupby(["venue", "motor_no", "date"])
+              .agg(n=("_fin", "size"), f=("_fin", "sum"), t=("_top2", "sum"), ex=("exhibit", "sum"), exn=("exhibit", "count"))
+              .reset_index().sort_values("date"))
+    roll = (daily.set_index("date").groupby(["venue", "motor_no"])[["n", "f", "t", "ex", "exn"]]
+                 .rolling(f"{days}D").sum().reset_index())
+    roll["mh_n"] = roll["n"]
+    roll["mh_avg_finish"] = roll["f"] / roll["n"]
+    roll["mh_top2_rate"] = roll["t"] / roll["n"]
+    roll["mh_avg_ex"] = roll["ex"] / roll["exn"].where(roll["exn"] > 0)
+    roll = roll[["venue", "motor_no", "date"] + MOTOR_HIST].rename(columns={"date": "_mdate"}).sort_values("_mdate")
+    df["_row"] = range(len(df))
+    df = pd.merge_asof(df.sort_values("date"), roll, left_on="date", right_on="_mdate", by=["venue", "motor_no"],
+                       direction="backward", allow_exact_matches=False)
+    stale = (df["date"] - df["_mdate"]).dt.days > days   # 古すぎる記録(交換前など)は使わない
+    df.loc[stale.fillna(True), MOTOR_HIST] = float("nan")
+    df["mh_n"] = df["mh_n"].fillna(0.0)
+    return df.drop(columns="_mdate").sort_values("_row").drop(columns="_row").reset_index(drop=True)
+
+
 def race_cat(name) -> int:
     """番組表のレース名 -> レースの格 (0:その他 1:一般 2:予選 3:特選・選抜など 4:準優勝戦 5:優勝戦)."""
     s = str(name)
@@ -112,6 +169,8 @@ def add_race_info(df: pd.DataFrame) -> pd.DataFrame:
 def build_features(programs: pd.DataFrame, history: pd.DataFrame | None) -> pd.DataFrame:
     df = add_relative(add_race_info(programs))
     df = add_history(df, history)
+    df = add_motor_history(df, history)              # モーターの最近の調子
+    df = add_course_history(df, history, "lane")     # 選手×コース (朝は枠番で代用)
     return df
 
 
