@@ -60,3 +60,35 @@ def to_app_json(df, preds, model: BoatRaceModel, top: int = 10) -> dict:
 def write_app_json(data: dict, path: Path) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
+EX_FEATURES_EXTRA = ["exhibit", "ex_diff", "ex_rank", "ex_gap_top", "course_ex", "course_shift"]
+
+
+def add_exhibit_features(g):
+    """1レース分(6艇)の表に、展示タイムと進入コースから作る特徴量を足す."""
+    g = g.copy()
+    g["ex_diff"] = g["exhibit"] - g["exhibit"].mean()
+    g["ex_rank"] = g["exhibit"].rank(method="min")
+    g["ex_gap_top"] = g["exhibit"] - g["exhibit"].min()
+    g["course_ex"] = g["course_ex"].fillna(g["lane"])
+    g["course_shift"] = g["course_ex"] - g["lane"]
+    return g
+
+
+class ExPredictor:
+    """展示が出たレースを、展示を学習したAIで予想し直す (その日の特徴量は最初に1回だけ作る)."""
+
+    def __init__(self, model_path: Path, program_path: Path, history_dir: Path):
+        self.model = BoatRaceModel.load(Path(model_path))
+        program_path = Path(program_path)
+        programs = parse_program(read_text(program_path), date_from_filename(program_path))
+        self.feat = build_features(programs, load_dir(Path(history_dir))[1])
+
+    def predict(self, venue: int, race_no: int, ex_times: list, course_ex: list | None = None) -> list | None:
+        g = self.feat[(self.feat["venue"] == venue) & (self.feat["race_no"] == race_no)].sort_values("lane")
+        if len(g) != 6 or not ex_times or len(ex_times) != 6:
+            return None
+        g = g.assign(exhibit=ex_times, course_ex=course_ex if course_ex and len(course_ex) == 6 else g["lane"].tolist())
+        g = add_exhibit_features(g)
+        return [round(float(x), 4) for x in self.model.predict_win(g)]

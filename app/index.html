@@ -374,7 +374,9 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       return EXW[0] * Math.log(Math.max(b.p_win, 1e-6)) + EXW[1] * (e - mean) + EXW[2] * (e === min ? 1 : 0);
     });
     const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), sum = z.reduce((a, b) => a + b, 0);
-    const boats = r.boats.map((b, i) => ({ ...b, p_win: z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1],
+    // 展示を学習したAIの予想があればそれを使う(手で展示を直したときは計算式で補正)
+    const useEx = !exStore[exKey(r)] && r.p_ex && r.p_ex.length === 6;
+    const boats = r.boats.map((b, i) => ({ ...b, p_win: useEx ? Math.max(r.p_ex[b.lane - 1], 1e-6) : z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1],
       st: r.st_ex ? r.st_ex[b.lane - 1] : null, course: r.course_ex ? r.course_ex[b.lane - 1] : null }));
     const p = Object.fromEntries(boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
     return { ...r, boats, trifecta: triList(p).slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };

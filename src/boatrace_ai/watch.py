@@ -38,7 +38,7 @@ def _log(msg: str) -> None:
 
 
 def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None,
-          poll_sec: float = 60, log=_log) -> str:
+          poll_sec: float = 60, log=_log, ex_predictor=None) -> str:
     """戻り値: "updated"(公開が必要) / "finished"(その日の対象レースが全部終わった)."""
     site_dir = Path(site_dir)
     day = day or datetime.now(JST).strftime("%Y-%m-%d")
@@ -116,6 +116,11 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 time.sleep(REQUEST_GAP)
                 if info:
                     r.update({k: val for k, val in info.items() if val is not None})
+                    if ex_predictor is not None:  # 展示を学習したAIで予想し直す
+                        try:
+                            r["p_ex"] = ex_predictor.predict(v["code"], r["no"], info["ex_times"], info.get("course_ex"))
+                        except Exception as e:
+                            log(f"展示AIの計算に失敗 {v['name']}{r['no']}R: {e}")
                     pending.append(f"{v['name']}{r['no']}R")
                     first_pending = first_pending or now
                     if dl - now <= timedelta(minutes=URGENT_MIN):

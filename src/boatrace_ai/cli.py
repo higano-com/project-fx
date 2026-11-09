@@ -127,7 +127,11 @@ def cmd_claude_page(a):
 def cmd_watch(a):
     from .watch import watch
 
-    result = watch(Path(a.site), Path(a.app), Path(a.out), day=a.day)
+    exp = None
+    if a.ex_model and a.program:
+        from .predict import ExPredictor
+        exp = ExPredictor(Path(a.ex_model), Path(a.program), Path(a.history))
+    result = watch(Path(a.site), Path(a.app), Path(a.out), day=a.day, ex_predictor=exp)
     print(result)
 
 
@@ -198,6 +202,9 @@ def main(argv=None):
     s.add_argument("--app", default="app/index.html")
     s.add_argument("--out", default="site/claude.html")
     s.add_argument("--day", help="YYYY-MM-DD (省略時は今日)")
+    s.add_argument("--ex-model", help="展示を学習したAI (省略時は展示をあとから足す方式)")
+    s.add_argument("--program", help="その日の番組表 b*.txt (--ex-model と一緒に)")
+    s.add_argument("--history", default="data/raw", help="過去の成績のフォルダ")
     s.set_defaults(func=cmd_watch)
 
     a = p.parse_args(argv)
