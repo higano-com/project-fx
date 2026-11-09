@@ -46,6 +46,8 @@ class BoatRaceModel:
     def predict_win(self, df: pd.DataFrame) -> pd.Series:
         """レース内で合計1になるよう正規化した1着確率."""
         raw = pd.Series(self.model.predict_proba(df[self.features])[:, 1], index=df.index)
+        # 自信の補正: 検証で決めた alpha 乗でレース内の確率の強弱を調整 (1.0 = 補正なし)
+        raw = raw ** getattr(self, "alpha", 1.0)
         return raw / raw.groupby([df[k] for k in RACE_KEY]).transform("sum")
 
     def feature_importance(self) -> pd.Series:

@@ -85,10 +85,14 @@ class ExPredictor:
         programs = parse_program(read_text(program_path), date_from_filename(program_path))
         self.feat = build_features(programs, load_dir(Path(history_dir))[1])
 
-    def predict(self, venue: int, race_no: int, ex_times: list, course_ex: list | None = None) -> list | None:
+    def predict(self, venue: int, race_no: int, ex_times: list, course_ex: list | None = None,
+                weather: dict | None = None) -> list | None:
         g = self.feat[(self.feat["venue"] == venue) & (self.feat["race_no"] == race_no)].sort_values("lane")
         if len(g) != 6 or not ex_times or len(ex_times) != 6:
             return None
         g = g.assign(exhibit=ex_times, course_ex=course_ex if course_ex and len(course_ex) == 6 else g["lane"].tolist())
         g = add_exhibit_features(g)
+        weather = weather or {}
+        g["wind_f"] = float(weather["wind"]) if weather.get("wind") is not None else float("nan")
+        g["wave_f"] = float(weather["wave"]) if weather.get("wave") is not None else float("nan")
         return [round(float(x), 4) for x in self.model.predict_win(g)]

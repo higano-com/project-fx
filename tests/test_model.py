@@ -46,3 +46,11 @@ def test_end_to_end(tmp_path):
     report = run_backtest(model, test, payouts, train)
     assert report.n_races == 6 * 2 * 12
     assert report.logloss < report.lane_baseline_logloss + 0.2
+
+
+def test_race_cat():
+    from boatrace_ai.features import race_cat
+
+    assert race_cat("準優勝戦") == 4 and race_cat("優勝戦") == 5
+    assert race_cat("予選特選") == 3 and race_cat("ドリーム戦") == 3
+    assert race_cat("予選") == 2 and race_cat("一般戦") == 1 and race_cat("朝1戦") == 0

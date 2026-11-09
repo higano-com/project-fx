@@ -118,7 +118,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                     r.update({k: val for k, val in info.items() if val is not None})
                     if ex_predictor is not None:  # 展示を学習したAIで予想し直す
                         try:
-                            r["p_ex"] = ex_predictor.predict(v["code"], r["no"], info["ex_times"], info.get("course_ex"))
+                            r["p_ex"] = ex_predictor.predict(v["code"], r["no"], info["ex_times"], info.get("course_ex"), info.get("weather_ex"))
                         except Exception as e:
                             log(f"展示AIの計算に失敗 {v['name']}{r['no']}R: {e}")
                     pending.append(f"{v['name']}{r['no']}R")

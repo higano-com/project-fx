@@ -86,8 +86,31 @@ def add_history(entries: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values("_row").drop(columns="_row").reset_index(drop=True)
 
 
+def race_cat(name) -> int:
+    """番組表のレース名 -> レースの格 (0:その他 1:一般 2:予選 3:特選・選抜など 4:準優勝戦 5:優勝戦)."""
+    s = str(name)
+    if "準優" in s:
+        return 4
+    if "優勝" in s:
+        return 5
+    if any(k in s for k in ("ドリーム", "選抜", "特選", "特賞", "シード")):
+        return 3
+    if "予選" in s:
+        return 2
+    if "一般" in s:
+        return 1
+    return 0
+
+
+def add_race_info(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["race_cat"] = df["race_name"].map(race_cat) if "race_name" in df else 0
+    df["hour"] = pd.to_numeric(df["deadline"].astype(str).str[:2], errors="coerce") if "deadline" in df else float("nan")
+    return df
+
+
 def build_features(programs: pd.DataFrame, history: pd.DataFrame | None) -> pd.DataFrame:
-    df = add_relative(programs)
+    df = add_relative(add_race_info(programs))
     df = add_history(df, history)
     return df
 
