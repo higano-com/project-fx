@@ -64,7 +64,8 @@ def attach_results(day: dict, data_dir: Path, d: date) -> bool:
                 r["result"] = res
             elif res and "result" not in r:
                 r["result"] = dict(res, void=True)  # 中止・不成立など
-    day["has_results"] = True
+    # 全レースの結果がそろった時だけ「確定」にする(夜の場はあとから追記できるように)
+    day["has_results"] = all("result" in r for v in day["venues"] for r in v["races"])
     return True
 
 
