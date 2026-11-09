@@ -129,6 +129,10 @@ button { font: inherit; color: inherit; }
 .boat .facts span { font-size: .72rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .boat .facts span.good { color: var(--good); font-weight: 700; }
 .boat .facts span.warn { color: var(--hot); font-weight: 700; }
+.valb { font-size: .68rem; font-weight: 700; color: var(--accent-fg); background: var(--good); border-radius: 999px; padding: 1px 7px; }
+.pill.value { background: var(--good); color: var(--surface); }
+.rbtn { position: relative; }
+.rbtn .vdot { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
 .boat .pct { grid-row: span 2; text-align: right; font-weight: 700; font-size: 1.05rem; line-height: 1.2; min-width: 46px; }
 .boat .track { grid-column: 2 / 4; height: 5px; margin-top: 2px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
 .boat .fill { height: 100%; background: var(--bar); border-radius: 4px; }
@@ -347,6 +351,26 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     return { ...r, boats, trifecta: tri.slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };
   }
 
+  // ---------- オッズと組み合わせた期待値 ----------
+  // 2023年の検証で決めた混ぜ方: AI確率^a × オッズから見た確率^b (レース内で正規化)
+  const BW = [0.5656, 0.5195];
+  const EV_MIN = 1.0, ODDS_MAX = 50;
+  function withOdds(r) {
+    if (!r.odds || r.odds.filter((o) => o > 0).length < 6) return r;
+    const inv = r.odds.map((o) => 1 / o), invSum = inv.reduce((a, b) => a + b, 0);
+    const sc = r.boats.map((b) => BW[0] * Math.log(Math.max(b.p_win, 1e-6)) + BW[1] * Math.log(inv[b.lane - 1] / invSum));
+    const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), zs = z.reduce((a, b) => a + b, 0);
+    let any = false;
+    const boats = r.boats.map((b, i) => {
+      const odds = r.odds[b.lane - 1], pb = z[i] / zs, ev = pb * odds;
+      const value = ev >= EV_MIN && odds <= ODDS_MAX;
+      any = any || value;
+      return { ...b, odds, pb, ev, value };
+    });
+    return { ...r, boats, hasValue: any };
+  }
+  const view = (r) => withOdds(adjusted(r) || r);
+
   // ---------- 予想タブ ----------
   function renderYoso() {
     const d = day();
@@ -354,7 +378,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const v = d.venues.find((x) => x.code === S.venue);
     if (!v.races.find((r) => r.no === S.race)) S.race = v.races[0].no;
     const r0 = v.races.find((x) => x.no === S.race);
-    const r = adjusted(r0) || r0;
+    const r = view(r0);
     const exVals = exStore[exKey(r0)] || r0.ex_times || [];
     const n = jst();
     const nextNo = (v.races.find((x) => raceState(x) === "open") || {}).no;
@@ -370,7 +394,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const grid = v.races.map((x) => {
       const st = raceState(x);
       const cls = st === "done" ? "done" : x.no === nextNo && n.date === S.date ? "next" : "";
-      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}"><b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
+      const hv = view(x).hasValue;
+      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}">${hv ? '<i class="vdot" aria-label="期待値プラスの艇あり"></i>' : ""}<b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
     }).join("");
 
     const st = raceState(r);
@@ -404,12 +429,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
         b.ex != null ? `<span class="${er === 1 ? "good" : er >= 5 ? "warn" : ""}">展示${b.ex.toFixed(2)}(${er}位)</span>` : "",
         b.st ? `<span class="${sv === -1 || (sv != null && sv <= .05) ? "good" : sv >= .25 ? "warn" : ""}">ST${esc(b.st)}</span>` : "",
         b.course && b.course !== b.lane ? `<span class="warn">進入${b.course}</span>` : "",
+        b.odds ? `オッズ${b.odds.toFixed(1)}` : "",
+        b.ev != null ? `<span class="${b.value ? "good" : ""}">期待値${b.ev.toFixed(2)}</span>` : "",
       ].filter(Boolean).map((f) => (f.startsWith("<span") ? f : `<span>${f}</span>`)).join("");
       return `
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
         <div class="who">
-          <div class="nm"><b>${esc(b.name)}</b><span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
+          <div class="nm"><b>${esc(b.name)}</b>${b.value ? '<span class="valb">期待値+</span>' : ""}<span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
           <div class="facts">${facts}</div>
         </div>
         <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
@@ -438,10 +465,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${r.hasValue ? '<span class="pill value">期待値+あり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
+          ${r.odds ? `<p class="note" style="margin:0">オッズは${esc(r.odds_time || "")}時点の単勝オッズです。締切までに変わります。「期待値+」はAI確率とオッズを組み合わせた期待値が1.0以上(オッズ${ODDS_MAX}倍以下)の艇です。</p>` : ""}
           <details class="ex" ${r.adjusted ? "" : ""}>
             <summary>${r.auto ? "展示を手で直す" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを手で入れる"}</summary>
             <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>

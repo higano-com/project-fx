@@ -15,6 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .beforeinfo import fetch_beforeinfo
+from .odds import fetch_race_odds
 from .claude_page import build_claude_page
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -23,6 +24,8 @@ RETRY_SEC = 90       # 展示がまだの時に取り直す間隔
 MAX_TRIES = 12
 REQUEST_GAP = 3.0    # 公式サイトへのアクセス間隔(秒)
 BATCH_SEC = 60       # 取れた展示をまとめて公開するまで待つ最大時間
+ODDS_MAX_LEFT = 6    # 締切の何分前からオッズを取るか
+ODDS_MIN_LEFT = 2    # 締切の何分前までにオッズを取るか
 URGENT_MIN = 15      # 締切がこれより近いレースが取れたら、すぐ公開
 
 
@@ -57,16 +60,37 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 if dl <= now:
                     continue
                 remaining += 1
+                key = (v["code"], r["no"])
+                race_day = datetime.strptime(day, "%Y-%m-%d").date()
+                # --- 締切の数分前のオッズ (1レース1回。取れなければ1分後にもう一度) ---
+                okey = ("odds",) + key
+                if not r.get("odds") and timedelta(minutes=ODDS_MIN_LEFT) <= dl - now <= timedelta(minutes=ODDS_MAX_LEFT):
+                    n, last = tries.get(okey, [0, None])
+                    if n < 3 and not (last and (now - last).total_seconds() < 60):
+                        try:
+                            rows = fetch_race_odds(race_day, v["code"], r["no"], timeout=20)
+                        except Exception as e:
+                            rows = []
+                            log(f"オッズ取得失敗 {v['name']}{r['no']}R: {e}")
+                        tries[okey] = [n + 1, now]
+                        time.sleep(REQUEST_GAP)
+                        odds = [x["win_odds"] for x in sorted(rows, key=lambda x: x["lane"])]
+                        if len(odds) == 6 and any(o for o in odds):
+                            r["odds"], r["odds_time"] = odds, now.strftime("%H:%M")
+                            pending.append(f"{v['name']}{r['no']}R(オッズ)")
+                            first_pending = first_pending or now
+                            urgent = True
+                        log(f"{now:%H:%M:%S} {v['name']}{r['no']}R オッズ{'あり' if r.get('odds') else 'まだ'}")
+                # --- 展示 ---
                 if r.get("ex_times"):
                     continue
-                key = (v["code"], r["no"])
                 n, last = tries.get(key, [0, None])
                 if dl - now > timedelta(minutes=WINDOW_MIN) or n >= MAX_TRIES:
                     continue
                 if last and (now - last).total_seconds() < RETRY_SEC:
                     continue
                 try:
-                    info = fetch_beforeinfo(datetime.strptime(day, "%Y-%m-%d").date(), v["code"], r["no"], timeout=20)
+                    info = fetch_beforeinfo(race_day, v["code"], r["no"], timeout=20)
                 except Exception as e:  # 通信エラーは次の回に
                     info = None
                     log(f"取得失敗 {v['name']}{r['no']}R: {e}")
@@ -83,7 +107,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             if urgent or (now - first_pending).total_seconds() >= BATCH_SEC:
                 build_claude_page(app_html, site_dir, out_page)
-                log("展示を反映: " + ", ".join(pending))
+                log("反映: " + ", ".join(pending))
                 return "updated"
         if remaining == 0:
             return "finished"
