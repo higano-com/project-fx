@@ -16,7 +16,8 @@ _ROW = re.compile(
     r'<td rowspan="4">([\d.]*)</td>\s*<td rowspan="4">([-\d.]*)</td>',
     re.S,
 )
-_ST = re.compile(r'table1_boatImage1Number is-type\d">([1-6])</span>.*?table1_boatImage1Time">([^<]*)</span>', re.S)
+# フライング等のときは class が増える (例: "table1_boatImage1Time is-fBold is-fColor1")
+_ST = re.compile(r'table1_boatImage1Number[^"]*">([1-6])</span>.*?table1_boatImage1Time[^"]*">([^<]*)</span>', re.S)
 
 
 def parse_beforeinfo(html: str) -> dict | None:

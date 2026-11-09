@@ -97,3 +97,22 @@ def test_parse_trifecta_odds():
     assert o["1-2-4"] == 11.0                           # 1行目: 2着2・3着4
     assert o["1-3-2"] == 41.0                           # 4行目: 2着3・3着2
     assert parse_trifecta_odds('<td class="oddsPoint">1.0</td>') == {}
+
+
+def test_parse_beforeinfo_flying_start():
+    """スタート展示でフライングした艇がいても、ST と進入が読めること."""
+    from boatrace_ai.beforeinfo import parse_beforeinfo
+
+    rows = "".join(
+        f'<td class="is-boatColor{l} is-fs14" rowspan="4">{l}</td><td>x</td><td rowspan="2">52.0kg</td>\n'
+        f'  <td rowspan="4">6.{60 + l}</td>\n  <td rowspan="4">0.0</td>'
+        for l in range(1, 7)
+    )
+    st = "".join(
+        f'<span class="table1_boatImage1Number is-type{l}">{l}</span><span>..</span>'
+        + (f'<span class="table1_boatImage1Time is-fBold is-fColor1">F.06</span>' if l == 1
+           else f'<span class="table1_boatImage1Time">.1{l}</span>')
+        for l in range(1, 7)
+    )
+    info = parse_beforeinfo(rows + st)
+    assert info["st_ex"][0] == "F.06" and info["course_ex"] == [1, 2, 3, 4, 5, 6]
