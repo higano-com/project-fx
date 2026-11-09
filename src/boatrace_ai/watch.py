@@ -19,19 +19,23 @@ from .claude_page import build_claude_page
 
 JST = ZoneInfo("Asia/Tokyo")
 WINDOW_MIN = 22      # 締切の何分前から取りに行くか
-RETRY_SEC = 180      # 展示がまだの時に取り直す間隔
-MAX_TRIES = 6
+RETRY_SEC = 90       # 展示がまだの時に取り直す間隔
+MAX_TRIES = 12
 REQUEST_GAP = 3.0    # 公式サイトへのアクセス間隔(秒)
-BATCH_SEC = 240      # 取れた展示をまとめて公開するまで待つ最大時間
-URGENT_MIN = 12      # 締切がこれより近いレースが取れたら、すぐ公開
+BATCH_SEC = 60       # 取れた展示をまとめて公開するまで待つ最大時間
+URGENT_MIN = 15      # 締切がこれより近いレースが取れたら、すぐ公開
 
 
 def _deadline(day: str, hhmm: str) -> datetime:
     return datetime.strptime(f"{day} {hhmm}", "%Y-%m-%d %H:%M").replace(tzinfo=JST)
 
 
+def _log(msg: str) -> None:
+    print(msg, flush=True)
+
+
 def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None,
-          poll_sec: float = 60, log=print) -> str:
+          poll_sec: float = 60, log=_log) -> str:
     """戻り値: "updated"(公開が必要) / "finished"(その日の対象レースが全部終わった)."""
     site_dir = Path(site_dir)
     day = day or datetime.now(JST).strftime("%Y-%m-%d")
@@ -62,12 +66,12 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 if last and (now - last).total_seconds() < RETRY_SEC:
                     continue
                 try:
-                    info = fetch_beforeinfo(now.date() if day == now.strftime("%Y-%m-%d") else datetime.strptime(day, "%Y-%m-%d").date(),
-                                            v["code"], r["no"])
+                    info = fetch_beforeinfo(datetime.strptime(day, "%Y-%m-%d").date(), v["code"], r["no"], timeout=20)
                 except Exception as e:  # 通信エラーは次の回に
                     info = None
                     log(f"取得失敗 {v['name']}{r['no']}R: {e}")
                 tries[key] = [n + 1, now]
+                log(f"{now:%H:%M:%S} {v['name']}{r['no']}R 展示{'あり' if info else 'まだ'} ({n + 1}回目)")
                 time.sleep(REQUEST_GAP)
                 if info:
                     r.update({k: val for k, val in info.items() if val is not None})
