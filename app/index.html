@@ -194,6 +194,28 @@ button { font: inherit; color: inherit; }
 .row .mid { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0; }
 .row .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .row .right b { font-size: .95rem; }
+.evsum { display: flex; gap: 6px; }
+.evsum > div { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; }
+.evsum span { font-size: .65rem; color: var(--muted); font-weight: 700; }
+.evsum b { font-size: .95rem; font-variant-numeric: tabular-nums; }
+.evsum b.plus { color: var(--good); } .evsum b.minus { color: var(--bad); }
+.evcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.evcard.done { opacity: .8; }
+.evhead { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--accent-soft); font-size: .85rem; }
+.evhead b { font-weight: 700; } .evhead .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+.evhead .go { margin-left: auto; color: var(--accent); font-weight: 700; font-size: .75rem; }
+.evrow { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--line); }
+.evrow .k { font-size: .65rem; font-weight: 700; color: var(--muted); }
+.evrow .c { display: flex; align-items: center; gap: 2px; }
+.evrow .c .lane.sm { width: 20px; height: 20px; font-size: .72rem; }
+.evrow .n { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evrow .n b { color: var(--good); }
+.evrow .add { padding: 3px 8px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: .7rem; }
+.evrow .add[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.evrow .res { font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
+.evrow .res.hit { background: var(--good-soft); color: var(--good); } .evrow .res.miss { background: var(--line); color: var(--muted); }
+.wait { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wait span { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .row .del { font-size: .75rem; color: var(--muted); text-decoration: underline; }
 /* 結果タブ: 横に1行でまとめる */
 .ksum { display: flex; gap: 6px; }
@@ -227,7 +249,7 @@ nav.tabs {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
 }
-nav.tabs .in { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
+nav.tabs .in { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 700; position: relative; }
 nav.tabs a svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a[aria-current="page"] { color: var(--accent); }
@@ -252,6 +274,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 <nav class="tabs" aria-label="メニュー">
   <div class="in">
+    <a href="#kitai" data-tab="kitai"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/></svg>期待値</a>
     <a href="#yoso" data-tab="yoso"><svg viewBox="0 0 24 24"><path d="M3 17c2 0 2-1.5 4.5-1.5S10 17 12 17s2-1.5 4.5-1.5S19 17 21 17"/><path d="M5 13l2-6h10l2 6"/><path d="M9 7V4h4"/></svg>予想</a>
     <a href="#kekka" data-tab="kekka"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M8 20h8M10 16h4v4h-4z"/></svg>結果</a>
     <a href="#kaime" data-tab="kaime"><svg viewBox="0 0 24 24"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M14 7v12" stroke-dasharray="2 2"/></svg>マイ買い目<span class="badge" id="betBadge" hidden></span></a>
@@ -613,6 +636,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div><span>回収率</span><b class="${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b></div>
           <div><span>収支</span><b class="${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b></div>
         </div>
+        <div class="evsum">${evSumHtml(evSummary(d))}</div>
         <div class="kline num">${n}R ・ 1号艇固定 ${pct(lane1 / n)} ・ 投資${yen(cost)} 払戻${yen(ret)}(3連単上位5点を全レース)<br>◎=AIの1着確率がいちばん高い艇(AI本命)が1着 ・ 5点=3連単のAI上位5点が的中</div>
         ${lists}
         ${modelNote()}
@@ -621,6 +645,84 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       const [vc, rn] = b.dataset.go.split("-").map(Number);
       S.venue = vc; S.race = rn; location.hash = "yoso";
     }));
+  }
+
+  // ---------- 期待値タブ ----------
+  // レースごとの期待値プラスの買い目 (3連単と単勝). オッズは締切の数分前に自動で取得したもの
+  function evPicks(rv) {
+    const tri = (rv.triValue || []).map((t) => ({ kind: "3連単", combo: t.combo, prob: t.prob, odds: t.odds, ev: t.ev }));
+    const win = rv.boats.filter((b) => b.value).map((b) => ({ kind: "単勝", combo: String(b.lane), prob: b.pb, odds: b.odds, ev: b.ev }));
+    return tri.concat(win);
+  }
+  function pickResult(pk, res) {
+    if (!res || !res.trifecta) return null;
+    if (pk.kind === "3連単") return res.trifecta === pk.combo ? res.trifecta_pay : 0;
+    return String(res.order[0]) === pk.combo ? (res.win_pay || 0) : 0;
+  }
+  function evSummary(d) {
+    const s = { "3連単": { n: 0, hit: 0, ret: 0 }, "単勝": { n: 0, hit: 0, ret: 0 } };
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      if (!r.result || !r.result.trifecta) return;
+      evPicks(view(r)).forEach((pk) => {
+        const pay = pickResult(pk, r.result), x = s[pk.kind];
+        x.n++; if (pay > 0) { x.hit++; x.ret += pay; }
+      });
+    }));
+    return s;
+  }
+  function evSumHtml(s) {
+    return ["3連単", "単勝"].map((k) => {
+      const x = s[k], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
+      return `<div><span>${k} 期待値プラス(確定分)</span><b class="${x.n ? (roi >= 1 ? "plus" : "minus") : ""}">${x.n ? pct(roi) : "-"}</b>
+        <span class="num">${x.n}点 的中${x.hit} ${x.n ? (x.ret - cost >= 0 ? "+" : "") + yen(x.ret - cost) : ""}</span></div>`;
+    }).join("");
+  }
+  function renderKitai() {
+    const d = day(), n = jst(), open = [], done = [], wait = [];
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      const rv = view(r), picks = evPicks(rv), st = raceState(r);
+      const hasOdds = !!(r.odds || r.tri_odds);
+      if (!hasOdds) { if (st === "open") wait.push([r.deadline || "", `${v.name}${r.no}R ${r.deadline || ""}`]); return; }
+      if (picks.length) (st === "open" ? open : done).push({ v, r, rv, picks });
+    }));
+    const byDl = (a, b) => (a.r.deadline || "").localeCompare(b.r.deadline || "");
+    open.sort(byDl); done.sort(byDl).reverse(); wait.sort((a, b) => a[0].localeCompare(b[0]));
+    const card = ({ v, r, rv, picks }, isDone) => {
+      let left = "";
+      if (!isDone && n.date === S.date && r.deadline) { const m = toMin(r.deadline) - toMin(n.time); left = m <= 60 ? `あと${m}分` : ""; }
+      const rows = picks.map((pk) => {
+        const pay = pickResult(pk, r.result);
+        const saved = pk.kind === "3連単" && bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === pk.combo);
+        const right = pay == null
+          ? (pk.kind === "3連単" ? `<button class="btn add" type="button" data-v="${v.code}" data-r="${r.no}" data-combo="${pk.combo}" aria-pressed="${saved}">${saved ? "保存済" : "＋買い目"}</button>` : "")
+          : `<span class="res ${pay > 0 ? "hit" : "miss"}">${pay > 0 ? "的中 " + yen(pay) : "ハズレ"}</span>`;
+        return `<div class="evrow"><span class="k">${pk.kind}</span><span class="c">${comboChips(pk.combo)}</span>
+          <span class="n">期待値<b>${pk.ev.toFixed(2)}</b> ${pk.odds.toFixed(1)}倍 ${pct(pk.prob, 1)}</span>${right}</div>`;
+      }).join("");
+      return `<section class="evcard ${isDone ? "done" : ""}"><div class="evhead"><b>${esc(v.name)} ${r.no}R</b>
+        <span class="t">締切${esc(r.deadline || "")} ${esc(left)}${r.odds_time ? " ・ オッズ" + esc(r.odds_time) + "時点" : ""}</span>
+        <button class="btn go" type="button" data-go="${v.code}-${r.no}">詳しく ›</button></div>${rows}</section>`;
+    };
+    $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+      <div class="evsum">${evSumHtml(evSummary(d))}</div>
+      ${open.length ? `<p class="label" style="margin:0">これから (締切順)</p>${open.map((x) => card(x, false)).join("")}` : ""}
+      ${wait.length ? `<p class="label" style="margin:0">オッズ待ち (締切の6分前に自動で計算)</p><div class="wait">${wait.slice(0, 24).map((w) => `<span>${esc(w[1])}</span>`).join("")}</div>` : ""}
+      ${done.length ? `<p class="label" style="margin:0">終わったレース</p>${done.map((x) => card(x, true)).join("")}` : ""}
+      ${!open.length && !done.length && !wait.length ? '<div class="empty">この日は期待値プラスの買い目がありません。</div>' : ""}
+      <p class="note">期待値 = AIの確率 × オッズ。1.0を超える買い目だけを出しています(3連単は確率3%以上・50倍以下)。オッズは締切の数分前のもので、最終オッズとは少し変わります。</p>
+    </div>`;
+    $("view").querySelectorAll(".add[data-combo]").forEach((b) => b.addEventListener("click", () => {
+      const v = d.venues.find((x) => x.code === +b.dataset.v), r = v.races.find((x) => x.no === +b.dataset.r);
+      S.date && (S.venue = v.code); toggleBetFor(v, view(r), b.dataset.combo);
+    }));
+    $("view").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
+      const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
+    }));
+  }
+  function toggleBetFor(v, r, combo) {
+    const i = bets.findIndex((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === combo);
+    if (i >= 0) bets.splice(i, 1); else bets.push({ date: S.date, venue: v.code, vname: v.name, race: r.no, combo, prob: harville(r, combo), at: Date.now() });
+    saveBets(); render();
   }
 
   // ---------- マイ買い目タブ ----------
@@ -678,11 +780,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
   // ---------- 画面の切り替え ----------
   function render() {
-    S.tab = ["yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "yoso";
+    S.tab = ["kitai", "yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
     document.querySelectorAll("nav.tabs a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === S.tab ? "page" : "false"));
     $("dateSel").hidden = S.tab === "kaime";
     if (!day()) return;
-    if (S.tab === "yoso") renderYoso();
+    if (S.tab === "kitai") renderKitai();
+    else if (S.tab === "yoso") renderYoso();
     else if (S.tab === "kekka") renderKekka();
     else renderKaime();
     updateBadge();
