@@ -125,7 +125,7 @@ button { font: inherit; color: inherit; }
 .boat .who b { font-size: .98rem; line-height: 1.25; }
 .boat .who .gr { font-size: .75rem; font-weight: 700; color: var(--muted); }
 .boat .who .gr.A1 { color: var(--hot); }
-.boat .facts { display: flex; flex-wrap: wrap; gap: 0 8px; line-height: 1.45; }
+.boat .facts { display: flex; flex-wrap: wrap; gap: 0 7px; line-height: 1.45; }
 .boat .facts span { font-size: .72rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .boat .facts span.good { color: var(--good); font-weight: 700; }
 .boat .facts span.warn { color: var(--hot); font-weight: 700; }
@@ -395,19 +395,19 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const stNum = (t) => { const m = /^(F)?\.?(\d+)$/.exec(String(t || "").replace("0.", ".")); return m ? (m[1] ? -1 : parseFloat("0." + m[2])) : null; };
     const boats = r.boats.map((b) => {
       const er = exRank(b.ex), sv = stNum(b.st);
+      // 1行に収まるよう短く: 勝率 / モーター2連率 / 展示タイム(順位) / スタート展示 / 進入
       const facts = [
-        `${esc(b.branch)}`,
-        `勝率 ${b.nat_win.toFixed(2)}`,
-        `モーター ${b.motor_2.toFixed(0)}%`,
-        b.ex != null ? `<span class="${er === 1 ? "good" : er >= 5 ? "warn" : ""}">展示 ${b.ex.toFixed(2)} (${er}位)</span>` : "",
-        b.st ? `<span class="${sv === -1 || (sv != null && sv <= .05) ? "good" : sv >= .25 ? "warn" : ""}">ST ${esc(b.st)}</span>` : "",
-        b.course && b.course !== b.lane ? `<span class="warn">進入 ${b.course}コース</span>` : "",
+        `勝率${b.nat_win.toFixed(2)}`,
+        `モ${b.motor_2.toFixed(0)}%`,
+        b.ex != null ? `<span class="${er === 1 ? "good" : er >= 5 ? "warn" : ""}">展示${b.ex.toFixed(2)}(${er}位)</span>` : "",
+        b.st ? `<span class="${sv === -1 || (sv != null && sv <= .05) ? "good" : sv >= .25 ? "warn" : ""}">ST${esc(b.st)}</span>` : "",
+        b.course && b.course !== b.lane ? `<span class="warn">進入${b.course}</span>` : "",
       ].filter(Boolean).map((f) => (f.startsWith("<span") ? f : `<span>${f}</span>`)).join("");
       return `
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
         <div class="who">
-          <div class="nm"><b>${esc(b.name)}</b><span class="gr ${esc(b.grade)}">${esc(b.grade)}</span></div>
+          <div class="nm"><b>${esc(b.name)}</b><span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
           <div class="facts">${facts}</div>
         </div>
         <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
