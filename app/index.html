@@ -130,6 +130,7 @@ button { font: inherit; color: inherit; }
 .boat .facts span { font-size: .72rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .boat .facts span.good { color: var(--good); font-weight: 700; }
 .boat .facts span.warn { color: var(--hot); font-weight: 700; }
+.fav { color: var(--hot); font-weight: 700; font-size: .95rem; margin-right: -2px; }
 .valb { font-size: .68rem; font-weight: 700; color: var(--accent-fg); background: var(--good); border-radius: 999px; padding: 1px 7px; }
 .pill.value { background: var(--good); color: var(--surface); }
 .rbtn { position: relative; }
@@ -319,7 +320,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   }
   function confidence(r) {
     const top = Math.max(...r.boats.map((b) => b.p_win));
-    return top >= 0.6 ? ["solid", "堅い"] : top >= 0.4 ? ["mid", "本命あり"] : ["mixed", "混戦"];
+    return top >= 0.6 ? ["solid", "堅い"] : top >= 0.4 ? ["mid", "やや堅い"] : ["mixed", "混戦"];
   }
   // 3連単の確率: 1着確率から計算。2着・3着は人気薄を過大評価しないよう補正(2023年の着順で決定)
   const LAM = [0.670, 0.433];
@@ -439,7 +440,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       const st = raceState(x);
       const cls = st === "done" ? "done" : x.no === nextNo && n.date === S.date ? "next" : "";
       const vx = view(x), hv = (vx.triValue && vx.triValue.length) || vx.hasValue;
-      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}">${hv ? '<i class="vdot" aria-label="期待値プラスの艇あり"></i>' : ""}<b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
+      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}">${hv ? '<i class="vdot" aria-label="期待値プラスあり"></i>' : ""}<b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
     }).join("");
 
     const st = raceState(r);
@@ -457,7 +458,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const resultHtml = res ? `<div class="result">
         <span class="t">結果</span><span>${comboChips(res.trifecta)}</span>
         <span class="pay num">${yen(res.trifecta_pay)}</span>
-        <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">本命${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
+        <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">AI本命◎${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
         <span class="mark ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}">上位5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "ハズレ"}</span>
       </div>` : (r.result && r.result.void ? `<div class="result"><span class="t">結果</span><span>不成立・中止など</span></div>` : "");
 
@@ -480,7 +481,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
         <div class="who">
-          <div class="nm"><b>${esc(b.name)}</b>${b.value ? '<span class="valb">期待値+</span>' : ""}<span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
+          <div class="nm">${b.p_win === max ? '<span class="fav" title="AI本命: 1着確率がいちばん高い艇">◎</span>' : ""}<b>${esc(b.name)}</b>${b.value ? '<span class="valb">期待値プラス</span>' : ""}<span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
           <div class="facts">${facts}</div>
         </div>
         <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
@@ -509,11 +510,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}${(r.triValue && r.triValue.length) ? '<span class="pill value">3連単 狙い目あり</span>' : r.hasValue ? '<span class="pill value">期待値+あり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${(r.triValue && r.triValue.length) ? '<span class="pill value">3連単 期待値プラスあり</span>' : r.hasValue ? '<span class="pill value">単勝 期待値プラスあり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
-          ${r.odds ? `<p class="note" style="margin:0">オッズは${esc(r.odds_time || "")}時点の単勝オッズです。締切までに変わります。「期待値+」はAI確率とオッズを組み合わせた期待値が1.0以上(オッズ${ODDS_MAX}倍以下)の艇です。</p>` : ""}
+          <p class="note" style="margin:0">◎ = AI本命(AIが出した1着確率がいちばん高い艇)</p>
+          ${r.odds ? `<p class="note" style="margin:0">オッズは${esc(r.odds_time || "")}時点の単勝オッズです。締切までに変わります。「期待値プラス」はAI確率とオッズを組み合わせた期待値が1.0以上(オッズ${ODDS_MAX}倍以下)の艇です。</p>` : ""}
           <details class="ex" ${r.adjusted ? "" : ""}>
             <summary>${r.auto ? "展示を手で直す" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを手で入れる"}</summary>
             <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>
@@ -590,7 +592,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <span class="r">${r.no}R</span>
           <span class="c">${comboChips(res.trifecta)}</span>
           <span class="y">${yen(res.trifecta_pay)}</span>
-          <span class="mk"><i class="${hitFav ? "hit" : "miss"}">本命</i><i class="${hit5 ? "hit" : "miss"}">5点</i></span>
+          <span class="mk"><i class="${hitFav ? "hit" : "miss"}">◎</i><i class="${hit5 ? "hit" : "miss"}">5点</i></span>
         </button>`;
       }).join("");
       return rows ? `<section class="list"><h3 class="kh">${esc(v.name)}</h3>${rows}</section>` : "";
@@ -604,12 +606,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     $("view").innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px">
         <div class="ksum">
-          <div><span>本命1着</span><b>${pct(fav / n)}</b></div>
+          <div><span>AI本命◎</span><b>${pct(fav / n)}</b></div>
           <div><span>5点的中</span><b>${pct(top5 / n)}</b></div>
           <div><span>回収率</span><b class="${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b></div>
           <div><span>収支</span><b class="${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b></div>
         </div>
-        <div class="kline num">${n}R ・ 1号艇固定 ${pct(lane1 / n)} ・ 投資${yen(cost)} 払戻${yen(ret)}(3連単上位5点を全レース)</div>
+        <div class="kline num">${n}R ・ 1号艇固定 ${pct(lane1 / n)} ・ 投資${yen(cost)} 払戻${yen(ret)}(3連単上位5点を全レース)<br>◎=AIの1着確率がいちばん高い艇(AI本命)が1着 ・ 5点=3連単のAI上位5点が的中</div>
         ${lists}
         ${modelNote()}
       </div>`;
