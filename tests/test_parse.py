@@ -118,3 +118,18 @@ def test_parse_beforeinfo_flying_start():
     )
     info = parse_beforeinfo(rows + st)
     assert info["st_ex"][0] == "F.06" and info["course_ex"] == [1, 2, 3, 4, 5, 6]
+
+
+def test_parse_raceresult():
+    from boatrace_ai.raceresult import parse_raceresult
+
+    n = lambda x: f'<span class="numberSet1_number is-type{x}">{x}</span><span class="numberSet1_text">-</span>'
+    html = (
+        '<tr class="is-p3-0"><td rowspan="2">3連単</td><td>' + n(1) + n(3) + n(6) + '</td>'
+        '<td><span class="is-payout1">&yen;1,590</span></td><td>5</td></tr>'
+        '<tr><td rowspan="2">3連複</td><td>' + n(1) + n(3) + n(6) + '</td><td><span class="is-payout1">&yen;660</span></td></tr>'
+        '<tr><td rowspan="2">単勝</td><td><span class="numberSet1_number is-type1" nbsp="true">1</span></td>'
+        '<td><span class="is-payout1">&yen;210</span></td></tr>'
+    )
+    assert parse_raceresult(html) == dict(order=[1, 3, 6], trifecta="1-3-6", trifecta_pay=1590, win_lane=1, win_pay=210)
+    assert parse_raceresult("<html>結果はまだ</html>") is None

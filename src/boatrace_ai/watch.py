@@ -2,6 +2,7 @@
 
 - 締切の22分前〜締切までのレースだけ、1レースずつ間隔をあけて取りに行く
 - 展示がまだ出ていなければ、3分おきに数回だけ取り直す
+- レースが終わったら結果ページを1回取りに行き、的中/ハズレをすぐ出す(まだなら数分おきに数回)
 - 新しく取れたらアプリ(Claude のページ)を作り直し、終了コード0で終わる
   (呼び出し側がページを公開し、もう一度起動する)
 """
@@ -16,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from .beforeinfo import fetch_beforeinfo
 from .odds import fetch_race_odds, fetch_trifecta_odds
+from .raceresult import fetch_raceresult
 from .claude_page import build_claude_page
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -27,6 +29,9 @@ BATCH_SEC = 60       # 取れた展示をまとめて公開するまで待つ最
 ODDS_MAX_LEFT = 6    # 締切の何分前からオッズを取るか
 ODDS_MIN_LEFT = 2    # 締切の何分前までにオッズを取るか
 URGENT_MIN = 15      # 締切がこれより近いレースが取れたら、すぐ公開
+RESULT_AFTER_MIN = 7     # 締切の何分後から結果を取りに行くか
+RESULT_RETRY_SEC = 180   # 結果がまだの時に取り直す間隔
+RESULT_MAX_TRIES = 6     # これで取れなければ夜の成績ファイルにまかせる
 
 
 def _deadline(day: str, hhmm: str) -> datetime:
@@ -52,16 +57,38 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
         now = datetime.now(JST)
         data = json.loads(path.read_text(encoding="utf-8"))
         remaining = 0
+        dirty = False
         for v in data["venues"]:
             for r in v["races"]:
                 if not r.get("deadline"):
                     continue
                 dl = _deadline(day, r["deadline"])
-                if dl <= now:
-                    continue
-                remaining += 1
                 key = (v["code"], r["no"])
                 race_day = datetime.strptime(day, "%Y-%m-%d").date()
+                if dl <= now:
+                    # --- レース後の結果 (1レース1回。まだなら数分おきに数回) ---
+                    # 回数はデータに記録する (見張りを再開しても取り直しすぎないように)
+                    rkey = ("result",) + key
+                    n, last = r.get("result_tries", 0), tries.get(rkey)
+                    if r.get("result") or n >= RESULT_MAX_TRIES:
+                        continue
+                    remaining += 1
+                    if now - dl < timedelta(minutes=RESULT_AFTER_MIN) or (last and (now - last).total_seconds() < RESULT_RETRY_SEC):
+                        continue
+                    try:
+                        res = fetch_raceresult(race_day, v["code"], r["no"], timeout=20)
+                    except Exception as e:
+                        res = None
+                        log(f"結果取得失敗 {v['name']}{r['no']}R: {e}")
+                    tries[rkey], r["result_tries"], dirty = now, n + 1, True
+                    log(f"{now:%H:%M:%S} {v['name']}{r['no']}R 結果{'あり' if res else 'まだ'} ({n + 1}回目)")
+                    time.sleep(REQUEST_GAP)
+                    if res:
+                        r["result"] = res
+                        pending.append(f"{v['name']}{r['no']}R(結果)")
+                        first_pending = first_pending or now
+                    continue
+                remaining += 1
                 # --- 締切の数分前のオッズ (1レース1回。取れなければ1分後にもう一度) ---
                 okey = ("odds",) + key
                 if not r.get("odds") and timedelta(minutes=ODDS_MIN_LEFT) <= dl - now <= timedelta(minutes=ODDS_MAX_LEFT):
@@ -125,9 +152,9 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                     first_pending = first_pending or now
                     if dl - now <= timedelta(minutes=URGENT_MIN):
                         urgent = True
-        if pending:
+        if pending or dirty:
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-            if urgent or (now - first_pending).total_seconds() >= BATCH_SEC:
+            if pending and (urgent or (now - first_pending).total_seconds() >= BATCH_SEC):
                 build_claude_page(app_html, site_dir, out_page)
                 log("反映: " + ", ".join(pending))
                 return "updated"
