@@ -205,6 +205,15 @@ button { font: inherit; color: inherit; }
 .evhead b { font-weight: 700; } .evhead .t { color: var(--muted); font-variant-numeric: tabular-nums; }
 .evhead .go { margin-left: auto; color: var(--accent); font-weight: 700; font-size: .75rem; }
 .evrow { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--line); }
+/* 単勝タブ: 1行1艇 */
+.tanlist { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tanrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); }
+.tanrow:first-child { border-top: 0; }
+.tanrow .w { min-width: 0; } .tanrow .w b { display: block; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tanrow .w small { color: var(--muted); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.tanrow .n { font-size: .72rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.tanrow .n b { color: var(--text); font-size: .85rem; }
+.tanrow.done { opacity: .8; }
 .evrow .k { font-size: .65rem; font-weight: 700; color: var(--muted); }
 .evrow .c { display: flex; align-items: center; gap: 2px; }
 .evrow .c .lane.sm { width: 20px; height: 20px; font-size: .72rem; }
@@ -212,8 +221,9 @@ button { font: inherit; color: inherit; }
 .evrow .n b { color: var(--good); }
 .evrow .add { padding: 3px 8px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: .7rem; }
 .evrow .add[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
-.evrow .res { font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
-.evrow .res.hit { background: var(--good-soft); color: var(--good); } .evrow .res.miss { background: var(--line); color: var(--muted); }
+.evrow .res, .tanrow .res { font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.evrow .res.hit, .tanrow .res.hit { background: var(--good-soft); color: var(--good); }
+.evrow .res.miss, .tanrow .res.miss { background: var(--line); color: var(--muted); }
 .wait { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .wait span { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .row .del { font-size: .75rem; color: var(--muted); text-decoration: underline; }
@@ -249,7 +259,7 @@ nav.tabs {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
 }
-nav.tabs .in { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
+nav.tabs .in { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 700; position: relative; }
 nav.tabs a svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a[aria-current="page"] { color: var(--accent); }
@@ -275,6 +285,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 <nav class="tabs" aria-label="メニュー">
   <div class="in">
     <a href="#kitai" data-tab="kitai"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/></svg>期待値</a>
+    <a href="#tansho" data-tab="tansho"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M11 9l2-1v8"/></svg>単勝</a>
     <a href="#yoso" data-tab="yoso"><svg viewBox="0 0 24 24"><path d="M3 17c2 0 2-1.5 4.5-1.5S10 17 12 17s2-1.5 4.5-1.5S19 17 21 17"/><path d="M5 13l2-6h10l2 6"/><path d="M9 7V4h4"/></svg>予想</a>
     <a href="#kekka" data-tab="kekka"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M8 20h8M10 16h4v4h-4z"/></svg>結果</a>
     <a href="#kaime" data-tab="kaime"><svg viewBox="0 0 24 24"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M14 7v12" stroke-dasharray="2 2"/></svg>マイ買い目<span class="badge" id="betBadge" hidden></span></a>
@@ -719,6 +730,41 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
     }));
   }
+  // ---------- 単勝タブ: 期待値プラスの単勝だけ ----------
+  function renderTansho() {
+    const d = day(), n = jst(), open = [], done = [];
+    let waiting = 0;
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      const st = raceState(r);
+      if (!r.odds) { if (st === "open") waiting++; return; }
+      evPicks(view(r)).filter((pk) => pk.kind === "単勝").forEach((pk) => (st === "open" ? open : done).push({ v, r, pk }));
+    }));
+    const byDl = (a, b) => (a.r.deadline || "").localeCompare(b.r.deadline || "");
+    open.sort(byDl); done.sort(byDl).reverse();
+    const row = ({ v, r, pk }, isDone) => {
+      const pay = pickResult(pk, r.result);
+      let right = "";
+      if (pay != null) right = `<span class="res ${pay > 0 ? "hit" : "miss"}">${pay > 0 ? "的中 " + yen(pay) : "ハズレ"}</span>`;
+      else if (n.date === S.date && r.deadline) { const m = toMin(r.deadline) - toMin(n.time); right = m >= 0 && m <= 60 ? `<span class="pill closed">あと${m}分</span>` : ""; }
+      return `<div class="tanrow ${isDone ? "done" : ""}" data-go="${v.code}-${r.no}">
+        <span class="w"><b>${esc(v.name)} ${r.no}R</b><small>締切${esc(r.deadline || "")}${r.odds_time ? " ・ オッズ" + esc(r.odds_time) : ""}</small></span>
+        <span class="c">${comboChips(pk.combo)}</span>
+        <span class="n">期待値<b>${pk.ev.toFixed(2)}</b><br>${pk.odds.toFixed(1)}倍 ${pct(pk.prob, 0)}</span>${right}</div>`;
+    };
+    const x = evSummary(d)["単勝"], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
+    $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+      <div class="evsum"><div><span>単勝 期待値プラス(確定分)</span><b class="${x.n ? (roi >= 1 ? "plus" : "minus") : ""}">${x.n ? pct(roi) : "-"}</b>
+        <span class="num">${x.n}点 的中${x.hit} ${x.n ? (x.ret - cost >= 0 ? "+" : "") + yen(x.ret - cost) : ""}</span></div></div>
+      ${open.length ? `<p class="label" style="margin:0">これから買う単勝 (締切順)</p><div class="tanlist">${open.map((o) => row(o, false)).join("")}</div>` : ""}
+      ${waiting ? `<p class="note" style="margin:0">オッズ待ち ${waiting}レース (締切の6分前に自動で計算)</p>` : ""}
+      ${done.length ? `<p class="label" style="margin:0">終わったレース</p><div class="tanlist">${done.map((o) => row(o, true)).join("")}</div>` : ""}
+      ${!open.length && !done.length && !waiting ? '<div class="empty">この日は単勝の期待値プラスがありません。</div>' : ""}
+      <p class="note">表示された艇の単勝を買う、という意味です。期待値 = AIとオッズを組み合わせた確率 × 単勝オッズ。1.0以上・50倍以下の艇だけを出しています。行を押すとそのレースの予想を開きます。</p>
+    </div>`;
+    $("view").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
+      const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
+    }));
+  }
   function toggleBetFor(v, r, combo) {
     const i = bets.findIndex((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === combo);
     if (i >= 0) bets.splice(i, 1); else bets.push({ date: S.date, venue: v.code, vname: v.name, race: r.no, combo, prob: harville(r, combo), at: Date.now() });
@@ -780,11 +826,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
   // ---------- 画面の切り替え ----------
   function render() {
-    S.tab = ["kitai", "yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
+    S.tab = ["kitai", "tansho", "yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
     document.querySelectorAll("nav.tabs a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === S.tab ? "page" : "false"));
     $("dateSel").hidden = S.tab === "kaime";
     if (!day()) return;
     if (S.tab === "kitai") renderKitai();
+    else if (S.tab === "tansho") renderTansho();
     else if (S.tab === "yoso") renderYoso();
     else if (S.tab === "kekka") renderKekka();
     else renderKaime();
