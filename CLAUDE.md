@@ -19,7 +19,7 @@
   - アプリの「期待値+」= 展示込みAI確率とオッズの混合確率 × オッズ ≥ 1.0 (オッズ50倍以下)。重みは2023年3〜5月の検証で決定。
 - 展示AI(`models/ex_v3.pkl`, `predict.ExPredictor`): 展示タイム・進入コースも学習したAI。展示が取れたら見張りが `p_ex` を書き込み、アプリはそれを優先して使う。
 - AI本命(◎) = AIの1着確率がいちばん高い艇。3連単の期待値プラス = 展示込みAI確率(補正つき) × 3連単オッズ ≥ 1.0、確率3%以上、50倍以下。
-- 毎日の更新手順(「更新して」と言われたら):
+- 毎日の更新手順(毎朝8:13 JST にルーティン `trig_0156KsVj5MTh7L2GBkYAeeTT` がこのセッションで自動実行。「更新して」と言われた時も同じ):
   1. その日の番組表 B と前日の成績 K を `data/live` に取得
   2. `build_site(models/base_v3.pkl, data/live, data/site_live, [前日, 当日])` → `boatrace-ai claude-page --site data/site_live --out data/site_live/index.html` → Artifact を公開
   3. `boatrace-ai watch-exhibit --site data/site_live --out data/site_live/index.html --ex-model models/ex_v3.pkl --program data/live/b<当日>.txt --history data/live` をバックグラウンドで動かし、止まるたびに公開して再開
