@@ -32,6 +32,7 @@ URGENT_MIN = 15      # 締切がこれより近いレースが取れたら、す
 RESULT_AFTER_MIN = 7     # 締切の何分後から結果を取りに行くか
 RESULT_RETRY_SEC = 180   # 結果がまだの時に取り直す間隔
 RESULT_MAX_TRIES = 6     # これで取れなければ夜の成績ファイルにまかせる
+RESULT_PER_PASS = 2      # 1回の見回りで取りに行く結果の数 (オッズ・展示を優先するため)
 
 
 def _deadline(day: str, hhmm: str) -> datetime:
@@ -58,6 +59,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
         data = json.loads(path.read_text(encoding="utf-8"))
         remaining = 0
         dirty = False
+        result_budget = RESULT_PER_PASS
         for v in data["venues"]:
             for r in v["races"]:
                 if not r.get("deadline"):
@@ -75,6 +77,9 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                     remaining += 1
                     if now - dl < timedelta(minutes=RESULT_AFTER_MIN) or (last and (now - last).total_seconds() < RESULT_RETRY_SEC):
                         continue
+                    if result_budget <= 0:
+                        continue
+                    result_budget -= 1
                     try:
                         res = fetch_raceresult(race_day, v["code"], r["no"], timeout=20)
                     except Exception as e:
