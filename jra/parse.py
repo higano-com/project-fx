@@ -63,7 +63,12 @@ def parse_race(rid: str) -> list[dict]:
     rp = gzip.open(HTML / f"{rid}_r.html.gz", "rt", encoding="utf-8").read()
     op = gzip.open(HTML / f"{rid}_o.html.gz", "rt", encoding="utf-8").read()
     info, tb = race_info(rp)
-    odds, fuku = {}, {}
+    odds, fuku, fmax = {}, {}, {}
+    # 払戻金の複勝(実際の払戻、100円あたり)
+    pay = _txt(rp[rp.find("払戻金"):])
+    fm_ = re.search(r"複勝 (.*?) (枠連|ワイド|馬連)", pay)
+    fpay = {int(a): int(b.replace(",", "")) for a, b in
+            re.findall(r"(\d+) ([\d,]+) 円", fm_.group(1))} if fm_ else {}
     if op:
         ot = re.search(r"<table.*?</table>", op, flags=re.S)
         for row in re.findall(r"<tr>(.*?)</tr>", ot.group(0) if ot else "", flags=re.S):
@@ -73,6 +78,8 @@ def parse_race(rid: str) -> list[dict]:
                 odds[int(n)] = float(o) if re.match(r"^\d+(\.\d+)?$", o) else None
                 fm = re.search(r'class="min">([\d.]+)<', row)
                 fuku[int(n)] = float(fm.group(1)) if fm else None
+                fx = re.search(r'class="max">([\d.]+)<', row)
+                fmax[int(n)] = float(fx.group(1)) if fx else None
     body = tb[tb.find("<tbody"):]
     rows = []
     for row in re.findall(r"<tr>(.*?)</tr>", body, flags=re.S):
@@ -104,6 +111,7 @@ def parse_race(rid: str) -> list[dict]:
             "body_diff": int(hm.group(2)) if hm and hm.group(2) and hm.group(2).lstrip("+-").isdigit() else None,
             "ninki": int(_txt(_cell(row, "pop"))) if _txt(_cell(row, "pop")).isdigit() else None,
             "odds": odds.get(int(num)), "fuku_min": fuku.get(int(num)),
+            "fuku_max": fmax.get(int(num)), "fuku_pay": fpay.get(int(num), 0),
         })
     return rows
 
