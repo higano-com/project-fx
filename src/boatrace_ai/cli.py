@@ -135,6 +135,19 @@ def cmd_watch(a):
     print(result)
 
 
+def cmd_backfill(a):
+    from .backfill import backfill_day
+    from .claude_page import build_claude_page
+
+    exp = None
+    if a.ex_model and a.program:
+        from .predict import ExPredictor
+        exp = ExPredictor(Path(a.ex_model), Path(a.program), Path(a.history))
+    n = backfill_day(Path(a.site), a.day, ex_predictor=exp)
+    build_claude_page(Path(a.app), Path(a.site), Path(a.out))
+    print(f"{a.day}: {n}レースを埋めた")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="boatrace-ai", description="ボートレース着順予測AI")
     sub = p.add_subparsers(required=True)
@@ -206,6 +219,16 @@ def main(argv=None):
     s.add_argument("--program", help="その日の番組表 b*.txt (--ex-model と一緒に)")
     s.add_argument("--history", default="data/raw", help="過去の成績のフォルダ")
     s.set_defaults(func=cmd_watch)
+
+    s = sub.add_parser("backfill", help="見張りが動いていなかった日の展示・オッズをあとから埋める")
+    s.add_argument("--day", required=True, help="YYYY-MM-DD")
+    s.add_argument("--site", default="site")
+    s.add_argument("--app", default="app/index.html")
+    s.add_argument("--out", default="site/claude.html")
+    s.add_argument("--ex-model", help="展示を学習したAI")
+    s.add_argument("--program", help="その日の番組表 b*.txt (--ex-model と一緒に)")
+    s.add_argument("--history", default="data/raw", help="過去の成績のフォルダ")
+    s.set_defaults(func=cmd_backfill)
 
     a = p.parse_args(argv)
     a.func(a)

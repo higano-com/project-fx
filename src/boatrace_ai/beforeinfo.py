@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import re
 import urllib.request
+
+from .polite import fetch_text
 from datetime import date
 
 URL = "https://www.boatrace.jp/owpc/pc/race/beforeinfo?rno={rno}&jcd={jcd:02d}&hd={hd:%Y%m%d}"
@@ -65,9 +67,7 @@ def parse_beforeinfo(html: str) -> dict | None:
 
 
 def fetch_beforeinfo(d: date, venue: int, race_no: int, timeout: float = 60) -> dict | None:
-    req = urllib.request.Request(URL.format(rno=race_no, jcd=venue, hd=d), headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return parse_beforeinfo(resp.read().decode("utf-8", errors="replace"))
+    return parse_beforeinfo(fetch_text(URL.format(rno=race_no, jcd=venue, hd=d), timeout=timeout))
 
 
 def collect(races: list[tuple], out_jsonl, sleep: float = 2.0, log=print) -> int:

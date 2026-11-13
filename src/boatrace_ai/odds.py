@@ -9,6 +9,8 @@ import csv
 import re
 import time
 import urllib.request
+
+from .polite import fetch_text
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
@@ -26,9 +28,7 @@ def _num(s: str) -> float | None:
 
 
 def fetch_race_odds(d: date, venue: int, race_no: int, timeout: float = 60) -> list[dict]:
-    req = urllib.request.Request(URL.format(rno=race_no, jcd=venue, hd=d), headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        html = resp.read().decode("utf-8", errors="replace")
+    html = fetch_text(URL.format(rno=race_no, jcd=venue, hd=d), timeout=timeout)
     pts = [p.strip() for p in _POINT.findall(html)]
     if len(pts) < 12:
         return []
@@ -95,6 +95,4 @@ def parse_trifecta_odds(html: str) -> dict[str, float]:
 
 
 def fetch_trifecta_odds(d: date, venue: int, race_no: int, timeout: float = 60) -> dict[str, float]:
-    req = urllib.request.Request(URL_3T.format(rno=race_no, jcd=venue, hd=d), headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return parse_trifecta_odds(resp.read().decode("utf-8", errors="replace"))
+    return parse_trifecta_odds(fetch_text(URL_3T.format(rno=race_no, jcd=venue, hd=d), timeout=timeout))

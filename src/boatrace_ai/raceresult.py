@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 import urllib.request
+
+from .polite import fetch_text
 from datetime import date
 
 URL = "https://www.boatrace.jp/owpc/pc/race/raceresult?rno={rno}&jcd={jcd:02d}&hd={hd:%Y%m%d}"
@@ -40,6 +42,4 @@ def parse_raceresult(html: str) -> dict | None:
 
 
 def fetch_raceresult(d: date, venue: int, race_no: int, timeout: float = 20) -> dict | None:
-    req = urllib.request.Request(URL.format(rno=race_no, jcd=venue, hd=d), headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return parse_raceresult(resp.read().decode("utf-8", errors="replace"))
+    return parse_raceresult(fetch_text(URL.format(rno=race_no, jcd=venue, hd=d), timeout=timeout))
