@@ -218,6 +218,9 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                             log(f"展示AIの計算に失敗 {v['name']}{r['no']}R: {e}")
                     pending.append(f"{v['name']}{r['no']}R")
                     first_pending = first_pending or now
+        if once:
+            # 締切が近いレースを済ませてから、押さなかった間に取りこぼしたレースを埋める
+            pending += _catch_up(data, day, now, log, ex_predictor)
         if pending or dirty:
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             due = odds_due is not None and odds_due - now <= timedelta(minutes=PUBLISH_BEFORE_MIN)
@@ -229,8 +232,6 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 # 止まらずに取り続ける: アプリのファイルだけ作り直し、公開はボタンが押された時に行う
                 pending, first_pending, odds_due = [], None, None
         if once:
-            # 締切が近いレースを済ませてから、押さなかった間に取りこぼしたレースを埋める
-            pending += _catch_up(data, day, now, log, ex_predictor)
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             build_claude_page(app_html, site_dir, out_page)
             log("反映(1回): " + (", ".join(pending) or "新しい情報なし"))
