@@ -132,8 +132,8 @@ def main():
             "混合": race_ll(g.p_mix.values, g.won.values, g.rid)}), include_groups=False)
         print(by.round(4).to_string())
 
-    out = ROOT / "data" / "nar" / "bt.parquet"
-    t[["rid", "track", "date", "umaban", "won", "odds", "p_ai", "p_mkt", "p_mix", "ninki"]].to_parquet(out)
+    out = ROOT / "data" / "nar" / "bt.pkl"
+    t[["rid", "track", "date", "umaban", "won", "odds", "p_ai", "p_mkt", "p_mix", "ninki"]].to_pickle(out)
     (ROOT / "models").mkdir(exist_ok=True)
     model.save_model(str(ROOT / "models" / "nar_win_v1.txt"), num_iteration=model.best_iteration)
 
