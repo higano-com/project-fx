@@ -113,6 +113,8 @@ button { font: inherit; color: inherit; }
 .result { border-radius: 10px; background: var(--accent-soft); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .result .t { font-size: .75rem; font-weight: 700; color: var(--accent); letter-spacing: .08em; }
 .result .pay { font-weight: 700; font-size: 1.05rem; }
+.result .rc { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
+.result .rc .arrow { color: var(--muted); font-size: .7rem; }
 .mark { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
 .mark.hit { background: var(--good-soft); color: var(--good); }
 .mark.miss { background: var(--bad-soft); color: var(--bad); }
@@ -496,7 +498,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const fav = favorite(r);
 
     const resultHtml = res ? `<div class="result">
-        <span class="t">結果</span><span>${comboChips(res.trifecta)}</span>
+        <span class="t">結果</span><span class="rc">${comboChips(res.trifecta)}</span>
         <span class="pay num">${yen(res.trifecta_pay)}</span>
         <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">AI本命◎${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
         <span class="mark ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}">上位5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "ハズレ"}</span>
