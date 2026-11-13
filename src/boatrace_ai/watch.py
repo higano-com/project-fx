@@ -47,19 +47,20 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
-def _catch_up(data: dict, day: str, now: datetime, log, ex_predictor=None) -> list[str]:
+def _catch_up(data: dict, day: str, now: datetime, log, ex_predictor=None, path: Path | None = None) -> list[str]:
     """終わったのにオッズ・結果が無いレースを埋める(ボタンを押さなかった間の取りこぼし).
 
     オッズは締切後の最終オッズ(3連単は本数を減らすため取らない)。展示が無ければ展示も取る。
     """
     race_day = datetime.strptime(day, "%Y-%m-%d").date()
     got: list[str] = []
-    for v in data["venues"]:
-        for r in v["races"]:
+    for vi, v in enumerate(data["venues"]):
+        for ri, r in enumerate(v["races"]):
             if not r.get("deadline"):
                 continue
             dl = _deadline(day, r["deadline"])
             name = f"{v['name']}{r['no']}R"
+            before = len(got)
             if dl > now - timedelta(minutes=1):
                 continue
             if not r.get("odds"):
@@ -96,6 +97,11 @@ def _catch_up(data: dict, day: str, now: datetime, log, ex_predictor=None) -> li
                 if res:
                     r["result"] = res
                     got.append(f"{name}(結果)")
+            if path is not None and len(got) > before:
+                # サイトの応答が遅い日は時間がかかるので、1レースごとに保存して途中で止めても無駄にしない
+                cur = json.loads(path.read_text(encoding="utf-8"))
+                cur["venues"][vi]["races"][ri] = r
+                path.write_text(json.dumps(cur, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     if got:
         log(f"取りこぼしを埋めた: {len(got)}件")
     return got
@@ -220,7 +226,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                     first_pending = first_pending or now
         if once:
             # 締切が近いレースを済ませてから、押さなかった間に取りこぼしたレースを埋める
-            pending += _catch_up(data, day, now, log, ex_predictor)
+            pending += _catch_up(data, day, now, log, ex_predictor, path)
         if pending or dirty:
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             due = odds_due is not None and odds_due - now <= timedelta(minutes=PUBLISH_BEFORE_MIN)
