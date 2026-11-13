@@ -420,6 +420,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   // 2023年の検証で決めた混ぜ方: AI確率^a × オッズから見た確率^b (レース内で正規化)
   const BW = [0.5656, 0.5195];
   const EV_MIN = 1.0, ODDS_MAX = 50;
+  // 自分の買い分でオッズが下がる分を入れる (パリミュチュエル方式: 払戻 = 売上×75% ÷ その艇の票)
+  // 公式サイトにレースごとの単勝の売上は載っていないので、売上は少なめ(=厳しめ)に見積もった推定値
+  const WIN_STAKE = 2000, WIN_POOL_EST = 300000, PAYOUT_RATE = 0.75;
+  const oddsAfterBet = (o) => o * (WIN_POOL_EST + WIN_STAKE) / (WIN_POOL_EST + WIN_STAKE * o / PAYOUT_RATE);
   function withOdds(r) {
     if (!r.odds || r.odds.filter((o) => o > 0).length < 6) return r;
     const inv = r.odds.map((o) => 1 / o), invSum = inv.reduce((a, b) => a + b, 0);
@@ -427,10 +431,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), zs = z.reduce((a, b) => a + b, 0);
     let any = false;
     const boats = r.boats.map((b, i) => {
-      const odds = r.odds[b.lane - 1], pb = z[i] / zs, ev = pb * odds;
+      const odds = r.odds[b.lane - 1], pb = z[i] / zs, oddsAfter = oddsAfterBet(odds), ev = pb * oddsAfter;
       const value = ev >= EV_MIN && odds <= ODDS_MAX;
       any = any || value;
-      return { ...b, odds, pb, ev, value };
+      return { ...b, odds, oddsAfter, pb, ev, value };
     });
     return { ...r, boats, hasValue: any };
   }
@@ -662,7 +666,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   // レースごとの期待値プラスの買い目 (3連単と単勝). オッズは締切の数分前に自動で取得したもの
   function evPicks(rv) {
     const tri = (rv.triValue || []).map((t) => ({ kind: "3連単", combo: t.combo, prob: t.prob, odds: t.odds, ev: t.ev }));
-    const win = rv.boats.filter((b) => b.value).map((b) => ({ kind: "単勝", combo: String(b.lane), prob: b.pb, odds: b.odds, ev: b.ev }));
+    const win = rv.boats.filter((b) => b.value).map((b) => ({ kind: "単勝", combo: String(b.lane), prob: b.pb, odds: b.odds, oddsAfter: b.oddsAfter, ev: b.ev }));
     return tri.concat(win);
   }
   function pickResult(pk, res) {
@@ -749,7 +753,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       return `<div class="tanrow ${isDone ? "done" : ""}" data-go="${v.code}-${r.no}">
         <span class="w"><b>${esc(v.name)} ${r.no}R</b><small>締切${esc(r.deadline || "")}${r.odds_time ? " ・ オッズ" + esc(r.odds_time) : ""}</small></span>
         <span class="c">${comboChips(pk.combo)}</span>
-        <span class="n">期待値<b>${pk.ev.toFixed(2)}</b><br>${pk.odds.toFixed(1)}倍 ${pct(pk.prob, 0)}</span>${right}</div>`;
+        <span class="n">期待値<b>${pk.ev.toFixed(2)}</b><br>${pk.odds.toFixed(1)}→${pk.oddsAfter.toFixed(1)}倍 ${pct(pk.prob, 0)}</span>${right}</div>`;
     };
     const x = evSummary(d)["単勝"], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
     $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
@@ -759,7 +763,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       ${waiting ? `<p class="note" style="margin:0">オッズ待ち ${waiting}レース (締切の6分前に自動で計算)</p>` : ""}
       ${done.length ? `<p class="label" style="margin:0">終わったレース</p><div class="tanlist">${done.map((o) => row(o, true)).join("")}</div>` : ""}
       ${!open.length && !done.length && !waiting ? '<div class="empty">この日は単勝の期待値プラスがありません。</div>' : ""}
-      <p class="note">表示された艇の単勝を買う、という意味です。期待値 = AIとオッズを組み合わせた確率 × 単勝オッズ。1.0以上・50倍以下の艇だけを出しています。行を押すとそのレースの予想を開きます。</p>
+      <p class="note">表示された艇の単勝を買う、という意味です。期待値 = AIとオッズを組み合わせた確率 × 自分が${yen(WIN_STAKE)}買った後のオッズ(推定)。1.0以上・50倍以下の艇だけを出しています。「37.7→33.1倍」は、今のオッズ→${yen(WIN_STAKE)}買った後のオッズです。単勝の売上は公式に出ていないため、少なめ(${yen(WIN_POOL_EST)})に見積もっています。行を押すとそのレースの予想を開きます。</p>
     </div>`;
     $("view").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
       const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
