@@ -47,6 +47,60 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def _catch_up(data: dict, day: str, now: datetime, log, ex_predictor=None) -> list[str]:
+    """終わったのにオッズ・結果が無いレースを埋める(ボタンを押さなかった間の取りこぼし).
+
+    オッズは締切後の最終オッズ(3連単は本数を減らすため取らない)。展示が無ければ展示も取る。
+    """
+    race_day = datetime.strptime(day, "%Y-%m-%d").date()
+    got: list[str] = []
+    for v in data["venues"]:
+        for r in v["races"]:
+            if not r.get("deadline"):
+                continue
+            dl = _deadline(day, r["deadline"])
+            name = f"{v['name']}{r['no']}R"
+            if dl > now - timedelta(minutes=1):
+                continue
+            if not r.get("odds"):
+                if not r.get("ex_times"):
+                    try:
+                        info = fetch_beforeinfo(race_day, v["code"], r["no"], timeout=20)
+                    except Exception as e:
+                        info = None
+                        log(f"展示の取得失敗 {name}: {e}")
+                    if info:
+                        r.update({k: val for k, val in info.items() if val is not None})
+                        if ex_predictor is not None:
+                            try:
+                                r["p_ex"] = ex_predictor.predict(v["code"], r["no"], info["ex_times"], info.get("course_ex"), info.get("weather_ex"))
+                            except Exception as e:
+                                log(f"展示AIの計算に失敗 {name}: {e}")
+                try:
+                    rows = fetch_race_odds(race_day, v["code"], r["no"], timeout=20)
+                except Exception as e:
+                    rows = []
+                    log(f"オッズ取得失敗 {name}: {e}")
+                odds = [x["win_odds"] for x in sorted(rows, key=lambda x: x["lane"])]
+                if len(odds) == 6 and any(o for o in odds):
+                    r["odds"], r["odds_time"] = odds, "最終"
+                    got.append(f"{name}(最終オッズ)")
+            n = r.get("result_tries", 0)
+            if not r.get("result") and n < RESULT_MAX_TRIES and now - dl >= timedelta(minutes=RESULT_AFTER_MIN):
+                try:
+                    res = fetch_raceresult(race_day, v["code"], r["no"], timeout=20)
+                except Exception as e:
+                    res = None
+                    log(f"結果取得失敗 {name}: {e}")
+                r["result_tries"] = n + 1
+                if res:
+                    r["result"] = res
+                    got.append(f"{name}(結果)")
+    if got:
+        log(f"取りこぼしを埋めた: {len(got)}件")
+    return got
+
+
 def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None,
           poll_sec: float = 60, log=_log, ex_predictor=None, keep_running: bool = False, once: bool = False) -> str:
     """戻り値: "updated"(公開が必要) / "finished"(その日の対象レースが全部終わった)."""
@@ -175,6 +229,8 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 # 止まらずに取り続ける: アプリのファイルだけ作り直し、公開はボタンが押された時に行う
                 pending, first_pending, odds_due = [], None, None
         if once:
+            # 締切が近いレースを済ませてから、押さなかった間に取りこぼしたレースを埋める
+            pending += _catch_up(data, day, now, log, ex_predictor)
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             build_claude_page(app_html, site_dir, out_page)
             log("反映(1回): " + (", ".join(pending) or "新しい情報なし"))
