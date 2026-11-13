@@ -67,3 +67,34 @@ def fetch_many(races: list[tuple[date, int, int]], out_csv: Path, workers: int =
             w.writerows(rows)
             f.flush()  # 途中で止めても取得済みの分は残す
     f.close()
+
+
+URL_3T = "https://www.boatrace.jp/owpc/pc/race/odds3t?rno={rno}&jcd={jcd:02d}&hd={hd:%Y%m%d}"
+
+
+def parse_trifecta_odds(html: str) -> dict[str, float]:
+    """3連単オッズのページ -> {"1-2-3": 7.5, ...} (120通り).
+
+    表は「1着の艇ごとの列」×「2着・3着の行」で、左上から行ごとに並んでいる。
+    """
+    pts = [p.strip() for p in _POINT.findall(html)]
+    if len(pts) != 120:
+        return {}
+    out = {}
+    for row in range(20):
+        for col in range(6):
+            first = col + 1
+            seconds = [l for l in range(1, 7) if l != first]
+            second = seconds[row // 4]
+            thirds = [l for l in range(1, 7) if l not in (first, second)]
+            third = thirds[row % 4]
+            v = _num(pts[row * 6 + col])
+            if v:
+                out[f"{first}-{second}-{third}"] = v
+    return out
+
+
+def fetch_trifecta_odds(d: date, venue: int, race_no: int, timeout: float = 60) -> dict[str, float]:
+    req = urllib.request.Request(URL_3T.format(rno=race_no, jcd=venue, hd=d), headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return parse_trifecta_odds(resp.read().decode("utf-8", errors="replace"))

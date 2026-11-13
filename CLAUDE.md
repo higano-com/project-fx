@@ -15,6 +15,18 @@
 - オッズ: 公式 https://www.boatrace.jp/ の過去オッズページ(`odds.py`)。
   - サイトポリシーで「大量のアクセス」が禁止されている。**1本ずつ・2秒以上の間隔**で、必要な分だけ取る。
   - 取得したオッズは私的な分析にだけ使う。アプリや GitHub に載せない(再配布しない)。
+- 見張り(`watch-exhibit`): 締切22分前〜で展示、締切6〜2分前で単勝・3連単オッズ、締切7分後〜で結果ページ(`raceresult.py`)を1レース1回取得し、アプリを作り直す。結果は夜の成績ファイル(K)で上書き。
+  - アプリの「期待値+」= 展示込みAI確率とオッズの混合確率 × オッズ ≥ 1.0 (オッズ50倍以下)。重みは2023年3〜5月の検証で決定。
+- 展示AI(`models/ex_v3.pkl`, `predict.ExPredictor`): 展示タイム・進入コースも学習したAI。展示が取れたら見張りが `p_ex` を書き込み、アプリはそれを優先して使う。
+- AI本命(◎) = AIの1着確率がいちばん高い艇。3連単の期待値プラス = 展示込みAI確率(補正つき) × 3連単オッズ ≥ 1.0、確率3%以上、50倍以下。
+- 毎日の更新手順(毎朝8:13 JST にルーティン `trig_0156KsVj5MTh7L2GBkYAeeTT` がこのセッションで自動実行。「更新して」と言われた時も同じ):
+  1. その日の番組表 B と前日の成績 K を `data/live` に取得
+  2. `build_site(models/base_v3.pkl, data/live, data/site_live, [前日, 当日])` → `boatrace-ai claude-page --site data/site_live --out data/site_live/index.html` → Artifact を公開
+  3. `boatrace-ai watch-exhibit --site data/site_live --out data/site_live/index.html --ex-model models/ex_v3.pkl --program data/live/b<当日>.txt --history data/live` をバックグラウンドで動かし、止まるたびに公開して再開
+- AI v2 (2026-11-09): 当たり外れ検証で見つけたクセを修正。レースの格(`race_cat`)・時間帯(`hour`)・風/波(展示AIのみ)を学習し、
+  自信補正 `alpha`(確率を alpha 乗して正規化)を検証データで決定。朝のAI=`models/base_v3.pkl`、展示AI=`models/ex_v3.pkl`。
+- AI v3: v2 に「モーターの最近の調子(同じ場・同じモーターの直近60日)」と「選手×進入コースの過去成績」を追加(朝は枠番で代用、展示AIは展示進入で引く)。
+- 過去の直前情報(展示・ST・進入・風波)を `data/beforeinfo_hist.jsonl` に収集中(1本ずつ)。集まったら ST/チルト/展示進入/F を学習に足す。
 - `data/` と `models/` は git 管理外。
 
 ## 開発

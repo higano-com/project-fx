@@ -23,6 +23,7 @@ _RACE = re.compile(r"^\s*(\d{1,2})R\s")
 _DIST = re.compile(r"H(\d{3,4})m")
 _DEADLINE = re.compile(r"締切予定\s*(\d{1,2}):(\d{2})")
 _RACE_NAME = re.compile(r"^\s*\d{1,2}R\s+(\S+)")
+_DAY = re.compile(r"第\s*(\d{1,2})日")
 _B_ENTRY = re.compile(r"^([1-6]) (\d{4})(.{4})(\d{2})(.{2})(\d{2})([AB][12])")
 # 級別の直後から: 全国勝率, 全国2率, 当地勝率, 当地2率, ﾓｰﾀｰNO, ﾓｰﾀｰ2率, ﾎﾞｰﾄNO, ﾎﾞｰﾄ2率
 # 例 "9.30100.00" や "37.31111" のように数字が隙間なく並ぶことがあるので固定長で切る
@@ -71,12 +72,14 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
     """番組表 -> 1行=1艇 の DataFrame."""
     rows = []
     venue = race_no = None
-    distance = deadline = race_name = None
+    distance = deadline = race_name = day_no = None
     for line in text.splitlines():
         if m := _B_VENUE.match(line):
-            venue, race_no = int(m.group(1)), None
+            venue, race_no, day_no = int(m.group(1)), None, None
             continue
         norm = _nfkc(line)
+        if race_no is None and day_no is None and (dm := _DAY.search(norm)):
+            day_no = int(dm.group(1))  # 開催の何日目か
         if (m := _RACE.match(norm)) and venue is not None:
             race_no = int(m.group(1))
             dm = _DIST.search(norm)
@@ -93,7 +96,7 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
             rows.append(
                 dict(
                     date=pd.Timestamp(race_date), venue=venue, race_no=race_no,
-                    distance=distance, deadline=deadline, race_name=race_name, lane=int(g[0]), reg_no=int(g[1]),
+                    distance=distance, deadline=deadline, race_name=race_name, day_no=day_no, lane=int(g[0]), reg_no=int(g[1]),
                     name=g[2].replace("　", "").strip(), age=int(g[3]),
                     branch=g[4].strip(), weight=int(g[5]), grade=g[6],
                     class_num=CLASS_MAP.get(g[6], 0),
@@ -111,9 +114,10 @@ def parse_program(text: str, race_date: date) -> pd.DataFrame:
 def _parse_result_tail(tail: str) -> dict:
     """着/艇/登番 以降(選手名, ﾓｰﾀｰ, ﾎﾞｰﾄ, 展示, 進入, ST, ﾀｲﾑ) を読む."""
     toks = tail.split()
-    out = dict(exhibit=None, course=None, st=None)
+    out = dict(exhibit=None, course=None, st=None, motor_no=None, boat_no=None)
     for i in range(len(toks) - 2):
         if toks[i].isdigit() and toks[i + 1].isdigit() and _FLOAT2.match(toks[i + 2]):
+            out["motor_no"], out["boat_no"] = int(toks[i]), int(toks[i + 1])
             out["exhibit"] = float(toks[i + 2])
             rest = toks[i + 3:]
             if rest and rest[0] in "123456" and len(rest[0]) == 1:

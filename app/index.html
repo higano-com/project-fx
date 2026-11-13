@@ -46,6 +46,7 @@
   --nav: #12232eee; --chip-ring: #4b6372; color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55;
@@ -84,8 +85,8 @@ button { font: inherit; color: inherit; }
 
 /* レース番号 */
 .rgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-.rbtn { text-align: center; padding: 6px 0 5px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); line-height: 1.15; }
-.rbtn b { display: block; font-family: var(--display); font-weight: 400; font-size: 1.05rem; }
+.rbtn { text-align: center; padding: 3px 0 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); line-height: 1.15; }
+.rbtn b { display: block; font-family: var(--display); font-weight: 400; font-size: .95rem; }
 .rbtn span { font-size: .68rem; color: var(--muted); }
 .rbtn.done { opacity: .5; }
 .rbtn.next { border-color: var(--hot); box-shadow: inset 0 0 0 1px var(--hot); }
@@ -93,14 +94,15 @@ button { font: inherit; color: inherit; }
 .rbtn[aria-pressed="true"] span { color: var(--accent-fg); }
 
 /* レース詳細 */
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.rhead { display: flex; align-items: flex-start; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.rhead { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
 .rhead .big { font-family: var(--display); font-size: 2.1rem; line-height: 1; }
 .rhead .big small { font-size: 1rem; }
 .rhead .info { display: flex; flex-direction: column; min-width: 0; }
 .rhead .info b { font-size: 1.05rem; }
 .rhead .info span { color: var(--muted); font-size: .85rem; }
-.pills { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pills { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+@media (max-width: 480px) { .pills { margin-left: 0; width: 100%; justify-content: flex-start; } }
 .pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .pill.solid { background: var(--good-soft); color: var(--good); }
 .pill.mid { background: var(--accent-soft); color: var(--accent); }
@@ -115,14 +117,26 @@ button { font: inherit; color: inherit; }
 .mark.hit { background: var(--good-soft); color: var(--good); }
 .mark.miss { background: var(--bad-soft); color: var(--bad); }
 
-.boats { display: flex; flex-direction: column; gap: 9px; }
-.boat { display: grid; grid-template-columns: 34px minmax(0, 1fr) 58px; grid-template-rows: auto auto; column-gap: 10px; row-gap: 4px; align-items: center; }
-.boat .lane { grid-row: span 2; }
-.boat .who { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-.boat .who b { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boat .who span { color: var(--muted); font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boat .pct { grid-row: span 2; text-align: right; font-weight: 700; font-size: 1.15rem; }
-.boat .track { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.boats { display: flex; flex-direction: column; gap: 4px; }
+.boat { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: start; padding-block: 2px 6px; border-bottom: 1px solid var(--line); }
+.boat:last-child { border-bottom: 0; }
+.boat .lane { grid-row: span 2; width: 28px; height: 28px; font-size: .95rem; }
+.boat .who { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.boat .who .nm { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.boat .who b { font-size: .98rem; line-height: 1.25; }
+.boat .who .gr { font-size: .75rem; font-weight: 700; color: var(--muted); }
+.boat .who .gr.A1 { color: var(--hot); }
+.boat .facts { display: flex; flex-wrap: wrap; gap: 0 7px; line-height: 1.45; }
+.boat .facts span { font-size: .72rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.boat .facts span.good { color: var(--good); font-weight: 700; }
+.boat .facts span.warn { color: var(--hot); font-weight: 700; }
+.fav { color: var(--hot); font-weight: 700; font-size: .95rem; margin-right: -2px; }
+.valb { font-size: .68rem; font-weight: 700; color: var(--accent-fg); background: var(--good); border-radius: 999px; padding: 1px 7px; }
+.pill.value { background: var(--good); color: var(--surface); }
+.rbtn { position: relative; }
+.rbtn .vdot { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.boat .pct { grid-row: span 2; text-align: right; font-weight: 700; font-size: 1.05rem; line-height: 1.2; min-width: 46px; }
+.boat .track { grid-column: 2 / 4; height: 5px; margin-top: 2px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
 .boat .fill { height: 100%; background: var(--bar); border-radius: 4px; }
 .boat.top .fill { background: var(--hot); }
 .boat.top .pct { color: var(--hot); }
@@ -152,6 +166,16 @@ button { font: inherit; color: inherit; }
 .maker .pick[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 2px var(--accent); }
 .maker-foot { display: flex; align-items: center; gap: 10px; }
 .maker-foot .p { color: var(--muted); font-size: .85rem; display: flex; align-items: center; gap: 4px; }
+.ex { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+.ex summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--accent); }
+.exgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.exgrid label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.exgrid input { width: 100%; min-width: 0; font: inherit; font-size: 1rem; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-variant-numeric: tabular-nums; }
+.exfoot { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.exfoot .sub2 { color: var(--muted); font-size: .78rem; flex: 1 1 160px; }
+.ghost { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); font-weight: 700; }
+.pill.exon { background: var(--accent); color: var(--accent-fg); }
+.boat .was { font-size: .7rem; color: var(--muted); font-weight: 400; display: block; }
 .primary { margin-left: auto; padding: 9px 18px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); font-weight: 700; }
 .primary[aria-disabled="true"] { opacity: .4; pointer-events: none; }
 
@@ -170,7 +194,57 @@ button { font: inherit; color: inherit; }
 .row .mid { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0; }
 .row .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .row .right b { font-size: .95rem; }
+.evsum { display: flex; gap: 6px; }
+.evsum > div { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; }
+.evsum span { font-size: .65rem; color: var(--muted); font-weight: 700; }
+.evsum b { font-size: .95rem; font-variant-numeric: tabular-nums; }
+.evsum b.plus { color: var(--good); } .evsum b.minus { color: var(--bad); }
+.evcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.evcard.done { opacity: .8; }
+.evhead { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--accent-soft); font-size: .85rem; }
+.evhead b { font-weight: 700; } .evhead .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+.evhead .go { margin-left: auto; color: var(--accent); font-weight: 700; font-size: .75rem; }
+.evrow { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--line); }
+/* 単勝タブ: 1行1艇 */
+.tanlist { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tanrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); }
+.tanrow:first-child { border-top: 0; }
+.tanrow .w { min-width: 0; } .tanrow .w b { display: block; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tanrow .w small { color: var(--muted); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.tanrow .n { font-size: .72rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.tanrow .n b { color: var(--text); font-size: .85rem; }
+.tanrow.done { opacity: .8; }
+.evrow .k { font-size: .65rem; font-weight: 700; color: var(--muted); }
+.evrow .c { display: flex; align-items: center; gap: 2px; }
+.evrow .c .lane.sm { width: 20px; height: 20px; font-size: .72rem; }
+.evrow .n { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evrow .n b { color: var(--good); }
+.evrow .add { padding: 3px 8px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: .7rem; }
+.evrow .add[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.evrow .res, .tanrow .res { font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.evrow .res.hit, .tanrow .res.hit { background: var(--good-soft); color: var(--good); }
+.evrow .res.miss, .tanrow .res.miss { background: var(--line); color: var(--muted); }
+.wait { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wait span { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .row .del { font-size: .75rem; color: var(--muted); text-decoration: underline; }
+/* 結果タブ: 横に1行でまとめる */
+.ksum { display: flex; gap: 6px; }
+.ksum > div { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 4px; text-align: center; display: flex; flex-direction: column; }
+.ksum span { font-size: .62rem; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.ksum b { font-size: 1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ksum b.plus { color: var(--good); } .ksum b.minus { color: var(--bad); }
+.kline { font-size: .72rem; color: var(--muted); text-align: center; margin-top: -6px; }
+.krow { box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 34px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--line); }
+.krow:first-of-type { border-top: 0; }
+.krow .r { font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.krow .c { display: flex; align-items: center; gap: 2px; }
+.krow .c .lane.sm { width: 20px; height: 20px; font-size: .72rem; }
+.krow .c .arrow { font-size: .6rem; }
+.krow .y { text-align: right; font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.krow .mk { display: flex; gap: 3px; }
+.krow .mk i { font-style: normal; font-size: .62rem; font-weight: 700; padding: 1px 5px; border-radius: 999px; }
+.krow .mk i.hit { background: var(--good-soft); color: var(--good); } .krow .mk i.miss { background: var(--line); color: var(--muted); }
+.list h3.kh { padding: 5px 10px; font-size: .8rem; }
 .empty { color: var(--muted); text-align: center; padding: 28px 12px; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
 .note { color: var(--muted); font-size: .8rem; line-height: 1.7; }
 .note p { margin: 0 0 6px; }
@@ -185,7 +259,7 @@ nav.tabs {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
 }
-nav.tabs .in { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
+nav.tabs .in { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 700; position: relative; }
 nav.tabs a svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a[aria-current="page"] { color: var(--accent); }
@@ -210,6 +284,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 <nav class="tabs" aria-label="メニュー">
   <div class="in">
+    <a href="#kitai" data-tab="kitai"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/></svg>期待値</a>
+    <a href="#tansho" data-tab="tansho"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M11 9l2-1v8"/></svg>単勝</a>
     <a href="#yoso" data-tab="yoso"><svg viewBox="0 0 24 24"><path d="M3 17c2 0 2-1.5 4.5-1.5S10 17 12 17s2-1.5 4.5-1.5S19 17 21 17"/><path d="M5 13l2-6h10l2 6"/><path d="M9 7V4h4"/></svg>予想</a>
     <a href="#kekka" data-tab="kekka"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M8 20h8M10 16h4v4h-4z"/></svg>結果</a>
     <a href="#kaime" data-tab="kaime"><svg viewBox="0 0 24 24"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M14 7v12" stroke-dasharray="2 2"/></svg>マイ買い目<span class="badge" id="betBadge" hidden></span></a>
@@ -253,8 +329,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   // ---------- データ ----------
   const S = { days: [], model: {}, date: null, tab: "yoso", venue: null, race: null, pick: [null, null, null], cache: {} };
 
+  // ページに埋め込まれたデータがあればそれを使う (Claude のページなど、別ファイルを読めない環境向け)
+  const EMBED = window.__BOAT_DATA__ || null;
+
   async function loadDay(d) {
     if (S.cache[d]) return S.cache[d];
+    if (EMBED && EMBED.days[d]) return (S.cache[d] = EMBED.days[d]);
     const r = await fetch(`data/${d}.json`, { cache: "no-cache" });
     if (!r.ok) throw new Error("day " + d);
     return (S.cache[d] = await r.json());
@@ -274,13 +354,28 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   }
   function confidence(r) {
     const top = Math.max(...r.boats.map((b) => b.p_win));
-    return top >= 0.6 ? ["solid", "堅い"] : top >= 0.4 ? ["mid", "本命あり"] : ["mixed", "混戦"];
+    return top >= 0.6 ? ["solid", "堅い"] : top >= 0.4 ? ["mid", "やや堅い"] : ["mixed", "混戦"];
+  }
+  // 3連単の確率: 1着確率から計算。2着・3着は人気薄を過大評価しないよう補正(2023年の着順で決定)
+  const LAM = [0.670, 0.433];
+  function triProb(p, i, j, k) {
+    const L = Object.keys(p).map(Number);
+    const s2 = L.filter((x) => x !== i).reduce((a, x) => a + Math.pow(p[x], LAM[0]), 0);
+    const s3 = L.filter((x) => x !== i && x !== j).reduce((a, x) => a + Math.pow(p[x], LAM[1]), 0);
+    return p[i] * Math.pow(p[j], LAM[0]) / s2 * Math.pow(p[k], LAM[1]) / s3;
+  }
+  function triList(p) {
+    const L = Object.keys(p).map(Number), out = [];
+    for (const i of L) for (const j of L) for (const k of L) {
+      if (i === j || j === k || i === k) continue;
+      out.push({ combo: `${i}-${j}-${k}`, prob: triProb(p, i, j, k) });
+    }
+    return out.sort((a, b) => b.prob - a.prob);
   }
   function harville(r, combo) {
-    const p = Object.fromEntries(r.boats.map((b) => [b.lane, b.p_win]));
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
     const [i, j, k] = combo.split("-").map(Number);
-    if (!p[i] || !p[j] || !p[k]) return 0;
-    return p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j]));
+    return p[i] && p[j] && p[k] ? triProb(p, i, j, k) : 0;
   }
   const favorite = (r) => r.boats.reduce((a, b) => (b.p_win > a.p_win ? b : a));
 
@@ -299,17 +394,79 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     return [v.code, v.races[0].no];
   }
 
+  // ---------- 展示タイムで予想を補正 ----------
+  // 2023年のデータで学習: 点数 = a*log(AI確率) + b*(展示タイム-レース平均) + c*(展示1位)
+  const EXW = [1.0532, -3.8527, 0.0735];
+  let exStore = store.get("ex-v1", {});
+  const exKey = (r) => `${S.date}-${S.venue}-${r.no}`;
+  function adjusted(r) {
+    const ex = exStore[exKey(r)] || r.ex_times;  // 手入力 > 自動取得
+    if (!ex || ex.length !== 6 || ex.some((x) => !(x > 5 && x < 9))) return null;
+    const mean = ex.reduce((a, b) => a + b, 0) / 6, min = Math.min(...ex);
+    const sc = r.boats.map((b) => {
+      const e = ex[b.lane - 1];
+      return EXW[0] * Math.log(Math.max(b.p_win, 1e-6)) + EXW[1] * (e - mean) + EXW[2] * (e === min ? 1 : 0);
+    });
+    const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), sum = z.reduce((a, b) => a + b, 0);
+    // 展示を学習したAIの予想があればそれを使う(手で展示を直したときは計算式で補正)
+    const useEx = !exStore[exKey(r)] && r.p_ex && r.p_ex.length === 6;
+    const boats = r.boats.map((b, i) => ({ ...b, p_win: useEx ? Math.max(r.p_ex[b.lane - 1], 1e-6) : z[i] / sum, p_base: b.p_win, ex: ex[b.lane - 1],
+      st: r.st_ex ? r.st_ex[b.lane - 1] : null, course: r.course_ex ? r.course_ex[b.lane - 1] : null }));
+    const p = Object.fromEntries(boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
+    return { ...r, boats, trifecta: triList(p).slice(0, 10), adjusted: true, auto: !exStore[exKey(r)] };
+  }
+
+  // ---------- オッズと組み合わせた期待値 ----------
+  // 2023年の検証で決めた混ぜ方: AI確率^a × オッズから見た確率^b (レース内で正規化)
+  const BW = [0.5656, 0.5195];
+  const EV_MIN = 1.0, ODDS_MAX = 50;
+  function withOdds(r) {
+    if (!r.odds || r.odds.filter((o) => o > 0).length < 6) return r;
+    const inv = r.odds.map((o) => 1 / o), invSum = inv.reduce((a, b) => a + b, 0);
+    const sc = r.boats.map((b) => BW[0] * Math.log(Math.max(b.p_win, 1e-6)) + BW[1] * Math.log(inv[b.lane - 1] / invSum));
+    const m = Math.max(...sc), z = sc.map((v) => Math.exp(v - m)), zs = z.reduce((a, b) => a + b, 0);
+    let any = false;
+    const boats = r.boats.map((b, i) => {
+      const odds = r.odds[b.lane - 1], pb = z[i] / zs, ev = pb * odds;
+      const value = ev >= EV_MIN && odds <= ODDS_MAX;
+      any = any || value;
+      return { ...b, odds, pb, ev, value };
+    });
+    return { ...r, boats, hasValue: any };
+  }
+  // 2023年の3連単オッズでの検証: 大穴(確率1〜2%)は損。確率3%以上・50倍以下・期待値1.0以上に絞る
+  const TRI_EV_MIN = 1.0, TRI_P_MIN = 0.03, TRI_ODDS_MAX = 50;
+  function retri(r) {
+    if (r.adjusted) return r;
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
+    return { ...r, trifecta: triList(p).slice(0, 10) };
+  }
+  function withTriOdds(r) {
+    if (!r.tri_odds) return r;
+    // 3連単は、オッズと混ぜない展示込みAIの確率の方が検証で良かった
+    const p = Object.fromEntries(r.boats.map((b) => [b.lane, Math.max(b.p_win, 1e-6)]));
+    const triValue = triList(p).map((t) => ({ ...t, odds: r.tri_odds[t.combo], ev: t.prob * (r.tri_odds[t.combo] || 0) }))
+      .filter((t) => t.odds && t.odds <= TRI_ODDS_MAX && t.prob >= TRI_P_MIN && t.ev >= TRI_EV_MIN)
+      .sort((a, b) => b.ev - a.ev).slice(0, 5);
+    return { ...r, triValue };
+  }
+  const view = (r) => withTriOdds(withOdds(retri(adjusted(r) || r)));
+
   // ---------- 予想タブ ----------
   function renderYoso() {
     const d = day();
     if (!d.venues.find((v) => v.code === S.venue)) [S.venue, S.race] = defaultSelection();
     const v = d.venues.find((x) => x.code === S.venue);
     if (!v.races.find((r) => r.no === S.race)) S.race = v.races[0].no;
-    const r = v.races.find((x) => x.no === S.race);
+    const r0 = v.races.find((x) => x.no === S.race);
+    const r = view(r0);
+    const exVals = exStore[exKey(r0)] || r0.ex_times || [];
     const n = jst();
     const nextNo = (v.races.find((x) => raceState(x) === "open") || {}).no;
 
-    const venues = d.venues.map((x) => {
+    // 場の並び: 次のレースの締切が早い順(全レース終わった場は右端)
+    const nextDl = (x) => { const nx = x.races.find((y) => raceState(y) === "open"); return nx && nx.deadline ? nx.deadline : "99:99"; };
+    const venues = [...d.venues].sort((a, b) => nextDl(a).localeCompare(nextDl(b))).map((x) => {
       const nx = x.races.find((y) => raceState(y) === "open");
       const sub = nx ? `${nx.no}R ${nx.deadline || ""}` : "終了";
       return `<button class="btn venue" type="button" data-v="${x.code}" aria-pressed="${x.code === S.venue}"><b>${esc(x.name)}</b><span class="num">${esc(sub)}</span></button>`;
@@ -318,7 +475,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const grid = v.races.map((x) => {
       const st = raceState(x);
       const cls = st === "done" ? "done" : x.no === nextNo && n.date === S.date ? "next" : "";
-      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}"><b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
+      const vx = view(x), hv = (vx.triValue && vx.triValue.length) || vx.hasValue;
+      return `<button class="btn rbtn ${cls}" type="button" data-r="${x.no}" aria-pressed="${x.no === S.race}">${hv ? '<i class="vdot" aria-label="期待値プラスあり"></i>' : ""}<b>${x.no}</b><span class="num">${esc(x.deadline || "")}</span></button>`;
     }).join("");
 
     const st = raceState(r);
@@ -336,17 +494,36 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const resultHtml = res ? `<div class="result">
         <span class="t">結果</span><span>${comboChips(res.trifecta)}</span>
         <span class="pay num">${yen(res.trifecta_pay)}</span>
-        <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">本命${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
+        <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">AI本命◎${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
         <span class="mark ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}">上位5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "ハズレ"}</span>
       </div>` : (r.result && r.result.void ? `<div class="result"><span class="t">結果</span><span>不成立・中止など</span></div>` : "");
 
-    const boats = r.boats.map((b) => `
+    const exs = r.boats.map((b) => b.ex).filter((x) => x != null);
+    const exRank = (x) => (x == null ? null : 1 + exs.filter((y) => y < x).length);
+    const stNum = (t) => { const m = /^(F)?\.?(\d+)$/.exec(String(t || "").replace("0.", ".")); return m ? (m[1] ? -1 : parseFloat("0." + m[2])) : null; };
+    const boats = r.boats.map((b) => {
+      const er = exRank(b.ex), sv = stNum(b.st);
+      // 1行に収まるよう短く: 勝率 / モーター2連率 / 展示タイム(順位) / スタート展示 / 進入
+      const facts = [
+        `勝率${b.nat_win.toFixed(2)}`,
+        `モ${b.motor_2.toFixed(0)}%`,
+        b.ex != null ? `<span class="${er === 1 ? "good" : er >= 5 ? "warn" : ""}">展示${b.ex.toFixed(2)}(${er}位)</span>` : "",
+        b.st ? `<span class="${sv === -1 || (sv != null && sv <= .05) ? "good" : sv >= .25 ? "warn" : ""}">ST${esc(b.st)}</span>` : "",
+        b.course && b.course !== b.lane ? `<span class="warn">進入${b.course}</span>` : "",
+        b.odds ? `オッズ${b.odds.toFixed(1)}` : "",
+        b.ev != null ? `<span class="${b.value ? "good" : ""}">期待値${b.ev.toFixed(2)}</span>` : "",
+      ].filter(Boolean).map((f) => (f.startsWith("<span") ? f : `<span>${f}</span>`)).join("");
+      return `
       <div class="boat ${b.p_win === max ? "top" : ""}">
         ${chip(b.lane)}
-        <div class="who"><b>${esc(b.name)}</b><span><span class="grade ${esc(b.grade)}">${esc(b.grade)}</span> ${esc(b.branch)} 勝率<span class="num">${b.nat_win.toFixed(2)}</span> モ<span class="num">${b.motor_2.toFixed(0)}%</span></span></div>
-        <div class="pct num">${pct(b.p_win)}</div>
+        <div class="who">
+          <div class="nm">${b.p_win === max ? '<span class="fav" title="AI本命: 1着確率がいちばん高い艇">◎</span>' : ""}<b>${esc(b.name)}</b>${b.value ? '<span class="valb">期待値プラス</span>' : ""}<span class="gr ${esc(b.grade)}">${esc(b.grade)}</span><span class="gr">${esc(b.branch)}</span></div>
+          <div class="facts">${facts}</div>
+        </div>
+        <div class="pct num">${pct(b.p_win)}${b.p_base != null ? `<span class="was">元 ${pct(b.p_base)}</span>` : ""}</div>
         <div class="track" aria-hidden="true"><div class="fill" style="width:${(b.p_win / max) * 100}%"></div></div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
     const combos = r.trifecta.slice(0, 5).map((t) => {
       const saved = bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === t.combo);
@@ -369,10 +546,28 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <div class="rhead">
             <span class="big num">${r.no}<small>R</small></span>
             <div class="info"><b>${esc(v.name)} ${esc(r.name || "")}</b><span class="num">締切 ${esc(r.deadline || "-")}${r.distance ? " ・ " + r.distance + "m" : ""}</span></div>
-            <div class="pills">${count}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
+            <div class="pills">${count}${(r.triValue && r.triValue.length) ? '<span class="pill value">3連単 期待値プラスあり</span>' : r.hasValue ? '<span class="pill value">単勝 期待値プラスあり</span>' : ""}${r.adjusted ? `<span class="pill exon">${r.auto ? "展示込み(自動)" : "展示込み"}</span>` : ""}<span class="pill ${st === "done" && !res ? "closed" : cc}">${st === "done" && !res ? "締切" : cl}</span></div>
           </div>
           ${resultHtml}
           <div class="boats">${boats}</div>
+          <p class="note" style="margin:0">◎ = AI本命(AIが出した1着確率がいちばん高い艇)</p>
+          ${r.odds ? `<p class="note" style="margin:0">オッズは${esc(r.odds_time || "")}時点の単勝オッズです。締切までに変わります。「期待値プラス」はAI確率とオッズを組み合わせた期待値が1.0以上(オッズ${ODDS_MAX}倍以下)の艇です。</p>` : ""}
+          <details class="ex" ${r.adjusted ? "" : ""}>
+            <summary>${r.auto ? "展示を手で直す" : r.adjusted ? "展示タイムを入れ直す" : "展示タイムを手で入れる"}</summary>
+            <div class="exgrid">${[1, 2, 3, 4, 5, 6].map((l) => `<label>${chip(l, true)}<input id="ex-${l}" type="text" inputmode="decimal" placeholder="6.70" value="${exVals[l - 1] ?? ""}" aria-label="${l}号艇の展示タイム"></label>`).join("")}</div>
+            <div class="exfoot">
+              <button class="btn primary" type="button" id="exApply">展示込みで再計算</button>
+              ${r.adjusted && !r.auto ? '<button class="btn ghost" type="button" id="exClear">元に戻す</button>' : ""}
+              <span class="sub2">公式サイトやアプリの「直前情報」に出る6艇の展示タイムを入れてください</span>
+            </div>
+          </details>
+          ${r.tri_odds ? `<div class="sub"><h3>3連単 期待値の高い買い目</h3><small>${esc(r.odds_time || "")}時点のオッズ</small></div>
+          <div class="combos">${(r.triValue || []).length ? r.triValue.map((t) => {
+            const saved = bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === t.combo);
+            return `<div class="combo">${comboChips(t.combo)}<span class="cp num">${pct(t.prob, 1)} ・ ${t.odds.toFixed(1)}倍 ・ 期待値${t.ev.toFixed(2)}</span>
+              <button class="btn add" type="button" data-combo="${t.combo}" aria-pressed="${saved}">${saved ? "保存済み" : "＋買い目"}</button></div>`;
+          }).join("") : '<p class="note" style="margin:0">このレースは期待値${TRI_EV_MIN}以上の買い目がありません(見送り候補)。</p>'}</div>
+          <p class="note" style="margin:0">3連単の期待値はまだ検証中の参考値です。過去の3連単オッズで効果を確かめています。</p>` : ""}
           <div class="sub"><h3>3連単 AIのおすすめ</h3><small>確率の高い順</small></div>
           <div class="combos">${combos}</div>
           <div class="sub"><h3>自分で買い目を作る</h3><small>${myCombo ? "AI確率 " + pct(harville(r, myCombo), 1) : "1〜3着を選ぶ"}</small></div>
@@ -397,6 +592,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       S.pick = S.pick.map((x, j) => (j === i ? (x === l ? null : l) : x === l ? null : x));
       render();
     }));
+    $("exApply").addEventListener("click", () => {
+      const vals = [1, 2, 3, 4, 5, 6].map((l) => parseFloat(($("ex-" + l).value || "").replace(/[^0-9.]/g, "")));
+      if (vals.some((x) => !(x > 5 && x < 9))) { $("ex-" + (vals.findIndex((x) => !(x > 5 && x < 9)) + 1)).focus(); return; }
+      exStore[exKey(r0)] = vals; store.set("ex-v1", exStore); render();
+    });
+    if ($("exClear")) $("exClear").addEventListener("click", () => { delete exStore[exKey(r0)]; store.set("ex-v1", exStore); render(); });
     $("addMine").addEventListener("click", () => { if (myCombo) { addBet(v, r, myCombo); S.pick = [null, null, null]; render(); } });
     const sel = $("venues").querySelector('[aria-pressed="true"]');
     if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
@@ -419,35 +620,35 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     let n = 0, fav = 0, lane1 = 0, top5 = 0, ret = 0;
     const lists = d.venues.map((v) => {
       const rows = v.races.filter((r) => r.result && r.result.trifecta).map((r) => {
-        const res = r.result;
-        const f = favorite(r);
-        const hitFav = res.order[0] === f.lane;
-        const hit5 = r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta);
+        const res = r.result, rv = view(r);       // 展示込み・補正済みの最新の予想で採点
+        const hitFav = res.order[0] === favorite(rv).lane;
+        const hit5 = rv.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta);
         n++; if (hitFav) fav++; if (res.order[0] === 1) lane1++; if (hit5) { top5++; ret += res.trifecta_pay; }
-        return `<button class="btn row" type="button" data-go="${v.code}-${r.no}">
-          <span class="r num">${r.no}R</span>
-          <span class="mid">${comboChips(res.trifecta)}</span>
-          <span class="right"><b class="num">${yen(res.trifecta_pay)}</b>
-            <span><span class="mark ${hitFav ? "hit" : "miss"}">本命</span> <span class="mark ${hit5 ? "hit" : "miss"}">5点</span></span></span>
+        return `<button class="btn krow" type="button" data-go="${v.code}-${r.no}">
+          <span class="r">${r.no}R</span>
+          <span class="c">${comboChips(res.trifecta)}</span>
+          <span class="y">${yen(res.trifecta_pay)}</span>
+          <span class="mk"><i class="${hitFav ? "hit" : "miss"}">◎</i><i class="${hit5 ? "hit" : "miss"}">5点</i></span>
         </button>`;
       }).join("");
-      return rows ? `<section class="list"><h3>${esc(v.name)}</h3>${rows}</section>` : "";
+      return rows ? `<section class="list"><h3 class="kh">${esc(v.name)}</h3>${rows}</section>` : "";
     }).join("");
 
     if (!n) {
-      $("view").innerHTML = `<div class="empty">この日の結果はまだありません。<br>レースが終わった日の夜に自動で反映されます。</div>${modelNote()}`;
+      $("view").innerHTML = `<div class="empty">この日の結果はまだありません。<br>レースが終わったあと、公式の成績が出たら反映されます。</div>${modelNote()}`;
       return;
     }
-    const cost = n * 5 * BET;
-    const profit = ret - cost;
+    const cost = n * 5 * BET, profit = ret - cost;
     $("view").innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="summary">
-          <div class="stat"><span>AI本命の1着的中</span><b class="num">${pct(fav / n)}</b><small class="num">${fav}/${n}R ・ 1号艇固定なら ${pct(lane1 / n)}</small></div>
-          <div class="stat"><span>3連単 上位5点の的中</span><b class="num">${pct(top5 / n)}</b><small class="num">${top5}/${n}R</small></div>
-          <div class="stat"><span>上位5点を全レース買ったら</span><b class="num ${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b><small class="num">投資 ${yen(cost)} ・ 払戻 ${yen(ret)}</small></div>
-          <div class="stat"><span>回収率</span><b class="num ${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b><small>100%を超えるとプラス</small></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="ksum">
+          <div><span>AI本命◎</span><b>${pct(fav / n)}</b></div>
+          <div><span>5点的中</span><b>${pct(top5 / n)}</b></div>
+          <div><span>回収率</span><b class="${ret >= cost ? "plus" : "minus"}">${pct(ret / cost)}</b></div>
+          <div><span>収支</span><b class="${profit >= 0 ? "plus" : "minus"}">${profit >= 0 ? "+" : ""}${yen(profit)}</b></div>
         </div>
+        <div class="evsum">${evSumHtml(evSummary(d))}</div>
+        <div class="kline num">${n}R ・ 1号艇固定 ${pct(lane1 / n)} ・ 投資${yen(cost)} 払戻${yen(ret)}(3連単上位5点を全レース)<br>◎=AIの1着確率がいちばん高い艇(AI本命)が1着 ・ 5点=3連単のAI上位5点が的中</div>
         ${lists}
         ${modelNote()}
       </div>`;
@@ -455,6 +656,119 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       const [vc, rn] = b.dataset.go.split("-").map(Number);
       S.venue = vc; S.race = rn; location.hash = "yoso";
     }));
+  }
+
+  // ---------- 期待値タブ ----------
+  // レースごとの期待値プラスの買い目 (3連単と単勝). オッズは締切の数分前に自動で取得したもの
+  function evPicks(rv) {
+    const tri = (rv.triValue || []).map((t) => ({ kind: "3連単", combo: t.combo, prob: t.prob, odds: t.odds, ev: t.ev }));
+    const win = rv.boats.filter((b) => b.value).map((b) => ({ kind: "単勝", combo: String(b.lane), prob: b.pb, odds: b.odds, ev: b.ev }));
+    return tri.concat(win);
+  }
+  function pickResult(pk, res) {
+    if (!res || !res.trifecta) return null;
+    if (pk.kind === "3連単") return res.trifecta === pk.combo ? res.trifecta_pay : 0;
+    return String(res.order[0]) === pk.combo ? (res.win_pay || 0) : 0;
+  }
+  function evSummary(d) {
+    const s = { "3連単": { n: 0, hit: 0, ret: 0 }, "単勝": { n: 0, hit: 0, ret: 0 } };
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      if (!r.result || !r.result.trifecta) return;
+      evPicks(view(r)).forEach((pk) => {
+        const pay = pickResult(pk, r.result), x = s[pk.kind];
+        x.n++; if (pay > 0) { x.hit++; x.ret += pay; }
+      });
+    }));
+    return s;
+  }
+  function evSumHtml(s) {
+    return ["3連単", "単勝"].map((k) => {
+      const x = s[k], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
+      return `<div><span>${k} 期待値プラス(確定分)</span><b class="${x.n ? (roi >= 1 ? "plus" : "minus") : ""}">${x.n ? pct(roi) : "-"}</b>
+        <span class="num">${x.n}点 的中${x.hit} ${x.n ? (x.ret - cost >= 0 ? "+" : "") + yen(x.ret - cost) : ""}</span></div>`;
+    }).join("");
+  }
+  function renderKitai() {
+    const d = day(), n = jst(), open = [], done = [], wait = [];
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      const rv = view(r), picks = evPicks(rv), st = raceState(r);
+      const hasOdds = !!(r.odds || r.tri_odds);
+      if (!hasOdds) { if (st === "open") wait.push([r.deadline || "", `${v.name}${r.no}R ${r.deadline || ""}`]); return; }
+      if (picks.length) (st === "open" ? open : done).push({ v, r, rv, picks });
+    }));
+    const byDl = (a, b) => (a.r.deadline || "").localeCompare(b.r.deadline || "");
+    open.sort(byDl); done.sort(byDl).reverse(); wait.sort((a, b) => a[0].localeCompare(b[0]));
+    const card = ({ v, r, rv, picks }, isDone) => {
+      let left = "";
+      if (!isDone && n.date === S.date && r.deadline) { const m = toMin(r.deadline) - toMin(n.time); left = m <= 60 ? `あと${m}分` : ""; }
+      const rows = picks.map((pk) => {
+        const pay = pickResult(pk, r.result);
+        const saved = pk.kind === "3連単" && bets.some((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === pk.combo);
+        const right = pay == null
+          ? (pk.kind === "3連単" ? `<button class="btn add" type="button" data-v="${v.code}" data-r="${r.no}" data-combo="${pk.combo}" aria-pressed="${saved}">${saved ? "保存済" : "＋買い目"}</button>` : "")
+          : `<span class="res ${pay > 0 ? "hit" : "miss"}">${pay > 0 ? "的中 " + yen(pay) : "ハズレ"}</span>`;
+        return `<div class="evrow"><span class="k">${pk.kind}</span><span class="c">${comboChips(pk.combo)}</span>
+          <span class="n">期待値<b>${pk.ev.toFixed(2)}</b> ${pk.odds.toFixed(1)}倍 ${pct(pk.prob, 1)}</span>${right}</div>`;
+      }).join("");
+      return `<section class="evcard ${isDone ? "done" : ""}"><div class="evhead"><b>${esc(v.name)} ${r.no}R</b>
+        <span class="t">締切${esc(r.deadline || "")} ${esc(left)}${r.odds_time ? " ・ オッズ" + esc(r.odds_time) + "時点" : ""}</span>
+        <button class="btn go" type="button" data-go="${v.code}-${r.no}">詳しく ›</button></div>${rows}</section>`;
+    };
+    $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+      <div class="evsum">${evSumHtml(evSummary(d))}</div>
+      ${open.length ? `<p class="label" style="margin:0">これから (締切順)</p>${open.map((x) => card(x, false)).join("")}` : ""}
+      ${wait.length ? `<p class="label" style="margin:0">オッズ待ち (締切の6分前に自動で計算)</p><div class="wait">${wait.slice(0, 24).map((w) => `<span>${esc(w[1])}</span>`).join("")}</div>` : ""}
+      ${done.length ? `<p class="label" style="margin:0">終わったレース</p>${done.map((x) => card(x, true)).join("")}` : ""}
+      ${!open.length && !done.length && !wait.length ? '<div class="empty">この日は期待値プラスの買い目がありません。</div>' : ""}
+      <p class="note">期待値 = AIの確率 × オッズ。1.0を超える買い目だけを出しています(3連単は確率3%以上・50倍以下)。オッズは締切の数分前のもので、最終オッズとは少し変わります。</p>
+    </div>`;
+    $("view").querySelectorAll(".add[data-combo]").forEach((b) => b.addEventListener("click", () => {
+      const v = d.venues.find((x) => x.code === +b.dataset.v), r = v.races.find((x) => x.no === +b.dataset.r);
+      S.date && (S.venue = v.code); toggleBetFor(v, view(r), b.dataset.combo);
+    }));
+    $("view").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
+      const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
+    }));
+  }
+  // ---------- 単勝タブ: 期待値プラスの単勝だけ ----------
+  function renderTansho() {
+    const d = day(), n = jst(), open = [], done = [];
+    let waiting = 0;
+    d.venues.forEach((v) => v.races.forEach((r) => {
+      const st = raceState(r);
+      if (!r.odds) { if (st === "open") waiting++; return; }
+      evPicks(view(r)).filter((pk) => pk.kind === "単勝").forEach((pk) => (st === "open" ? open : done).push({ v, r, pk }));
+    }));
+    const byDl = (a, b) => (a.r.deadline || "").localeCompare(b.r.deadline || "");
+    open.sort(byDl); done.sort(byDl).reverse();
+    const row = ({ v, r, pk }, isDone) => {
+      const pay = pickResult(pk, r.result);
+      let right = "";
+      if (pay != null) right = `<span class="res ${pay > 0 ? "hit" : "miss"}">${pay > 0 ? "的中 " + yen(pay) : "ハズレ"}</span>`;
+      else if (n.date === S.date && r.deadline) { const m = toMin(r.deadline) - toMin(n.time); right = m >= 0 && m <= 60 ? `<span class="pill closed">あと${m}分</span>` : ""; }
+      return `<div class="tanrow ${isDone ? "done" : ""}" data-go="${v.code}-${r.no}">
+        <span class="w"><b>${esc(v.name)} ${r.no}R</b><small>締切${esc(r.deadline || "")}${r.odds_time ? " ・ オッズ" + esc(r.odds_time) : ""}</small></span>
+        <span class="c">${comboChips(pk.combo)}</span>
+        <span class="n">期待値<b>${pk.ev.toFixed(2)}</b><br>${pk.odds.toFixed(1)}倍 ${pct(pk.prob, 0)}</span>${right}</div>`;
+    };
+    const x = evSummary(d)["単勝"], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
+    $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+      <div class="evsum"><div><span>単勝 期待値プラス(確定分)</span><b class="${x.n ? (roi >= 1 ? "plus" : "minus") : ""}">${x.n ? pct(roi) : "-"}</b>
+        <span class="num">${x.n}点 的中${x.hit} ${x.n ? (x.ret - cost >= 0 ? "+" : "") + yen(x.ret - cost) : ""}</span></div></div>
+      ${open.length ? `<p class="label" style="margin:0">これから買う単勝 (締切順)</p><div class="tanlist">${open.map((o) => row(o, false)).join("")}</div>` : ""}
+      ${waiting ? `<p class="note" style="margin:0">オッズ待ち ${waiting}レース (締切の6分前に自動で計算)</p>` : ""}
+      ${done.length ? `<p class="label" style="margin:0">終わったレース</p><div class="tanlist">${done.map((o) => row(o, true)).join("")}</div>` : ""}
+      ${!open.length && !done.length && !waiting ? '<div class="empty">この日は単勝の期待値プラスがありません。</div>' : ""}
+      <p class="note">表示された艇の単勝を買う、という意味です。期待値 = AIとオッズを組み合わせた確率 × 単勝オッズ。1.0以上・50倍以下の艇だけを出しています。行を押すとそのレースの予想を開きます。</p>
+    </div>`;
+    $("view").querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
+      const [vc, rn] = b.dataset.go.split("-").map(Number); S.venue = vc; S.race = rn; location.hash = "yoso";
+    }));
+  }
+  function toggleBetFor(v, r, combo) {
+    const i = bets.findIndex((b) => b.date === S.date && b.venue === v.code && b.race === r.no && b.combo === combo);
+    if (i >= 0) bets.splice(i, 1); else bets.push({ date: S.date, venue: v.code, vname: v.name, race: r.no, combo, prob: harville(r, combo), at: Date.now() });
+    saveBets(); render();
   }
 
   // ---------- マイ買い目タブ ----------
@@ -512,11 +826,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
   // ---------- 画面の切り替え ----------
   function render() {
-    S.tab = ["yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "yoso";
+    S.tab = ["kitai", "tansho", "yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
     document.querySelectorAll("nav.tabs a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === S.tab ? "page" : "false"));
     $("dateSel").hidden = S.tab === "kaime";
     if (!day()) return;
-    if (S.tab === "yoso") renderYoso();
+    if (S.tab === "kitai") renderKitai();
+    else if (S.tab === "tansho") renderTansho();
+    else if (S.tab === "yoso") renderYoso();
     else if (S.tab === "kekka") renderKekka();
     else renderKaime();
     updateBadge();
@@ -533,9 +849,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
   async function boot() {
     try {
-      const r = await fetch("days.json", { cache: "no-cache" });
-      if (!r.ok) throw new Error();
-      const j = await r.json();
+      let j;
+      if (EMBED) j = EMBED.index;
+      else {
+        const r = await fetch("days.json", { cache: "no-cache" });
+        if (!r.ok) throw new Error();
+        j = await r.json();
+      }
       S.days = j.days || []; S.model = j.model || {};
     } catch (e) {
       $("view").innerHTML = '<p class="err">予想データを読み込めませんでした。通信状態を確認して、もう一度開いてください。</p>';

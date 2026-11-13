@@ -6,6 +6,7 @@ B_TEXT = "\n".join([
     "STARTB",
     "12BBGN",
     "ボートレース住之江　　＊＊＊　番組表　＊＊＊",
+    "   第　３日          ２０２４年　４月　１日",
     "   １Ｒ  予選　　　　        Ｈ１８００ｍ  電話投票締切予定１５：１７",
     "-" * 79,
     "艇 選手 選手  年 支 体級    全国      当地     モーター   ボート   今節成績  早",
@@ -48,6 +49,7 @@ def test_parse_program():
     assert r["name"] == "山田太郎" and r.grade == "A1" and r.class_num == 4
     assert (r.nat_win, r.motor_no, r.motor_2, r.boat_2) == (6.50, 12, 35.00, 32.00)
     assert r.distance == 1800
+    assert r.day_no == 3
     assert df.iloc[1].motor_no == 5 and df.iloc[1]["name"] == "佐藤花"
     r3 = df.iloc[2]
     assert (r3.loc_win, r3.loc_2, r3.motor_no, r3.boat_no, r3.boat_2) == (9.30, 100.0, 70, 111, 27.94)
@@ -64,3 +66,70 @@ def test_parse_results():
     assert (p.trifecta_pop, p.trio, p.trio_pay, p.exacta, p.exacta_pop) == (3, "1-2-4", 450, "1-2", 2)
     assert (p.place1_lane, p.place1_pay, p.place2_lane, p.place2_pay, p.quinella_pay) == (1, 100, 2, 130, 300)
     assert (p.race_type, p.weather, p.wind_dir, p.wind, p.wave) == ("予選", "晴", "北西", 3, 3)
+
+
+def test_parse_beforeinfo():
+    from boatrace_ai.beforeinfo import parse_beforeinfo
+
+    rows = "".join(
+        f'<td class="is-boatColor{l} is-fs14" rowspan="4">{l}</td><td>x</td><td rowspan="2">52.0kg</td>\n'
+        f'  <td rowspan="4">6.{60 + l}</td>\n  <td rowspan="4">-0.5</td>'
+        for l in range(1, 7)
+    )
+    st = "".join(
+        f'<span class="table1_boatImage1Number is-type{l}">{l}</span><span>..</span>'
+        f'<span class="table1_boatImage1Time">.1{l}</span>'
+        for l in (2, 1, 3, 4, 5, 6)
+    )
+    info = parse_beforeinfo(rows + st)
+    assert info["ex_times"] == [6.61, 6.62, 6.63, 6.64, 6.65, 6.66]
+    assert info["tilts"] == [-0.5] * 6
+    assert info["st_ex"][:2] == [".11", ".12"] and info["course_ex"][:2] == [2, 1]
+    assert parse_beforeinfo("<html>まだ</html>") is None
+
+
+def test_parse_trifecta_odds():
+    from boatrace_ai.odds import parse_trifecta_odds
+
+    # 行ごとに6列(1着=1..6)。値には行番号*10+列番号を入れて、位置の対応を確かめる
+    cells = "".join(f'<td class="oddsPoint ">{row * 10 + col + 1}.0</td>' for row in range(20) for col in range(6))
+    o = parse_trifecta_odds(cells)
+    assert len(o) == 120
+    assert o["1-2-3"] == 1.0 and o["2-1-3"] == 2.0      # 0行目: 1着の列ごと
+    assert o["1-2-4"] == 11.0                           # 1行目: 2着2・3着4
+    assert o["1-3-2"] == 41.0                           # 4行目: 2着3・3着2
+    assert parse_trifecta_odds('<td class="oddsPoint">1.0</td>') == {}
+
+
+def test_parse_beforeinfo_flying_start():
+    """スタート展示でフライングした艇がいても、ST と進入が読めること."""
+    from boatrace_ai.beforeinfo import parse_beforeinfo
+
+    rows = "".join(
+        f'<td class="is-boatColor{l} is-fs14" rowspan="4">{l}</td><td>x</td><td rowspan="2">52.0kg</td>\n'
+        f'  <td rowspan="4">6.{60 + l}</td>\n  <td rowspan="4">0.0</td>'
+        for l in range(1, 7)
+    )
+    st = "".join(
+        f'<span class="table1_boatImage1Number is-type{l}">{l}</span><span>..</span>'
+        + (f'<span class="table1_boatImage1Time is-fBold is-fColor1">F.06</span>' if l == 1
+           else f'<span class="table1_boatImage1Time">.1{l}</span>')
+        for l in range(1, 7)
+    )
+    info = parse_beforeinfo(rows + st)
+    assert info["st_ex"][0] == "F.06" and info["course_ex"] == [1, 2, 3, 4, 5, 6]
+
+
+def test_parse_raceresult():
+    from boatrace_ai.raceresult import parse_raceresult
+
+    n = lambda x: f'<span class="numberSet1_number is-type{x}">{x}</span><span class="numberSet1_text">-</span>'
+    html = (
+        '<tr class="is-p3-0"><td rowspan="2">3連単</td><td>' + n(1) + n(3) + n(6) + '</td>'
+        '<td><span class="is-payout1">&yen;1,590</span></td><td>5</td></tr>'
+        '<tr><td rowspan="2">3連複</td><td>' + n(1) + n(3) + n(6) + '</td><td><span class="is-payout1">&yen;660</span></td></tr>'
+        '<tr><td rowspan="2">単勝</td><td><span class="numberSet1_number is-type1" nbsp="true">1</span></td>'
+        '<td><span class="is-payout1">&yen;210</span></td></tr>'
+    )
+    assert parse_raceresult(html) == dict(order=[1, 3, 6], trifecta="1-3-6", trifecta_pay=1590, win_lane=1, win_pay=210)
+    assert parse_raceresult("<html>結果はまだ</html>") is None
