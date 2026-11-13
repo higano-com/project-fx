@@ -1,7 +1,7 @@
 """中央競馬(JRA): 公式サイトの「過去のレース結果」と確定オッズを1本ずつ取得する。
 
 月 → 開催日 → レース結果 → 単勝・複勝オッズ の順に辿り、生のHTMLを data/jra/html/ に gzip で保存する。
-- サーバに配慮して1本ずつ、SLEEP 秒以上あける。取得済みのレースは飛ばす(途中から再開できる)。
+- サーバに配慮して1本ずつ、5秒以上あける(http_jra.py が全プロセスで順番待ち)。取得済みのレースは飛ばす(途中から再開できる)。
 - 取得したデータは私的な分析にだけ使う(再配布しない)。data/ は git 管理外。
 
 使い方:
@@ -10,36 +10,12 @@
 import gzip
 import re
 import sys
-import time
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
-BASE = "https://www.jra.go.jp/JRADB/"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from http_jra import post  # noqa: E402
+
 OUT = Path(__file__).resolve().parent.parent / "data" / "jra" / "html"
-SLEEP = 5.0
-UA = "Mozilla/5.0 (personal research)"
-_last = 0.0
-
-
-def post(page: str, cname: str) -> str:
-    global _last
-    wait = SLEEP - (time.time() - _last)
-    if wait > 0:
-        time.sleep(wait)
-    data = urllib.parse.urlencode({"cname": cname}).encode()
-    req = urllib.request.Request(BASE + page, data=data, headers={"User-Agent": UA})
-    for i in range(4):
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                body = r.read().decode("cp932", errors="replace")
-            _last = time.time()
-            return body
-        except Exception as e:
-            _last = time.time()
-            print(f"  失敗 {cname}: {e}、待って再試行", flush=True)
-            time.sleep(60 * (i + 1))
-    raise RuntimeError(cname)
 
 
 def month_codes(html: str) -> dict:

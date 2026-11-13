@@ -8,7 +8,16 @@
 - 会話が長くなったら、ユーザーに「そろそろ /compact を送ってください」と一言伝える(ボタン1回ごとの容量を軽くするため)。
 - README やコードのコメントも日本語。コミットメッセージは英語でよい。
 
-## プロジェクト概要
+## いまの運用: 中央競馬(2026-11-14〜。競艇の運用は止めた)
+- アプリ(Artifact https://claude.ai/artifact/L9JVwzbQqnSxrchJzHLpze)は中央競馬の「複勝AI」。中身は `jra/app.html` + `jra/live.py page` → `data/jra_site/index.html`。
+- 複勝の期待値(検証中) = 単勝オッズ→市場の1着確率→Harville式で3着内確率 × 複勝オッズの下限。1.0以上を候補として出す。成績は締切5分前のオッズの候補を各100円で記録。
+- 公式 https://www.jra.go.jp/ のみ使う。アクセスは `jra/http_jra.py` で全プロセス1本ずつ・5秒以上あける。503 が来たら長めに待つ。取得データは私的分析だけ(GitHub・公開ページに載せない、再配布しない)。不正アクセスはしない(公開ページのみ・ログイン不要の範囲)。
+- 朝8:13 のルーティン `trig_0156KsVj5MTh7L2GBkYAeeTT`: `python jra/live.py init`(開催がなければ終わり)→ `page` → 公開 → `nohup python jra/live.py run >> data/jra/live.log 2>&1 &`。
+- 「最新にする」ボタン `trig_013oAwzS52ZmD2Enm55NcCUS`: `python jra/live.py once` → 公開。見張りが止まっていれば起動し直す。
+- 過去データ(学習・検証用): `jra/fetch.py 2026-07 2026-10` → `2025-01 2026-06`(結果+確定オッズのHTMLを data/jra/html に保存)、`jra/parse.py` で表に。会話が止まるとクラウド環境が片付けられて裏の処理も止まるので、ルーティンやボタンのたびに止まっていれば再開する。
+- 地方競馬の試作(`nar/`)は、AIが市場に勝てず(混合でAIの重み≈0)止めた。
+
+## プロジェクト概要(以下は競艇時代のメモ)
 - ボートレース着順予測AI (`src/boatrace_ai/`)。詳細は README.md。
 - データ: 公式 https://www1.mbrace.or.jp/od2/ の番組表(B)・競走成績(K)。無料公開データ。
   - HTTP ではなく **HTTPS** で取得する(クラウド環境のプロキシ都合)。
