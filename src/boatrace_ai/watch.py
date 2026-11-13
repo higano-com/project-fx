@@ -25,10 +25,10 @@ WINDOW_MIN = 22      # 締切の何分前から取りに行くか
 RETRY_SEC = 90       # 展示がまだの時に取り直す間隔
 MAX_TRIES = 12
 REQUEST_GAP = 3.0    # 公式サイトへのアクセス間隔(秒)
-BATCH_SEC = 60       # 取れた展示をまとめて公開するまで待つ最大時間
+BATCH_SEC = 20 * 60  # 展示・結果だけの更新は、まとめて最大この時間ごとに公開する(公開の回数を減らす)
+PUBLISH_BEFORE_MIN = 3.5  # オッズが取れたレースは、締切のこの分前までに公開する(近いレースをまとめて1回で)
 ODDS_MAX_LEFT = 6    # 締切の何分前からオッズを取るか
 ODDS_MIN_LEFT = 2    # 締切の何分前までにオッズを取るか
-URGENT_MIN = 15      # 締切がこれより近いレースが取れたら、すぐ公開
 RESULT_AFTER_MIN = 7     # 締切の何分後から結果を取りに行くか
 RESULT_RETRY_SEC = 180   # 結果がまだの時に取り直す間隔
 RESULT_MAX_TRIES = 6     # これで取れなければ夜の成績ファイルにまかせる
@@ -52,7 +52,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
     tries: dict[tuple, list] = {}
     pending: list[str] = []
     first_pending = None
-    urgent = False
+    odds_due = None  # オッズを取ったレースのうち、いちばん早い締切
 
     while True:
         now = datetime.now(JST)
@@ -111,7 +111,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                             r["odds"], r["odds_time"] = odds, now.strftime("%H:%M")
                             pending.append(f"{v['name']}{r['no']}R(オッズ)")
                             first_pending = first_pending or now
-                            urgent = True
+                            odds_due = min(odds_due or dl, dl)
                         log(f"{now:%H:%M:%S} {v['name']}{r['no']}R オッズ{'あり' if r.get('odds') else 'まだ'}")
                 # --- 締切の数分前の3連単オッズ (1レース1回) ---
                 tkey = ("tri",) + key
@@ -129,7 +129,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                             r["tri_odds"], r["odds_time"] = tri, now.strftime("%H:%M")
                             pending.append(f"{v['name']}{r['no']}R(3連単オッズ)")
                             first_pending = first_pending or now
-                            urgent = True
+                            odds_due = min(odds_due or dl, dl)
                 # --- 展示 ---
                 if r.get("ex_times"):
                     continue
@@ -155,11 +155,10 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                             log(f"展示AIの計算に失敗 {v['name']}{r['no']}R: {e}")
                     pending.append(f"{v['name']}{r['no']}R")
                     first_pending = first_pending or now
-                    if dl - now <= timedelta(minutes=URGENT_MIN):
-                        urgent = True
         if pending or dirty:
             path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-            if pending and (urgent or (now - first_pending).total_seconds() >= BATCH_SEC):
+            due = odds_due is not None and odds_due - now <= timedelta(minutes=PUBLISH_BEFORE_MIN)
+            if pending and (due or (now - first_pending).total_seconds() >= BATCH_SEC):
                 build_claude_page(app_html, site_dir, out_page)
                 log("反映: " + ", ".join(pending))
                 return "updated"

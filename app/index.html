@@ -110,10 +110,23 @@ button { font: inherit; color: inherit; }
 .pill.closed { background: var(--line); color: var(--muted); }
 .pill.count { background: var(--hot); color: var(--surface); }
 
-.result { border-radius: 10px; background: var(--accent-soft); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-.result .t { font-size: .75rem; font-weight: 700; color: var(--accent); letter-spacing: .08em; }
-.result .pay { font-weight: 700; font-size: 1.05rem; }
-.result .rc { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
+/* 結果は必ず1行: 結果 | 着順 | 払戻 | 印2つ。払戻が長い(¥160,900など)ときは文字を小さくして収める */
+.result { border-radius: 10px; background: var(--accent-soft); padding: 8px 10px; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+.result .t { font-size: .7rem; font-weight: 700; color: var(--accent); flex: none; }
+.result .pay { font-weight: 700; font-size: clamp(.8rem, 3.6vw, 1rem); font-variant-numeric: tabular-nums; flex: none; }
+.result .marks { margin-left: auto; display: flex; gap: 4px; flex: none; }
+.result .marks .mk { font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
+.result .marks .mk.hit { background: var(--good-soft); color: var(--good); }
+.result .marks .mk.miss { background: var(--line); color: var(--muted); }
+.result .rc .lane.sm, .result .rc .lane { width: 22px; height: 22px; font-size: .75rem; }
+@media (max-width: 360px) {
+  .result { gap: 5px; padding: 8px; }
+  .result .t { display: none; }
+  .result .rc .lane.sm, .result .rc .lane { width: 18px; height: 18px; font-size: .65rem; }
+  .result .rc .arrow { font-size: .55rem; }
+  .result .marks .mk { padding: 2px 4px; font-size: .58rem; }
+}
+.result .rc { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 3px; flex: none; }
 .result .rc .arrow { color: var(--muted); font-size: .7rem; }
 .mark { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
 .mark.hit { background: var(--good-soft); color: var(--good); }
@@ -500,8 +513,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const resultHtml = res ? `<div class="result">
         <span class="t">結果</span><span class="rc">${comboChips(res.trifecta)}</span>
         <span class="pay num">${yen(res.trifecta_pay)}</span>
-        <span class="mark ${res.order[0] === fav.lane ? "hit" : "miss"}">AI本命◎${res.order[0] === fav.lane ? "的中" : "ハズレ"}</span>
-        <span class="mark ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}">上位5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "ハズレ"}</span>
+        <span class="marks"><span class="mk ${res.order[0] === fav.lane ? "hit" : "miss"}" title="AI本命◎が1着か">◎${res.order[0] === fav.lane ? "的中" : "外れ"}</span><span class="mk ${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "hit" : "miss"}" title="3連単のAI上位5点">5点${r.trifecta.slice(0, 5).some((t) => t.combo === res.trifecta) ? "的中" : "外れ"}</span></span>
       </div>` : (r.result && r.result.void ? `<div class="result"><span class="t">結果</span><span>不成立・中止など</span></div>` : "");
 
     const exs = r.boats.map((b) => b.ex).filter((x) => x != null);
