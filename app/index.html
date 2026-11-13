@@ -685,7 +685,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   }
 
   // ---------- 期待値タブ ----------
-  // レースごとの期待値プラスの買い目 (3連単と単勝). オッズは締切の数分前に自動で取得したもの
+  // レースごとの期待値プラスの買い目 (3連単と単勝). 期待値タブは3連単だけ、単勝は単勝タブで出す
   function evPicks(rv) {
     const tri = (rv.triValue || []).map((t) => ({ kind: "3連単", combo: t.combo, prob: t.prob, odds: t.odds, ev: t.ev }));
     const win = rv.boats.filter((b) => b.value).map((b) => ({ kind: "単勝", combo: String(b.lane), prob: b.pb, odds: b.odds, oddsAfter: b.oddsAfter, ev: b.ev }));
@@ -707,8 +707,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     }));
     return s;
   }
-  function evSumHtml(s) {
-    return ["3連単", "単勝"].map((k) => {
+  function evSumHtml(s, kinds = ["3連単", "単勝"]) {
+    return kinds.map((k) => {
       const x = s[k], cost = x.n * BET, roi = cost ? x.ret / cost : 0;
       return `<div><span>${k} 期待値プラス(確定分)</span><b class="${x.n ? (roi >= 1 ? "plus" : "minus") : ""}">${x.n ? pct(roi) : "-"}</b>
         <span class="num">${x.n}点 的中${x.hit} ${x.n ? (x.ret - cost >= 0 ? "+" : "") + yen(x.ret - cost) : ""}</span></div>`;
@@ -717,8 +717,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   function renderKitai() {
     const d = day(), n = jst(), open = [], done = [], wait = [];
     d.venues.forEach((v) => v.races.forEach((r) => {
-      const rv = view(r), picks = evPicks(rv), st = raceState(r);
-      const hasOdds = !!(r.odds || r.tri_odds);
+      const rv = view(r), picks = evPicks(rv).filter((pk) => pk.kind === "3連単"), st = raceState(r);
+      const hasOdds = !!r.tri_odds;
       if (!hasOdds) { if (st === "open") wait.push([r.deadline || "", `${v.name}${r.no}R ${r.deadline || ""}`]); return; }
       if (picks.length) (st === "open" ? open : done).push({ v, r, rv, picks });
     }));
@@ -741,12 +741,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
         <button class="btn go" type="button" data-go="${v.code}-${r.no}">詳しく ›</button></div>${rows}</section>`;
     };
     $("view").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
-      <div class="evsum">${evSumHtml(evSummary(d))}</div>
+      <div class="evsum">${evSumHtml(evSummary(d), ["3連単"])}</div>
       ${open.length ? `<p class="label" style="margin:0">これから (締切順)</p>${open.map((x) => card(x, false)).join("")}` : ""}
       ${wait.length ? `<p class="label" style="margin:0">オッズ待ち (締切の6分前に自動で計算)</p><div class="wait">${wait.slice(0, 24).map((w) => `<span>${esc(w[1])}</span>`).join("")}</div>` : ""}
       ${done.length ? `<p class="label" style="margin:0">終わったレース</p>${done.map((x) => card(x, true)).join("")}` : ""}
-      ${!open.length && !done.length && !wait.length ? '<div class="empty">この日は期待値プラスの買い目がありません。</div>' : ""}
-      <p class="note">期待値 = AIの確率 × オッズ。1.0を超える買い目だけを出しています(3連単は確率3%以上・50倍以下)。オッズは締切の数分前のもので、最終オッズとは少し変わります。</p>
+      ${!open.length && !done.length && !wait.length ? '<div class="empty">この日は3連単の期待値プラスがありません。</div>' : ""}
+      <p class="note">期待値 = AIの確率 × オッズ。3連単で1.0を超える買い目だけを出しています(確率3%以上・50倍以下)。単勝は「単勝」タブにあります。オッズは締切の数分前のもので、最終オッズとは少し変わります。</p>
     </div>`;
     $("view").querySelectorAll(".add[data-combo]").forEach((b) => b.addEventListener("click", () => {
       const v = d.venues.find((x) => x.code === +b.dataset.v), r = v.races.find((x) => x.no === +b.dataset.r);
