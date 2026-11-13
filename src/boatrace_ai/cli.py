@@ -124,9 +124,30 @@ def cmd_claude_page(a):
     print(f"Claude page -> {out} ({out.stat().st_size // 1024} KB)")
 
 
+def _resident_alive(pid_file: Path) -> bool:
+    """常駐の見張り(--keep-running)が動いているか."""
+    import os
+    try:
+        os.kill(int(pid_file.read_text().strip()), 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 def cmd_watch(a):
+    import os
     from .watch import watch
 
+    pid_file = Path(a.site) / "watch.pid"
+    if a.once and _resident_alive(pid_file):
+        # 常駐の見張りが取り続けているので、サイトには行かずアプリのファイルを作り直すだけ(すぐ終わる)
+        from .claude_page import build_claude_page
+        build_claude_page(Path(a.app), Path(a.site), Path(a.out))
+        print("常駐の見張りが動いているので、取得は省略してアプリを作り直しました")
+        print("updated")
+        return
+    if a.keep_running:
+        pid_file.write_text(str(os.getpid()))
     exp = None
     if a.ex_model and a.program:
         from .predict import ExPredictor
