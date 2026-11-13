@@ -1,8 +1,0 @@
-■ 商品の一覧で見つかった原油：URALS/USD（Urals Crude Oil Spot）、WTI/USD（Crude Oil WTI Spot）、XBR/USD（Brent Spot）
-■ WTI/USD：取れない（This symbol is available starting with the Grow or Venture plan. Consider upgrading now at https://twelvedata.com/pricing）
-■ BRENT/USD：取れない（**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according to API documentation: https://twelvedata.com/docs#reference-data）
-■ XBR/USD：取れない（This symbol is available starting with the Grow or Venture plan. Consider upgrading now at https://twelvedata.com/pricing）
-■ XTI/USD：取れない（**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according to API documentation: https://twelvedata.com/docs#reference-data）
-■ CL1：取れない（**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according to API documentation: https://twelvedata.com/docs#reference-data）
-■ USOIL：取れない（**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according to API documentation: https://twelvedata.com/docs#reference-data）
-■ XAU/USD：取れた（最新 2026-11-06 03:00:00 終値 4123.19235）
