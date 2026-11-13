@@ -38,7 +38,9 @@ def build_claude_page(app_html: Path, site_dir: Path, out: Path) -> Path:
     marker = "<script>\n(function () {"
     if marker not in page:
         raise ValueError("アプリ本体のスクリプトが見つかりません")
-    page = page.replace(marker, f"<script>window.__BOAT_DATA__ = {blob};</script>\n{marker}", 1)
+    from datetime import datetime, timedelta, timezone
+    built = datetime.now(timezone(timedelta(hours=9))).strftime("%H:%M")  # 日本時間で、いつの内容か
+    page = page.replace(marker, f"<script>window.__BOAT_DATA__ = {blob}; window.__BOAT_BUILT__ = {json.dumps(built)};</script>\n{marker}", 1)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(page, encoding="utf-8")
     return Path(out)

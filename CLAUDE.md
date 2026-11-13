@@ -23,7 +23,7 @@
 - 毎日の更新手順(毎朝8:13 JST にルーティン `trig_0156KsVj5MTh7L2GBkYAeeTT` がこのセッションで自動実行。「更新して」と言われた時も同じ):
   1. その日の番組表 B と前日の成績 K を `data/live` に取得
   2. `build_site(models/base_v3.pkl, data/live, data/site_live, [前日, 当日])` → `boatrace-ai claude-page --site data/site_live --out data/site_live/index.html` → Artifact を公開
-  3. `boatrace-ai watch-exhibit --site data/site_live --out data/site_live/index.html --ex-model models/ex_v3.pkl --program data/live/b<当日>.txt --history data/live` をバックグラウンドで動かし、止まるたびに公開して再開
+  3. `boatrace-ai watch-exhibit --keep-running --site data/site_live --out data/site_live/index.html --ex-model models/ex_v3.pkl --program data/live/b<当日>.txt --history data/live` をバックグラウンドで動かす。見張りは止まらずにアプリのファイルを作り直し続け、公開はアプリの「最新にする」ボタン(ルーティン `trig_013oAwzS52ZmD2Enm55NcCUS` がこのセッションを起こす)が押された時と、2時間の上限で止まって再開する時だけ(セッションの容量を節約するため)
 - AI v2 (2026-11-09): 当たり外れ検証で見つけたクセを修正。レースの格(`race_cat`)・時間帯(`hour`)・風/波(展示AIのみ)を学習し、
   自信補正 `alpha`(確率を alpha 乗して正規化)を検証データで決定。朝のAI=`models/base_v3.pkl`、展示AI=`models/ex_v3.pkl`。
 - AI v3: v2 に「モーターの最近の調子(同じ場・同じモーターの直近60日)」と「選手×進入コースの過去成績」を追加(朝は枠番で代用、展示AIは展示進入で引く)。

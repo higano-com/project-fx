@@ -44,7 +44,7 @@ def _log(msg: str) -> None:
 
 
 def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None,
-          poll_sec: float = 60, log=_log, ex_predictor=None) -> str:
+          poll_sec: float = 60, log=_log, ex_predictor=None, keep_running: bool = False) -> str:
     """戻り値: "updated"(公開が必要) / "finished"(その日の対象レースが全部終わった)."""
     site_dir = Path(site_dir)
     day = day or datetime.now(JST).strftime("%Y-%m-%d")
@@ -161,7 +161,10 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
             if pending and (due or (now - first_pending).total_seconds() >= BATCH_SEC):
                 build_claude_page(app_html, site_dir, out_page)
                 log("反映: " + ", ".join(pending))
-                return "updated"
+                if not keep_running:
+                    return "updated"
+                # 止まらずに取り続ける: アプリのファイルだけ作り直し、公開はボタンが押された時に行う
+                pending, first_pending, odds_due = [], None, None
         if remaining == 0:
             return "finished"
         time.sleep(poll_sec)

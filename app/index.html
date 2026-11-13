@@ -64,6 +64,10 @@ button { font: inherit; color: inherit; }
 
 /* ヘッダー */
 .top { display: flex; align-items: center; gap: 10px; }
+/* Claude のページだけ: 押すと Claude が最新の展示・オッズ・結果で公開し直す */
+.refresh { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .75rem; color: var(--muted); }
+.refresh .btn { margin-left: auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); background: transparent; font-weight: 700; font-size: .75rem; }
+.refresh .btn:disabled { opacity: .55; }
 .top h1 { font-family: var(--display); font-weight: 400; font-size: 1.35rem; margin: 0; line-height: 1.2; }
 .top select {
   margin-left: auto; font: inherit; font-weight: 700; font-size: .95rem; padding: 7px 30px 7px 12px; border-radius: 10px;
@@ -288,6 +292,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   <div class="top">
     <h1>ボートAI</h1>
     <select id="dateSel" aria-label="日付"></select>
+  </div>
+  <div id="refreshBar" class="refresh" hidden>
+    <span id="builtAt"></span>
+    <button id="refreshBtn" class="btn" type="button">最新にする</button>
   </div>
   <div class="wake" aria-hidden="true"></div>
   <div id="install" class="install" hidden>
@@ -842,6 +850,35 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     $("betBadge").hidden = !n; $("betBadge").textContent = n;
   }
 
+  // ---------- 「最新にする」ボタン (Claude のページだけ) ----------
+  // 押すと、ルーティン(ボタン用)を動かして Claude を呼び、見張りが作っておいた最新版を公開してもらう
+  const REFRESH_TRIGGER = "trig_013oAwzS52ZmD2Enm55NcCUS";
+  async function setupRefresh() {
+    if (!window.__BOAT_BUILT__) return;
+    for (let i = 0; i < 20 && !window.claude; i++) await new Promise((ok) => setTimeout(ok, 500));
+    if (!window.claude) return;
+    let mcp = null;
+    try { mcp = await window.claude.use("mcp"); } catch (e) { mcp = null; }
+    if (!mcp) return;
+    const bar = $("refreshBar"), btn = $("refreshBtn"), at = $("builtAt");
+    at.textContent = `${window.__BOAT_BUILT__} 時点の内容`;
+    bar.hidden = false;
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "お願い中…";
+      try {
+        await mcp.callTool("Claude Code Remote", "fire_trigger", { trigger_id: REFRESH_TRIGGER }, { cache: false });
+        at.textContent = "Claude に頼みました。1〜2分で新しくなります(自動で切り替わらない時は開き直してください)";
+        btn.textContent = "頼みました";
+      } catch (e) {
+        const c = e && e.code;
+        at.textContent = c === "not_in_manifest" || c === "blocked_by_policy" ? "このボタンは使えない設定になっています。チャットで「更新して」と送ってください"
+          : c === "server_not_connected" ? "Claude Code Remote がつながっていません。チャットで「更新して」と送ってください"
+          : "うまく頼めませんでした。少しして、もう一度押してください";
+        btn.disabled = false; btn.textContent = "最新にする";
+      }
+    });
+  }
+
   // ---------- 画面の切り替え ----------
   function render() {
     S.tab = ["kitai", "tansho", "yoso", "kekka", "kaime"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
@@ -885,6 +922,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const pick = (S.days.find((d) => d.date === today) || S.days.find((d) => d.date < today) || S.days[0]).date;
     $("dateSel").value = pick;
     $("dateSel").addEventListener("change", (e) => setDate(e.target.value));
+    setupRefresh();
     window.addEventListener("hashchange", render);
     await setDate(pick);
     setInterval(() => { if (S.tab === "yoso") render(); }, 60000);
