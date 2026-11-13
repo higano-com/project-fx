@@ -62,6 +62,9 @@ def save_json(path: Path, obj):
 
 def init(d: str | None = None) -> dict:
     d = d or today()
+    if load_sched(d):
+        print(f"{d}: 今日のレース一覧はもう取得済み")
+        return load_sched(d)
     menu = post("accessD.html", "pw01dli00/F3")
     venues = sorted(set(c for c in re.findall(r"pw01drl00\d+/[0-9A-F]{2}", menu) if c[9:].split("/")[0].endswith(d)))
     if not venues:
