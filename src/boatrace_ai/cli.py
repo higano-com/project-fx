@@ -131,7 +131,7 @@ def cmd_watch(a):
     if a.ex_model and a.program:
         from .predict import ExPredictor
         exp = ExPredictor(Path(a.ex_model), Path(a.program), Path(a.history))
-    result = watch(Path(a.site), Path(a.app), Path(a.out), day=a.day, ex_predictor=exp, keep_running=a.keep_running)
+    result = watch(Path(a.site), Path(a.app), Path(a.out), day=a.day, ex_predictor=exp, keep_running=a.keep_running, once=a.once)
     print(result)
 
 
@@ -218,6 +218,7 @@ def main(argv=None):
     s.add_argument("--ex-model", help="展示を学習したAI (省略時は展示をあとから足す方式)")
     s.add_argument("--program", help="その日の番組表 b*.txt (--ex-model と一緒に)")
     s.add_argument("--history", default="data/raw", help="過去の成績のフォルダ")
+    s.add_argument("--once", action="store_true", help="締切が近いレースの展示・オッズと終わったレースの結果を1回だけ取って終わる(アプリのボタン用)")
     s.add_argument("--keep-running", action="store_true", help="更新があっても止まらず、アプリのファイルを作り直しながら取り続ける")
     s.set_defaults(func=cmd_watch)
 

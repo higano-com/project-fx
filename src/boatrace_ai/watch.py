@@ -33,6 +33,10 @@ RESULT_AFTER_MIN = 7     # 締切の何分後から結果を取りに行くか
 RESULT_RETRY_SEC = 180   # 結果がまだの時に取り直す間隔
 RESULT_MAX_TRIES = 6     # これで取れなければ夜の成績ファイルにまかせる
 RESULT_PER_PASS = 2      # 1回の見回りで取りに行く結果の数 (オッズ・展示を優先するため)
+# 1回だけ取って終わる動き方 (アプリのボタンが押された時): 締切が近いレースのオッズは取り直す
+ONCE_ODDS_MAX_LEFT = 12  # 締切の何分前までのレースのオッズを取るか
+ONCE_ODDS_REFRESH_SEC = 120  # これより古いオッズは取り直す
+ONCE_RESULTS = 3        # 1回で取りに行く結果の数(多すぎると押してから時間がかかる)
 
 
 def _deadline(day: str, hhmm: str) -> datetime:
@@ -44,7 +48,7 @@ def _log(msg: str) -> None:
 
 
 def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None,
-          poll_sec: float = 60, log=_log, ex_predictor=None, keep_running: bool = False) -> str:
+          poll_sec: float = 60, log=_log, ex_predictor=None, keep_running: bool = False, once: bool = False) -> str:
     """戻り値: "updated"(公開が必要) / "finished"(その日の対象レースが全部終わった)."""
     site_dir = Path(site_dir)
     day = day or datetime.now(JST).strftime("%Y-%m-%d")
@@ -59,7 +63,12 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
         data = json.loads(path.read_text(encoding="utf-8"))
         remaining = 0
         dirty = False
-        result_budget = RESULT_PER_PASS
+        result_budget = ONCE_RESULTS if once else RESULT_PER_PASS
+        omin, omax = (timedelta(minutes=0.5), timedelta(minutes=ONCE_ODDS_MAX_LEFT)) if once else (timedelta(minutes=ODDS_MIN_LEFT), timedelta(minutes=ODDS_MAX_LEFT))
+
+        def stale(r):  # 1回だけの時: 前に取ったオッズが古ければ取り直す
+            at = r.get("odds_at")
+            return once and (not at or (now - datetime.fromisoformat(at)).total_seconds() > ONCE_ODDS_REFRESH_SEC)
         for v in data["venues"]:
             for r in v["races"]:
                 if not r.get("deadline"):
@@ -96,7 +105,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 remaining += 1
                 # --- 締切の数分前のオッズ (1レース1回。取れなければ1分後にもう一度) ---
                 okey = ("odds",) + key
-                if not r.get("odds") and timedelta(minutes=ODDS_MIN_LEFT) <= dl - now <= timedelta(minutes=ODDS_MAX_LEFT):
+                if (not r.get("odds") or stale(r)) and omin <= dl - now <= omax:
                     n, last = tries.get(okey, [0, None])
                     if n < 3 and not (last and (now - last).total_seconds() < 60):
                         try:
@@ -108,14 +117,14 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                         time.sleep(REQUEST_GAP)
                         odds = [x["win_odds"] for x in sorted(rows, key=lambda x: x["lane"])]
                         if len(odds) == 6 and any(o for o in odds):
-                            r["odds"], r["odds_time"] = odds, now.strftime("%H:%M")
+                            r["odds"], r["odds_time"], r["odds_at"] = odds, now.strftime("%H:%M"), now.isoformat()
                             pending.append(f"{v['name']}{r['no']}R(オッズ)")
                             first_pending = first_pending or now
                             odds_due = min(odds_due or dl, dl)
                         log(f"{now:%H:%M:%S} {v['name']}{r['no']}R オッズ{'あり' if r.get('odds') else 'まだ'}")
                 # --- 締切の数分前の3連単オッズ (1レース1回) ---
                 tkey = ("tri",) + key
-                if not r.get("tri_odds") and timedelta(minutes=ODDS_MIN_LEFT) <= dl - now <= timedelta(minutes=ODDS_MAX_LEFT):
+                if (not r.get("tri_odds") or stale(r)) and omin <= dl - now <= omax:
                     n, last = tries.get(tkey, [0, None])
                     if n < 3 and not (last and (now - last).total_seconds() < 60):
                         try:
@@ -126,7 +135,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                         tries[tkey] = [n + 1, now]
                         time.sleep(REQUEST_GAP)
                         if len(tri) >= 100:
-                            r["tri_odds"], r["odds_time"] = tri, now.strftime("%H:%M")
+                            r["tri_odds"], r["odds_time"], r["odds_at"] = tri, now.strftime("%H:%M"), now.isoformat()
                             pending.append(f"{v['name']}{r['no']}R(3連単オッズ)")
                             first_pending = first_pending or now
                             odds_due = min(odds_due or dl, dl)
@@ -136,7 +145,7 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                 n, last = tries.get(key, [0, None])
                 if dl - now > timedelta(minutes=WINDOW_MIN) or n >= MAX_TRIES:
                     continue
-                if last and (now - last).total_seconds() < RETRY_SEC:
+                if not once and last and (now - last).total_seconds() < RETRY_SEC:
                     continue
                 try:
                     info = fetch_beforeinfo(race_day, v["code"], r["no"], timeout=20)
@@ -165,6 +174,11 @@ def watch(site_dir: Path, app_html: Path, out_page: Path, day: str | None = None
                     return "updated"
                 # 止まらずに取り続ける: アプリのファイルだけ作り直し、公開はボタンが押された時に行う
                 pending, first_pending, odds_due = [], None, None
+        if once:
+            path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            build_claude_page(app_html, site_dir, out_page)
+            log("反映(1回): " + (", ".join(pending) or "新しい情報なし"))
+            return "updated" if pending else "nothing"
         if remaining == 0:
             return "finished"
         time.sleep(poll_sec)
