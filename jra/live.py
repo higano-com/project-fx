@@ -160,6 +160,10 @@ def fetch_results(d: str, want: set) -> int:
             ohtml = post("accessO.html", oc.group(0)) if oc else ""
             with gzip.open(HTML / f"{rid}_o.html.gz", "wt", encoding="utf-8") as f:
                 f.write(ohtml)
+            if ohtml:  # 確定オッズ(締切5分前のオッズが取れなかったレースの記録に代用する)
+                o = parse_odds_page(ohtml)
+                o.update({"at": "確定", "label": "確定"})
+                save_json(day_dir(d) / "odds" / f"{rid}_確定.json", o)
             rows = P.parse_race(rid)
             res = {str(r["umaban"]): {"finish": r["finish"], "status": r["status"], "fuku_pay": r["fuku_pay"],
                                       "tan_final": r["odds"]} for r in rows}
@@ -218,7 +222,7 @@ def evaluate(snap: dict) -> list[dict]:
 
 def latest_snap(d: str, rid: str):
     best = None
-    for lab in ("直前", "20分前", "ボタン", "朝"):
+    for lab in ("確定", "直前", "20分前", "ボタン", "朝"):
         f = day_dir(d) / "odds" / f"{rid}_{lab}.json"
         if f.exists():
             s = json.loads(f.read_text())
@@ -228,9 +232,12 @@ def latest_snap(d: str, rid: str):
 
 
 def decision_snap(d: str, rid: str):
-    """成績の記録に使うのは、締切にいちばん近い(発走5分前の)オッズ。なければ最新。"""
-    f = day_dir(d) / "odds" / f"{rid}_直前.json"
-    return json.loads(f.read_text()) if f.exists() else latest_snap(d, rid)
+    """成績の記録に使うのは、締切にいちばん近い(発走5分前の)オッズ。なければ確定オッズ、それもなければ最新。"""
+    for lab in ("直前", "確定"):
+        f = day_dir(d) / "odds" / f"{rid}_{lab}.json"
+        if f.exists():
+            return json.loads(f.read_text())
+    return latest_snap(d, rid)
 
 
 def day_data(d: str) -> dict:

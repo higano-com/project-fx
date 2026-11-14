@@ -130,7 +130,7 @@ select { font: inherit; color: var(--fg); background: var(--surface); border: 1p
           <span class="rname">${esc(r.name)} ${esc(r.course)}</span></div>
         ${picks.map((h) => `<div class="pick">
           <div class="umaban">${h.no}</div>
-          <div><b>${esc(h.name)}</b> ${resultLine(h)}<div class="meta">複勝 <span class="num">${h.fmin}〜${h.fmax}</span>倍 ・ 3着内 ${pct(h.p_top)} ・ 単勝 <span class="num">${h.tan}</span>倍${(h.at || r.at) ? ` ・ ${esc(h.at || r.at)}のオッズ` : ""}${(h.label || r.label) === "朝" ? ` ・ <b>朝の参考値</b>` : ""}</div></div>
+          <div><b>${esc(h.name)}</b> ${resultLine(h)}<div class="meta">複勝 <span class="num">${h.fmin}〜${h.fmax}</span>倍 ・ 3着内 ${pct(h.p_top)} ・ 単勝 <span class="num">${h.tan}</span>倍${(h.label || r.label) === "確定" ? ` ・ 確定オッズで代用(5分前のオッズを取りそびれた)` : (h.at || r.at) ? ` ・ ${esc(h.at || r.at)}のオッズ` : ""}${(h.label || r.label) === "朝" ? ` ・ <b>朝の参考値</b>` : ""}</div></div>
           <div class="ev">${h.ev.toFixed(2)}<small>期待値</small></div></div>`).join("")}
       </div>`);
     }
@@ -164,7 +164,7 @@ select { font: inherit; color: var(--fg); background: var(--surface); border: 1p
         ${res ? `<span class="res ${r.picks.some((p) => p.pay > 0) ? "hit" : "miss"}">確定</span>` : nPick ? `<span class="tag">候補${nPick}</span>` : ""}</summary>
         <div class="tbl"><table><thead><tr>${res ? "<th>着</th>" : ""}<th>番</th><th class="l">馬名・騎手</th><th>単勝</th><th>複勝</th><th>3着内</th><th>期待値</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
-        <div class="meta">${r.at ? `${esc(r.at)} のオッズ(${esc(r.label)})` : "オッズ未取得"}</div></details>`;
+        <div class="meta">${r.label === "確定" ? "確定オッズ" : r.at ? `${esc(r.at)} のオッズ(${esc(r.label)})` : "オッズ未取得"}</div></details>`;
     }).join("");
     return chips + `<div class="list">${cards}</div>`;
   }
