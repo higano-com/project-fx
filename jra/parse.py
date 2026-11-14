@@ -63,6 +63,7 @@ def parse_race(rid: str) -> list[dict]:
     rp = gzip.open(HTML / f"{rid}_r.html.gz", "rt", encoding="utf-8").read()
     op = gzip.open(HTML / f"{rid}_o.html.gz", "rt", encoding="utf-8").read()
     info, tb = race_info(rp)
+    k = rid[-20:]  # 過去データのファイル名は頭に2桁余分な番号が付いている
     odds, fuku, fmax = {}, {}, {}
     # 払戻金の複勝(実際の払戻、100円あたり)
     pay = _txt(rp[rp.find("払戻金"):])
@@ -94,8 +95,8 @@ def parse_race(rid: str) -> list[dict]:
         corner = re.findall(r"<li[^>]*>(\d+)</li>", _cell(row, "corner"))
         waku = re.search(r"枠(\d)", row)
         rows.append({
-            "rid": rid, "venue": VENUE.get(rid[:2], rid[:2]), "date": rid[-8:],
-            "race_no": int(rid[10:12]), **info,
+            "rid": k, "venue": VENUE.get(k[:2], k[:2]), "date": k[-8:],
+            "race_no": int(k[10:12]), **info,
             "umaban": int(num), "waku": int(waku.group(1)) if waku else None,
             "finish": int(place) if place.isdigit() else None, "status": "" if place.isdigit() else place,
             "horse_id": _id(_cell(row, "horse"), "pw01dud"),

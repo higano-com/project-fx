@@ -55,7 +55,7 @@ def main():
                     continue
                 rhtml = post("accessS.html", rc)
                 save(rp, rhtml)
-                oc = re.search(r"pw151ou\d+Z/[0-9A-F]{2}", rhtml)
+                oc = re.search(r"pw151ou\w+Z/[0-9A-F]{2}", rhtml)
                 if oc:
                     save(op, post("accessO.html", oc.group(0)))
                 else:

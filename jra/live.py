@@ -147,7 +147,7 @@ def fetch_results(d: str, want: set) -> int:
     for dc in sorted(set(c for c in re.findall(r"pw01srl\d+/[0-9A-F]{2}", menu) if c[7:].split("/")[0].endswith(d))):
         page = post("accessS.html", dc)
         for rc in sorted(set(re.findall(r"pw01sde\d+/[0-9A-F]{2}", page))):
-            rid = rc[7:].split("/")[0]
+            rid = rc[7:].split("/")[0][-20:]  # 頭の2桁は状態の番号なので落とす
             if rid not in want:
                 continue
             rhtml = post("accessS.html", rc)
@@ -156,7 +156,7 @@ def fetch_results(d: str, want: set) -> int:
             HTML.mkdir(parents=True, exist_ok=True)
             with gzip.open(HTML / f"{rid}_r.html.gz", "wt", encoding="utf-8") as f:
                 f.write(rhtml)
-            oc = re.search(r"pw151ou\d+Z/[0-9A-F]{2}", rhtml)
+            oc = re.search(r"pw151ou\w+Z/[0-9A-F]{2}", rhtml)
             ohtml = post("accessO.html", oc.group(0)) if oc else ""
             with gzip.open(HTML / f"{rid}_o.html.gz", "wt", encoding="utf-8") as f:
                 f.write(ohtml)
