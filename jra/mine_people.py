@@ -23,6 +23,7 @@
 使い方: python jra/mine_people.py   → data/jra/mine_people.csv
 """
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +32,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "jra"))
 from theories import harville_top  # noqa: E402
+
+warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
 
 GAP = 20  # 結果が分かるまでの余裕(分)
 NB = 2000  # ブートストラップ回数
@@ -261,8 +264,29 @@ def evaluate(d, conds):
     return R, cut, K
 
 
+PEOPLE = ("1.調子", "2.人×場", "3.コンビ", "3.乗り替わり", "4.今日", "組合せ")
+
+
+def null_check(d0, n_perm=20):
+    """偶然の目安: 開催日ごとに騎手ID・調教師IDをシャッフルして(人の情報だけ壊して)同じ探索をやり直し、
+    「50頭以上で100%超え」「前半後半とも100%超え」が何個出るかを数える。"""
+    rng = np.random.default_rng(1)
+    res = []
+    for _ in range(n_perm):
+        d = d0.copy()
+        for c in ["jockey_id", "trainer_id"]:
+            d[c] = d.groupby("date")[c].transform(lambda s: s.sample(frac=1, random_state=int(rng.integers(1e9))).values)
+        features(d)
+        R, _, _ = evaluate(d, conditions(d))
+        R = R[R.family.isin(PEOPLE) & (R.n >= 50)]
+        res.append(dict(over100=int((R.roi > 1).sum()), both=int(R.both_halves.sum()),
+                        diffpos=float((R["diff"] > 0).mean()), best_diff=float(R["diff"].max())))
+    return pd.DataFrame(res)
+
+
 def main():
     d = load()
+    base_cols = list(d.columns)
     features(d)
     conds = conditions(d)
     R, cut, K = evaluate(d, conds)
@@ -280,6 +304,14 @@ def main():
     print(ok.sort_values("diff", ascending=False)[cols].head(25).round(3).to_string(index=False))
     print("\n=== 前半・後半とも100%超え(50頭以上) ===")
     print(ok[ok.both_halves].sort_values("diff", ascending=False)[cols].round(3).to_string(index=False))
+    P = R[R.family.isin(PEOPLE) & (R.n >= 50)]
+    print(f"\n人の条件(50頭以上 {len(P)}個): 100%超 {(P.roi > 1).sum()}個 / 両半分100%超 {P.both_halves.sum()}個 / "
+          f"基準より上 {(P['diff'] > 0).mean():.0%} / 最大の差 {P['diff'].max():+.3f}")
+    if "--null" in sys.argv:
+        N = null_check(d[base_cols])
+        print("人IDをシャッフルした偶然の世界(20回)の分布:")
+        print(N.describe().round(3).to_string())
+        N.to_csv(ROOT / "data" / "jra" / "mine_people_null.csv", index=False)
     print(f"\nFDR q<0.1 (基準比): {(R.q_pbase < 0.1).sum()}個 / Bonferroni p<0.05 (100%超): {(R.bonf_p100 < 0.05).sum()}個")
 
 
