@@ -9,6 +9,7 @@
 """
 import gzip
 import re
+import time
 import sys
 from pathlib import Path
 
@@ -43,6 +44,10 @@ def main():
     codes = month_codes(post("accessS.html", "pw01skl00999999/B3"))
     for y, m in months(a, b):
         key = f"{y % 100:02d}{m:02d}"
+        done = OUT / f"done_{y}{m:02d}"  # 取り終えた月は、開催日ページを取り直さずに飛ばす(サイトへのアクセスを減らす)
+        if done.exists():
+            print(f"{y}-{m:02d}: 取得済みなので飛ばす", flush=True)
+            continue
         mhtml = post("accessS.html", f"pw01skl10{y}{m:02d}/{codes[key]}")
         days = sorted(set(re.findall(r"pw01srl\d+/[0-9A-F]{2}", mhtml)))
         n_new = 0
@@ -62,6 +67,8 @@ def main():
                     save(op, "")
                 n_new += 1
         print(f"{y}-{m:02d}: 開催日{len(days)} 新規{n_new}レース", flush=True)
+        if (y, m) < tuple(time.localtime()[:2]):  # 今月はまだ増えるので印をつけない
+            done.touch()
 
 
 if __name__ == "__main__":
