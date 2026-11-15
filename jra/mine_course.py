@@ -252,26 +252,43 @@ def cluster_p(pay, base, rid_codes, masks):
     return np.array(out)
 
 
-def null_check(d, masks, n_perm=50):
-    """偶然だけで p<0.05 が何個出るか: 人気帯(細)の中で払戻をシャッフルした偽データで数える。
-    人気帯の平均は変わらないので「条件の効果ゼロ」の世界になる。条件同士の重なり(相関)はそのまま残る。"""
+def null_check(d, masks, mode, n_perm=50):
+    """偶然だけで p<0.05 が何個出るか。払戻は実データのまま、条件の当てはめ先だけを付け替えた「効果ゼロ」の世界で数える。
+    mode="race": 各レースを同じ頭数の別レースに付け替え、同じ人気順位の馬を選ぶ(レース内のつながりは残る)。
+    mode="day" : 開催日(場×日付)ごとまとめて別の開催日に付け替え、同じR番号・同じ人気順位の馬を選ぶ
+                 (「荒れた日」のような開催日単位のつながりも残る。いちばん厳しい比べ方)。"""
     codes = pd.factorize(d.rid)[0]
     pay, base = d.pay.values / 100, d.base.values / 100
     real = cluster_p(pay, base, codes, masks)
+    rank = d.groupby("rid").odds.rank(method="first").astype(int).values
+    rid_u = pd.unique(d.rid)
     rng = np.random.default_rng(1)
-    grp = d.pop_fine.astype(str).values
-    cnt, cnt01, pmin, cntbad = [], [], [], []
+    pos = {(r, k): i for i, (r, k) in enumerate(zip(d.rid.values, rank))}
+    rinfo = d.drop_duplicates("rid").set_index("rid")
+    dayk = (rinfo.venue + rinfo.date.astype(str))
+    out = dict(p05=[], p01=[], bad=[], pmin=[])
     for _ in range(n_perm):
-        pp = pay.copy()
-        for gv in np.unique(grp):
-            ix = np.flatnonzero(grp == gv)
-            pp[ix] = pp[rng.permutation(ix)]
-        q = cluster_p(pp, base, codes, masks)
-        cnt.append(np.nansum(q < 0.05))
-        cnt01.append(np.nansum(q < 0.01))
-        cntbad.append(np.nansum(q > 0.95))
-        pmin.append(np.nanmin(q))
-    return real, np.array(cnt), np.array(cnt01), np.array(pmin), np.array(cntbad)
+        if mode == "race":
+            mp = {}
+            for _, g in rinfo.groupby("n"):
+                ids = g.index.values
+                mp.update(zip(ids, rng.permutation(ids)))
+        else:
+            days = dayk.unique()
+            dm = dict(zip(days, rng.permutation(days)))
+            by = {(dayk[r], rinfo.race_no[r]): r for r in rid_u}
+            mp = {r: by.get((dm[dayk[r]], rinfo.race_no[r])) for r in rid_u}
+        tgt = np.array([pos.get((mp[r], k), -1) for r, k in zip(d.rid.values, rank)])
+        fm = []
+        for m in masks:
+            t = tgt[m]
+            fm.append(t[t >= 0])
+        q = cluster_p(pay, base, codes, fm)
+        out["p05"].append(np.nansum(q < 0.05))
+        out["p01"].append(np.nansum(q < 0.01))
+        out["bad"].append(np.nansum(q > 0.95))
+        out["pmin"].append(np.nanmin(q))
+    return real, {k: np.array(v) for k, v in out.items()}
 
 
 def bh(p):
@@ -316,36 +333,45 @@ def main():
     t["q_roi"] = np.nan
     t.loc[ev, "q_roi"] = bh(t.loc[ev, "p_roi"].values)
     t["bonf_diff"] = (t.p_diff * M).clip(upper=1).where(ev)
+    # Dr.Z系は「同じしきい値の Dr.Z 全体」を基準にした差も出す(条件を足して良くなったか)
+    t["drz_all"] = np.nan
+    for th in (1.0, 0.95, 0.9):
+        f = t.family.str.startswith(f"6_DrZ≧{th}")
+        t.loc[f, "drz_all"] = t.loc[t.name.eq(f"DrZ≧{th} そのまま"), "roi"].iloc[0]
+    t["vs_drz"] = t.roi - t.drz_all
     cols = ["family", "name", "n", "races", "hits", "roi", "lo", "hi", "n1", "r1", "n2", "r2", "base", "diff",
-            "p_roi", "p_diff", "q_roi", "q_diff", "bonf_diff", "reliable", "both_halves_gt1", "dup"]
+            "p_roi", "p_diff", "q_roi", "q_diff", "bonf_diff", "drz_all", "vs_drz", "reliable", "both_halves_gt1", "dup"]
     t = t[cols]
     t.to_csv(ROOT / "data" / "jra" / "mine_course.csv", index=False)
     # 偶然との比較(シャッフル)
-    masks = [kept[i] for i in np.flatnonzero(ev.values)]
-    if masks:
-        real, cnt, cnt01, pmin, cntbad = null_check(d, masks)
-        print(f"\n[シャッフル検定 50回] 実データ: p<0.05 {int(np.nansum(real < 0.05))}個・p<0.01 {int(np.nansum(real < 0.01))}個・最小p {np.nanmin(real):.1e}")
-        print(f"  偽データ(効果ゼロ): p<0.05 平均{cnt.mean():.0f}個(95%点 {np.percentile(cnt, 95):.0f})・"
-              f"p<0.01 平均{cnt01.mean():.0f}個(95%点 {np.percentile(cnt01, 95):.0f})・最小p の中央値 {np.median(pmin):.1e}")
-        print(f"  実データの最小p以下が偽データで出た割合 {np.mean(pmin <= np.nanmin(real)):.2f}")
-        print(f"  逆側(基準より悪い p>0.95): 実データ {int(np.nansum(real > 0.95))}個 / 偽データ 平均{cntbad.mean():.0f}個")
-        print("  → 良い側と悪い側が同じくらい増えていれば、条件の効果ではなく「荒れた日・開催」単位のばらつき(レース単位の区間では拾えない)")
-
+    # Dr.Z系(6_)は同じ70〜120頭を何百通りにも切っただけで、人気の基準に対しては Dr.Z そのものの効果が乗る。
+    # そこで偶然との比較は「Dr.Z系を除いた条件」と「全部」に分けて数える。
+    nz = ev & ~t.family.str.startswith("6_")
+    for sel, lab0 in ((ev, "全条件"), (nz, "Dr.Z系を除く(コース・条件だけ)")):
+        masks = [kept[i] for i in np.flatnonzero(sel.values)]
+        for mode, lab in (("race", "レースを付け替え"), ("day", "開催日ごと付け替え")):
+            real, o = null_check(d, masks, mode)
+            print(f"\n[偶然との比較: {lab0} {len(masks)}個 / {lab} 50回] 実データ: p<0.05 {int(np.nansum(real < 0.05))}個"
+                  f"・p<0.01 {int(np.nansum(real < 0.01))}個・基準より悪い p>0.95 {int(np.nansum(real > 0.95))}個・最小p {np.nanmin(real):.1e}")
+            print(f"  効果ゼロの世界: p<0.05 平均{o['p05'].mean():.0f}個(95%点 {np.percentile(o['p05'], 95):.0f})・"
+                  f"p<0.01 平均{o['p01'].mean():.0f}個(95%点 {np.percentile(o['p01'], 95):.0f})・"
+                  f"p>0.95 平均{o['bad'].mean():.0f}個・最小pが実データ以下だった割合 {np.mean(o['pmin'] <= np.nanmin(real)):.2f}")
     print(f"\n試した条件 {len(t)}個(中身が重複するもの {int(t.dup.sum())}個)、うち50頭以上で重複なし {M}個")
     print(f"偶然でも 5% の確率で超える → 何も効果がなくても p<0.05 が約 {M * 0.05:.0f}個 出る")
     print(f"p_diff<0.05: {int((t.p_diff[ev] < 0.05).sum())}個 / Bonferroni(p<{0.05 / M:.1e})通過: {int((t.bonf_diff[ev] < 0.05).sum())}個 /"
           f" FDR q<0.1: {int((t.q_diff[ev] < 0.1).sum())}個")
     fmt = lambda r: (f"{r['name'][:44]:<44}{r.n:>5}{r.races:>4}  {r.roi:5.2f} ({r.lo:4.2f}〜{r.hi:4.2f})  "  # noqa: E731
                      f"{r.r1:5.2f}/{r.r2:5.2f}  基準{r.base:4.2f} 差{r['diff']:+5.2f}  p={r.p_diff:.3f} q={r.q_diff:.2f}")
-    good = t[ev & t.both_halves_gt1 & (t["diff"] > 0)].sort_values("p_diff")
-    print("\n=== 有望(50頭以上・前後半とも100%超)、基準との差の p値順 上位20(Dr.Z系も含む) ===")
+    good = t[nz & t.both_halves_gt1 & (t["diff"] > 0)].sort_values("p_diff")
+    print("\n=== 有望(Dr.Z系以外・50頭以上・前後半とも100%超)、基準との差の p値順 上位20 ===")
     print(f"{'条件':<44}{'頭':>5}{'R':>4}  回収率(95%区間)     前半/後半   基準との差")
     for _, r in good.head(20).iterrows():
         print(fmt(r))
     print("\n=== Dr.Z(ev_mkt≧1.0)に条件を足したもの(10頭以上) ===")
     z = t[t.family.str.startswith("6_DrZ≧1.0") & (t.n >= 10)].sort_values("roi", ascending=False)
     for _, r in z.iterrows():
-        print(f"{r['name'][:44]:<44}{r.n:>5}{r.races:>4}  {r.roi:5.2f} ({r.lo:4.2f}〜{r.hi:4.2f})  {r.r1:5.2f}/{r.r2:5.2f}")
+        print(f"{r['name'][:44]:<44}{r.n:>5}{r.races:>4}  {r.roi:5.2f} ({r.lo:4.2f}〜{r.hi:4.2f})  {r.r1:5.2f}/{r.r2:5.2f}"
+              f"  Dr.Z全体との差{r.vs_drz:+5.2f}")
     print("\n=== 期待値帯 ===")
     for _, r in t[t.family.eq("6b_期待値帯")].iterrows():
         print(fmt(r))
