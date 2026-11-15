@@ -1,198 +1,329 @@
 <title>中央競馬 複勝AI</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-/* 配置: 上に見出しと更新ボタン、その下にタブ。中身は1列のカード(スマホ前提) */
+/* レイアウト: 上に日付と更新、場チップとレース番号、真ん中に1レースを大きく、下にタブバー。芝の緑と枠の8色が主役(ボートAIと同じ作り) */
 :root {
-  --bg: #f3f5f0; --surface: #ffffff; --line: #dfe4da; --fg: #1d241c; --muted: #66705f;
-  --accent: #1f6b3a; --accent-soft: #e2efe4; --hit: #b8860b; --hit-soft: #fbf1d3; --miss: #9aa294;
-  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
-  --font-num: "Barlow Condensed", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --bg: #eff4ee; --surface: #ffffff; --fg: #14241a; --muted: #5d6e62; --line: #d5e0d6;
+  --accent: #1d6b3c; --accent-fg: #ffffff; --accent-soft: #dcede1;
+  --hot: #c2410c; --hot-soft: #fde7da; --good: #1d6b3c; --good-soft: #dcefe2;
+  --bad: #9b1c1c; --bad-soft: #fbe2e2; --nav: #ffffffee; --gold: #a16207; --gold-soft: #fbf0cf;
+  --w1: #ffffff; --w1-fg: #111; --w2: #1c1c1c; --w2-fg: #fff; --w3: #e60012; --w3-fg: #fff; --w4: #0068b7; --w4-fg: #fff;
+  --w5: #ffe100; --w5-fg: #111; --w6: #00984a; --w6-fg: #fff; --w7: #f39800; --w7-fg: #111; --w8: #f29ec0; --w8-fg: #111;
+  --display: "Dela Gothic One", "Hiragino Kaku Gothic StdN", "Yu Gothic", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  --navh: 64px; color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121711; --surface: #1a2119; --line: #2c3629; --fg: #e6ebe2; --muted: #9aa594;
-  --accent: #6cc58a; --accent-soft: #1f3324; --hit: #e7bd4f; --hit-soft: #3a3118; --miss: #69735f; color-scheme: dark } }
+  --bg: #0c1610; --surface: #13221a; --fg: #e5efe7; --muted: #93a99a; --line: #24382b;
+  --accent: #6fcf8f; --accent-fg: #0c1610; --accent-soft: #173323; --hot: #fb923c; --hot-soft: #3a2316;
+  --good: #6fcf8f; --good-soft: #15322a; --bad: #f87171; --bad-soft: #3a1717; --nav: #13221aee;
+  --gold: #eab308; --gold-soft: #3a3014; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #121711; --surface: #1a2119; --line: #2c3629; --fg: #e6ebe2; --muted: #9aa594;
-  --accent: #6cc58a; --accent-soft: #1f3324; --hit: #e7bd4f; --hit-soft: #3a3118; --miss: #69735f; color-scheme: dark }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
-.wrap { max-width: 760px; margin: 0 auto; padding-block: 12px 40px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
-h1 { font-size: 1.25rem; margin: 0; letter-spacing: .02em; text-wrap: balance; }
-.sub { color: var(--muted); font-size: .8rem; }
-.btn { font: inherit; font-weight: 700; border: 1px solid var(--accent); background: var(--accent); color: var(--surface);
-  border-radius: 999px; padding: 6px 16px; cursor: pointer; }
-.btn:disabled { opacity: .6; cursor: default; }
-.btn:focus-visible, nav a:focus-visible, .chip:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-nav { display: flex; gap: 4px; margin: 14px 0 12px; border-bottom: 1px solid var(--line); }
-nav a { padding: 8px 14px; color: var(--muted); text-decoration: none; font-weight: 700; border-bottom: 3px solid transparent; margin-bottom: -1px; }
-nav a[aria-current="page"] { color: var(--accent); border-color: var(--accent); }
-.note { color: var(--muted); font-size: .82rem; margin: 0 0 12px; }
-.tag { display: inline-block; font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px;
-  background: var(--hit-soft); color: var(--hit); letter-spacing: .04em; }
-.list { display: grid; gap: 10px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
-.rhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-.rno { font-family: var(--font-num); font-weight: 700; font-size: 1.15rem; }
-.post { font-family: var(--font-num); font-size: 1.05rem; color: var(--accent); font-weight: 600; }
-.rname { color: var(--muted); font-size: .85rem; min-width: 0; }
-.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
-.pick { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 12px; align-items: center; margin-top: 8px;
-  padding-top: 8px; border-top: 1px dashed var(--line); }
-.umaban { font-family: var(--font-num); font-weight: 700; font-size: 1.3rem; width: 2.2em; height: 2.2em; display: grid;
-  place-items: center; border-radius: 6px; background: var(--accent-soft); color: var(--accent); }
-.ev { font-family: var(--font-num); font-weight: 700; font-size: 1.4rem; color: var(--accent); text-align: right; }
-.ev small { font-size: .7rem; color: var(--muted); display: block; font-family: var(--font-body); font-weight: 500; }
-.meta { color: var(--muted); font-size: .8rem; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.chip { font: inherit; font-size: .85rem; border: 1px solid var(--line); background: var(--surface); color: var(--fg);
-  border-radius: 999px; padding: 3px 12px; cursor: pointer; }
-.chip[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-details summary { cursor: pointer; list-style: none; }
-details summary::-webkit-details-marker { display: none; }
-.tbl { overflow-x: auto; margin-top: 8px; }
-table { border-collapse: collapse; width: 100%; font-size: .85rem; }
-th, td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-th { color: var(--muted); font-weight: 500; font-size: .75rem; }
-td.l, th.l { text-align: left; white-space: normal; min-width: 5.5em; }
-tr.is-pick td { background: var(--accent-soft); }
-tr.top3 td:first-child { color: var(--hit); font-weight: 700; }
-.res { font-size: .8rem; font-weight: 700; }
-.res.hit { color: var(--hit); } .res.miss { color: var(--miss); }
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-.stat b { display: block; font-family: var(--font-num); font-size: 1.5rem; line-height: 1.2; }
-.stat span { color: var(--muted); font-size: .75rem; }
-@media (max-width: 480px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.empty { color: var(--muted); padding: 24px 0; text-align: center; }
-select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  --bg: #0c1610; --surface: #13221a; --fg: #e5efe7; --muted: #93a99a; --line: #24382b;
+  --accent: #6fcf8f; --accent-fg: #0c1610; --accent-soft: #173323; --hot: #fb923c; --hot-soft: #3a2316;
+  --good: #6fcf8f; --good-soft: #15322a; --bad: #f87171; --bad-soft: #3a1717; --nav: #13221aee;
+  --gold: #eab308; --gold-soft: #3a3014; color-scheme: dark; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom, 0px) + 24px); }
+button { font: inherit; color: inherit; }
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+.wrap > * { min-width: 0; }
+.num { font-variant-numeric: tabular-nums; }
+.btn { all: unset; cursor: pointer; box-sizing: border-box; }
+.btn:focus-visible, select:focus-visible, nav.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+/* ヘッダー */
+.top { display: flex; align-items: center; gap: 10px; }
+.top h1 { font-family: var(--display); font-weight: 400; font-size: 1.35rem; margin: 0; line-height: 1.2; }
+.top .tag { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--gold-soft); color: var(--gold); }
+.top select { margin-left: auto; font: inherit; font-weight: 700; font-size: .95rem; padding: 7px 30px 7px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+.refresh { display: flex; align-items: center; gap: 8px; margin-top: -6px; font-size: .75rem; color: var(--muted); }
+.refresh .btn { margin-left: auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: .75rem; }
+.refresh .btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+.stripe { height: 5px; border-radius: 3px; box-shadow: 0 0 0 1px var(--line);
+  background: linear-gradient(90deg, var(--w1) 0 12.5%, var(--w2) 0 25%, var(--w3) 0 37.5%, var(--w4) 0 50%, var(--w5) 0 62.5%, var(--w6) 0 75%, var(--w7) 0 87.5%, var(--w8) 0); }
+.label { font-size: .75rem; letter-spacing: .12em; color: var(--muted); font-weight: 700; margin: 0 0 6px; }
+/* 枠色の馬番 */
+.uma { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; font-weight: 700; font-size: .95rem;
+  font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px #0002; flex: none; }
+.uma.sm { width: 22px; height: 22px; font-size: .75rem; border-radius: 5px; }
+.W1 { background: var(--w1); color: var(--w1-fg); box-shadow: inset 0 0 0 1px #0004; } .W2 { background: var(--w2); color: var(--w2-fg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .W2 { box-shadow: inset 0 0 0 1px #fff5; } }
+:root[data-theme="dark"] .W2 { box-shadow: inset 0 0 0 1px #fff5; }
+.W3 { background: var(--w3); color: var(--w3-fg); } .W4 { background: var(--w4); color: var(--w4-fg); }
+.W5 { background: var(--w5); color: var(--w5-fg); } .W6 { background: var(--w6); color: var(--w6-fg); }
+.W7 { background: var(--w7); color: var(--w7-fg); } .W8 { background: var(--w8); color: var(--w8-fg); }
+/* 場チップ */
+.venues { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+.venues::-webkit-scrollbar { display: none; }
+.venue { flex: none; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; line-height: 1.25; min-width: 76px; text-align: left; }
+.venue b { font-size: 1rem; } .venue span { font-size: .72rem; color: var(--muted); }
+.venue[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.venue[aria-pressed="true"] span { color: var(--accent-fg); opacity: .85; }
+/* レース番号 */
+.rgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.rbtn { position: relative; text-align: center; padding: 3px 0 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); line-height: 1.15; }
+.rbtn b { display: block; font-family: var(--display); font-weight: 400; font-size: .95rem; }
+.rbtn span { font-size: .68rem; color: var(--muted); }
+.rbtn.done { opacity: .5; }
+.rbtn.next { border-color: var(--hot); box-shadow: inset 0 0 0 1px var(--hot); }
+.rbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); opacity: 1; box-shadow: none; }
+.rbtn[aria-pressed="true"] span { color: var(--accent-fg); }
+.rbtn .vdot { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+/* レース詳細 */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.rhead { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
+.rhead .big { font-family: var(--display); font-size: 2.1rem; line-height: 1; }
+.rhead .big small { font-size: 1rem; }
+.rhead .info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 10em; }
+.rhead .info b { font-size: 1.05rem; } .rhead .info span { color: var(--muted); font-size: .85rem; }
+.pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.value { background: var(--gold); color: #fff; } .pill.closed { background: var(--line); color: var(--muted); }
+.pill.hit { background: var(--good-soft); color: var(--good); } .pill.miss { background: var(--line); color: var(--muted); }
+.result { border-radius: 10px; background: var(--accent-soft); padding: 8px 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.result .t { font-size: .7rem; font-weight: 700; color: var(--accent); }
+.result .arrow { color: var(--muted); font-size: .7rem; }
+.horses { display: flex; flex-direction: column; }
+.horse { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.horse:last-child { border-bottom: 0; }
+.horse.pick { background: linear-gradient(90deg, var(--gold-soft), transparent 70%); margin-inline: -12px; padding-inline: 12px; }
+.horse.scr { opacity: .45; }
+.horse .who { min-width: 0; }
+.horse .who .nm { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.horse .who b { font-size: .98rem; line-height: 1.25; }
+.horse .facts { display: flex; flex-wrap: wrap; gap: 0 8px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.horse .fin { font-weight: 700; font-size: .75rem; padding: 0 6px; border-radius: 999px; background: var(--line); color: var(--muted); }
+.horse .fin.top { background: var(--good-soft); color: var(--good); }
+.horse .ev { text-align: right; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.horse .ev b { font-family: var(--display); font-weight: 400; font-size: 1.15rem; }
+.horse .ev small { display: block; font-size: .65rem; color: var(--muted); }
+.horse.pick .ev b { color: var(--gold); }
+.bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+/* 期待値タブ */
+.evcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.evcard.done { opacity: .85; }
+.evhead { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--accent-soft); font-size: .85rem; }
+.evhead b { font-weight: 700; } .evhead .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+.evhead .go { margin-left: auto; color: var(--accent); font-weight: 700; font-size: .75rem; }
+.evrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.evrow .n { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.evrow .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.evrow .right b { font-family: var(--display); font-weight: 400; font-size: 1.25rem; color: var(--gold); line-height: 1.1; }
+.res { font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.res.hit { background: var(--good-soft); color: var(--good); } .res.miss { background: var(--line); color: var(--muted); }
+/* 成績タブ */
+.summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat span { font-size: .75rem; color: var(--muted); font-weight: 700; }
+.stat b { font-family: var(--display); font-weight: 400; font-size: 1.45rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat b.plus { color: var(--good); } .stat b.minus { color: var(--bad); }
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.list h3 { margin: 0; padding: 7px 12px; font-size: .85rem; background: var(--accent-soft); color: var(--accent); display: flex; gap: 8px; }
+.list h3 span { margin-left: auto; font-variant-numeric: tabular-nums; }
+.krow { width: 100%; display: grid; grid-template-columns: 64px 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--line); font-size: .85rem; }
+.krow:first-of-type { border-top: 0; }
+.krow .r { font-weight: 700; font-variant-numeric: tabular-nums; }
+.krow .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.krow .y { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); text-align: center; padding: 28px 12px; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
+.note { color: var(--muted); font-size: .8rem; line-height: 1.7; margin: 0; }
+/* 下のタブバー */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--nav); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+nav.tabs .in { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 720px; height: var(--navh); }
+nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 700; position: relative; }
+nav.tabs a svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs a[aria-current="page"] { color: var(--accent); }
+nav.tabs .badge { position: absolute; top: 8px; left: calc(50% + 6px); background: var(--gold); color: #fff; font-size: .65rem; border-radius: 999px; padding: 0 6px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 </style>
 
 <div class="wrap">
-  <header>
-    <div>
-      <h1>中央競馬 複勝AI</h1>
-      <div class="sub" id="updated"></div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <select id="daySel" aria-label="日付"></select>
-      <button id="refreshBtn" class="btn" type="button" hidden>最新にする</button>
-    </div>
-  </header>
-  <div class="sub" id="refreshMsg"></div>
-  <nav>
-    <a href="#kitai" data-tab="kitai">期待値</a>
-    <a href="#race" data-tab="race">レース</a>
-    <a href="#seiseki" data-tab="seiseki">成績</a>
-  </nav>
-  <main id="main"></main>
+  <div class="top">
+    <h1>複勝AI</h1><span class="tag">検証中</span>
+    <select id="daySel" aria-label="日付"></select>
+  </div>
+  <div class="refresh"><span id="updated"></span><button id="refreshBtn" class="btn" type="button" hidden>最新にする</button></div>
+  <div class="stripe" aria-hidden="true"></div>
+  <main id="main"><p class="note">読み込み中…</p></main>
 </div>
+<nav class="tabs" aria-label="メニュー">
+  <div class="in">
+    <a href="#kitai" data-tab="kitai"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/></svg>期待値<span class="badge" id="evBadge" hidden></span></a>
+    <a href="#race" data-tab="race"><svg viewBox="0 0 24 24"><path d="M4 18c0-3 2-5 5-5h4l3-4 2 1-1 3 2 2-1 3"/><path d="M7 13l-1-4 3-1"/><path d="M6 18v2M16 18v2"/></svg>レース</a>
+    <a href="#seiseki" data-tab="seiseki"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 12v4M8 20h8M10 16h4v4h-4z"/></svg>成績</a>
+  </div>
+</nav>
 
 <script>
 (function () {
+  "use strict";
   const DATA = /*__DATA__*/null;
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const pct = (x) => (x == null ? "-" : (x * 100).toFixed(0) + "%");
   const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
                   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
-  const S = { day: null, venue: store.get("venue", "全部") };
+  const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
   const days = (DATA && DATA.days) || [];
-  $("updated").textContent = DATA ? `${DATA.updated} 時点` : "データがありません";
+  const S = { day: days.length ? days[days.length - 1].date : null, venue: store.get("jvenue", null), race: null };
+  $("updated").textContent = DATA ? `${DATA.updated} 時点のデータ` : "データがありません";
 
-  const fmtDate = (d) => `${+d.slice(4, 6)}/${+d.slice(6, 8)}`;
+  // 枠番: 8頭以下は馬番=枠。9頭以上は外の枠から2頭ずつ入る(JRAの決まり)
+  function waku(no, n) {
+    if (!n || n <= 8) return Math.min(no, 8);
+    const base = Math.floor(n / 8), extra = n % 8;
+    let s = 0;
+    for (let w = 1; w <= 8; w++) { s += base + (w > 8 - extra ? 1 : 0); if (no <= s) return w; }
+    return 8;
+  }
+  const uma = (no, n, sm) => `<span class="uma W${waku(no, n)}${sm ? " sm" : ""}">${no}</span>`;
+
+  const fmtDate = (d) => { const t = new Date(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)); return `${t.getMonth() + 1}/${t.getDate()}(${WEEK[t.getDay()]})`; };
   const sel = $("daySel");
   sel.innerHTML = days.map((d) => `<option value="${d.date}">${fmtDate(d.date)}</option>`).join("");
-  S.day = days.length ? days[days.length - 1].date : null;
   sel.value = S.day || "";
-  sel.hidden = days.length < 2;
-  sel.addEventListener("change", () => { S.day = sel.value; render(); });
+  sel.hidden = days.length < 1;
+  sel.addEventListener("change", () => { S.day = sel.value; S.race = null; render(); });
 
   const curDay = () => days.find((d) => d.date === S.day);
+  const isLatest = () => days.length && S.day === days[days.length - 1].date;
   const nowHM = () => { const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000); return t.toTimeString().slice(0, 5); };
+  const picksOf = (r) => (r.result ? r.picks : r.horses.filter((h) => h.pick));
+  const resTag = (p) => p.pay == null ? "" : p.pay > 0 ? `<span class="res hit">的中 ${p.pay}円</span>` : `<span class="res miss">はずれ</span>`;
+  const oddsNote = (lab, at) => lab === "確定" ? "確定オッズ" : lab === "朝" ? `${esc(at)} 朝の参考値` : at ? `${esc(at)} のオッズ` : "オッズ未取得";
+  const nextRace = (races) => { const now = nowHM(); return isLatest() ? races.find((r) => !r.result && r.post >= now) : null; };
 
-  function resultLine(p) {
-    if (p.pay == null) return "";
-    return p.pay > 0 ? `<span class="res hit">的中 ${p.pay.toLocaleString()}円</span>` : `<span class="res miss">はずれ</span>`;
-  }
-
+  // ---------- 期待値タブ ----------
   function renderKitai() {
     const d = curDay();
-    if (!d) return `<p class="empty">今日は中央競馬の開催がありません。</p>`;
-    const isToday = d.date === days[days.length - 1].date;
-    const cards = [];
-    for (const r of d.races) {
-      const picks = r.result ? r.picks : r.horses.filter((h) => h.pick);
-      if (!picks.length) continue;
-      cards.push(`<div class="card">
-        <div class="rhead"><span class="rno">${esc(r.venue)}${r.race_no}R</span><span class="post">${esc(r.post)}発走</span>
-          <span class="rname">${esc(r.name)} ${esc(r.course)}</span></div>
-        ${picks.map((h) => `<div class="pick">
-          <div class="umaban">${h.no}</div>
-          <div><b>${esc(h.name)}</b> ${resultLine(h)}<div class="meta">複勝 <span class="num">${h.fmin}〜${h.fmax}</span>倍 ・ 3着内 ${pct(h.p_top)} ・ 単勝 <span class="num">${h.tan}</span>倍${(h.label || r.label) === "確定" ? ` ・ 確定オッズで代用(5分前のオッズを取りそびれた)` : (h.at || r.at) ? ` ・ ${esc(h.at || r.at)}のオッズ` : ""}${(h.label || r.label) === "朝" ? ` ・ <b>朝の参考値</b>` : ""}</div></div>
-          <div class="ev">${h.ev.toFixed(2)}<small>期待値</small></div></div>`).join("")}
-      </div>`);
-    }
-    const note = `<p class="note"><span class="tag">検証中</span> 複勝の期待値 = 単勝オッズから出した3着以内の確率 × 複勝オッズの下限。1.0以上の馬を出しています。まだ効くと確かめていない作戦なので、記録をとって検証している段階です。オッズは締切前に動くので、買う前に最新のオッズを確かめてください。${isToday ? `「朝の参考値」は売れ始めのオッズなので当てになりません。発走20分前と5分前にオッズを取り直します。成績の記録には締切5分前のオッズを使います。` : ""}</p>`;
-    return note + (cards.length ? `<div class="list">${cards.join("")}</div>` : `<p class="empty">いまは期待値1.0以上の複勝がありません。</p>`);
+    if (!d) return `<p class="empty">中央競馬の開催がありません。</p>`;
+    const nx = nextRace(d.races);
+    const list = d.races.filter((r) => picksOf(r).length).sort((a, b) => (a.post < b.post ? -1 : 1));
+    const live = list.filter((r) => !r.result), done = list.filter((r) => r.result);
+    const card = (r) => {
+      const ps = picksOf(r);
+      return `<div class="evcard${r.result ? " done" : ""}">
+        <button class="btn evhead" type="button" data-go="${r.rid}"><b>${esc(r.venue)}${r.race_no}R</b><span class="t">${esc(r.post)}発走</span>
+          ${r === nx ? `<span class="pill value">次</span>` : ""}<span class="go">レースを見る ›</span></button>
+        ${ps.map((h) => `<div class="evrow">${uma(h.no, r.n)}
+          <div style="min-width:0"><b>${esc(h.name)}</b>
+            <div class="n">複勝 ${h.fmin}〜${h.fmax}倍 ・ 3着内 ${pct(h.p_top)} ・ 単勝 ${h.tan}倍</div>
+            <div class="n">${oddsNote(h.label || r.label, h.at || r.at)}</div></div>
+          <div class="right"><b>${h.ev.toFixed(2)}</b>${resTag(h)}</div></div>`).join("")}
+      </div>`;
+    };
+    const note = `<p class="note">複勝の期待値 = 単勝オッズから出した3着以内の確率 × 複勝オッズの下限。<b>1.0以上</b>の馬を出しています。まだ効くと確かめていない作戦なので、記録をとって検証している段階です。オッズは締切まで動くので、買う前に最新のオッズを確かめてください。</p>`;
+    let html = "";
+    if (live.length) html += `<div><p class="label">これから</p><div style="display:grid;gap:10px">${live.map(card).join("")}</div></div>`;
+    if (done.length) html += `<div><p class="label">終わったレース(締切5分前のオッズで判定)</p><div style="display:grid;gap:10px">${done.map(card).join("")}</div></div>`;
+    if (!html) html = `<p class="empty">いまは期待値1.0以上の複勝がありません。</p>`;
+    return `<div style="display:grid;gap:14px">${html}${note}</div>`;
   }
 
+  // ---------- レースタブ ----------
   function renderRace() {
     const d = curDay();
-    if (!d) return `<p class="empty">今日は中央競馬の開催がありません。</p>`;
-    const venues = ["全部", ...new Set(d.races.map((r) => r.venue))];
-    if (!venues.includes(S.venue)) S.venue = "全部";
-    const races = d.races.filter((r) => S.venue === "全部" || r.venue === S.venue);
-    const now = nowHM();
-    const chips = `<div class="chips">${venues.map((v) => `<button class="chip" type="button" data-venue="${esc(v)}" aria-pressed="${v === S.venue}">${esc(v)}</button>`).join("")}</div>`;
-    const cards = races.map((r) => {
-      const res = r.result;
-      const nPick = r.horses.filter((h) => h.pick).length;
-      const open = !res && r.post >= now && races.find((x) => !x.result && x.post >= now) === r;
-      const rows = r.horses.map((h) => {
-        const f = res && res[String(h.no)];
-        const fin = f ? (f.status || f.finish) : "";
-        return `<tr class="${h.pick ? "is-pick" : ""} ${f && f.finish && f.finish <= 3 ? "top3" : ""}">
-          ${res ? `<td>${esc(fin)}</td>` : ""}<td class="num">${h.no}</td><td class="l">${esc(h.name)}<div class="meta">${esc(h.jockey)}</div></td>
-          <td class="num">${h.tan ?? esc(h.status)}</td><td class="num">${h.fmin ?? "-"}〜${h.fmax ?? "-"}</td>
-          <td class="num">${pct(h.p_top)}</td><td class="num">${h.ev != null ? h.ev.toFixed(2) : "-"}</td></tr>`;
-      }).join("");
-      return `<details class="card" ${open ? "open" : ""}><summary class="rhead">
-        <span class="rno">${esc(r.venue)}${r.race_no}R</span><span class="post">${esc(r.post)}</span>
-        <span class="rname">${esc(r.name)} ${esc(r.course)}</span>
-        ${res ? `<span class="res ${r.picks.some((p) => p.pay > 0) ? "hit" : "miss"}">確定</span>` : nPick ? `<span class="tag">候補${nPick}</span>` : ""}</summary>
-        <div class="tbl"><table><thead><tr>${res ? "<th>着</th>" : ""}<th>番</th><th class="l">馬名・騎手</th><th>単勝</th><th>複勝</th><th>3着内</th><th>期待値</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>
-        <div class="meta">${r.label === "確定" ? "確定オッズ" : r.at ? `${esc(r.at)} のオッズ(${esc(r.label)})` : "オッズ未取得"}</div></details>`;
+    if (!d) return `<p class="empty">中央競馬の開催がありません。</p>`;
+    const venues = [...new Set(d.races.map((r) => r.venue))];
+    if (!venues.includes(S.venue)) S.venue = venues[0];
+    const races = d.races.filter((r) => r.venue === S.venue).sort((a, b) => a.race_no - b.race_no);
+    const nx = nextRace(races);
+    let r = races.find((x) => x.rid === S.race) || nx || races[races.length - 1];
+    S.race = r.rid;
+    const vchips = venues.map((v) => {
+      const rs = d.races.filter((x) => x.venue === v);
+      const left = rs.filter((x) => !x.result).length, cand = rs.reduce((s, x) => s + picksOf(x).length, 0);
+      return `<button class="btn venue" type="button" data-venue="${esc(v)}" aria-pressed="${v === S.venue}"><b>${esc(v)}</b><span>${left ? `残り${left}R` : "終了"}${cand ? ` ・ 候補${cand}` : ""}</span></button>`;
     }).join("");
-    return chips + `<div class="list">${cards}</div>`;
+    const grid = races.map((x) => `<button class="btn rbtn${x.result ? " done" : ""}${x === nx ? " next" : ""}" type="button" data-race="${x.rid}" aria-pressed="${x === r}">
+      ${picksOf(x).length ? `<i class="vdot" aria-label="候補あり"></i>` : ""}<b>${x.race_no}R</b><span>${esc(x.post)}</span></button>`).join("");
+    return `<div class="venues">${vchips}</div><div class="rgrid" style="margin-bottom:14px">${grid}</div>${raceCard(r)}`;
   }
 
+  function raceCard(r) {
+    const res = r.result;
+    const ps = picksOf(r);
+    let pill = "";
+    if (res) pill = ps.length ? (ps.some((p) => p.pay > 0) ? `<span class="pill hit">候補的中</span>` : `<span class="pill miss">候補はずれ</span>`) : `<span class="pill closed">確定</span>`;
+    else if (ps.length) pill = `<span class="pill value">候補${ps.length}頭</span>`;
+    let resLine = "";
+    if (res) {
+      const top = Object.entries(res).filter(([, v]) => v.finish && v.finish <= 3).sort((a, b) => a[1].finish - b[1].finish);
+      resLine = `<div class="result"><span class="t">結果</span>${top.map(([no, v]) => `${uma(+no, r.n, true)}<span class="num" style="font-size:.8rem;font-weight:700">${v.fuku_pay ? v.fuku_pay + "円" : ""}</span>`).join('<span class="arrow">›</span>')}<span style="margin-left:auto;font-size:.7rem;color:var(--muted)">複勝払戻</span></div>`;
+    }
+    const maxp = Math.max(...r.horses.map((h) => h.p_top || 0), 0.01);
+    const rows = r.horses.map((h) => {
+      const f = res && res[String(h.no)];
+      const fin = f ? (f.status ? `<span class="fin">${esc(f.status)}</span>` : `<span class="fin${f.finish <= 3 ? " top" : ""}">${f.finish}着</span>`) : "";
+      return `<div class="horse${h.pick ? " pick" : ""}">${uma(h.no, r.n)}
+        <div class="who"><div class="nm"><b>${esc(h.name)}</b>${fin}</div>
+          <div class="facts"><span>${esc(h.jockey)}</span><span>単勝 ${h.tan}倍</span><span>複勝 ${h.fmin ?? "-"}〜${h.fmax ?? "-"}</span><span>3着内 ${pct(h.p_top)}</span></div>
+          <div class="bar"><i style="width:${((h.p_top || 0) / maxp * 100).toFixed(0)}%"></i></div></div>
+        <div class="ev"><b>${h.ev != null ? h.ev.toFixed(2) : "-"}</b><small>期待値</small></div></div>`;
+    }).join("");
+    return `<div class="card">
+      <div class="rhead"><div class="big">${r.race_no}<small>R</small></div>
+        <div class="info"><b>${esc(r.venue)} ${esc(r.post)}発走</b><span>${esc(r.name)}</span><span>${esc(r.course)}</span></div>${pill}</div>
+      ${resLine}
+      ${r.horses.length ? `<div class="horses">${rows}</div>` : `<p class="empty">まだオッズがありません。</p>`}
+      <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補</p></div>`;
+  }
+
+  // ---------- 成績タブ ----------
   function renderSeiseki() {
     const all = [];
     for (const d of days) for (const r of d.races) for (const p of r.picks) if (p.pay != null) all.push({ ...p, date: d.date, r });
-    const n = all.length, hit = all.filter((p) => p.pay > 0).length, ret = all.reduce((s, p) => s + p.pay, 0);
-    const stats = `<div class="stats">
-      <div class="stat"><b>${n}</b><span>点(各100円)</span></div>
-      <div class="stat"><b>${hit}</b><span>的中</span></div>
-      <div class="stat"><b>${n ? Math.round(ret / n) : "-"}%</b><span>回収率</span></div>
-      <div class="stat"><b>${n ? (ret - n * 100 >= 0 ? "+" : "") + (ret - n * 100).toLocaleString() : "-"}</b><span>収支(円)</span></div></div>`;
-    const note = `<p class="note"><span class="tag">検証中</span> 締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
-    const rows = all.slice().reverse().map((p) => `<tr><td class="l">${fmtDate(p.date)} ${esc(p.r.venue)}${p.r.race_no}R</td><td class="num">${p.no}</td>
-      <td class="l">${esc(p.name)}</td><td class="num">${p.ev.toFixed(2)}</td><td class="num">${p.pay > 0 ? p.pay : "-"}</td></tr>`).join("");
-    return note + stats + (n ? `<div class="card tbl"><table><thead><tr><th class="l">レース</th><th>馬番</th><th class="l">馬名</th><th>期待値</th><th>払戻</th></tr></thead><tbody>${rows}</tbody></table></div>`
-      : `<p class="empty">まだ結果の出た候補がありません。レースが終わると、ここに記録されます。</p>`);
+    const n = all.length, hit = all.filter((p) => p.pay > 0).length, ret = all.reduce((s, p) => s + p.pay, 0), bal = ret - n * 100;
+    const sum = `<div class="summary">
+      <div class="stat"><span>回収率</span><b>${n ? Math.round(ret / n) + "%" : "-"}</b></div>
+      <div class="stat"><span>収支</span><b class="${bal >= 0 ? "plus" : "minus"}">${n ? (bal >= 0 ? "+" : "") + bal.toLocaleString() + "円" : "-"}</b></div>
+      <div class="stat"><span>買った数(各100円)</span><b>${n}点</b></div>
+      <div class="stat"><span>的中</span><b>${hit}点${n ? ` <small style="font-size:.8rem">(${Math.round(hit / n * 100)}%)</small>` : ""}</b></div></div>`;
+    const byDay = days.slice().reverse().map((d) => {
+      const ps = all.filter((p) => p.date === d.date);
+      if (!ps.length) return "";
+      const rt = ps.reduce((s, p) => s + p.pay, 0);
+      return `<div class="list"><h3>${fmtDate(d.date)}<span>${ps.length}点 ・ 回収率 ${Math.round(rt / ps.length)}%</span></h3>
+        ${ps.map((p) => `<button class="btn krow" type="button" data-day="${d.date}" data-go="${p.r.rid}"><span class="r">${esc(p.r.venue)}${p.r.race_no}R</span>${uma(p.no, p.r.n, true)}
+          <span class="nm">${esc(p.name)} <span style="color:var(--muted);font-size:.75rem">期待値${p.ev.toFixed(2)}</span></span>
+          <span class="y">${p.pay > 0 ? `<span class="res hit">${p.pay}円</span>` : `<span class="res miss">はずれ</span>`}</span></button>`).join("")}</div>`;
+    }).join("");
+    const note = `<p class="note">締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
+    return `<div style="display:grid;gap:14px">${sum}${n ? byDay : `<p class="empty">まだ結果の出た候補がありません。</p>`}${note}</div>`;
   }
 
   function render() {
     const tab = ["kitai", "race", "seiseki"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitai";
-    document.querySelectorAll("nav a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
+    document.querySelectorAll("nav.tabs a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
+    const d = curDay();
+    const nLive = d ? d.races.filter((r) => !r.result).reduce((s, r) => s + r.horses.filter((h) => h.pick).length, 0) : 0;
+    $("evBadge").hidden = !nLive; $("evBadge").textContent = nLive;
     $("main").innerHTML = tab === "race" ? renderRace() : tab === "seiseki" ? renderSeiseki() : renderKitai();
   }
   $("main").addEventListener("click", (e) => {
-    const c = e.target.closest("[data-venue]");
-    if (c) { S.venue = c.dataset.venue; store.set("venue", S.venue); render(); }
+    const v = e.target.closest("[data-venue]");
+    if (v) { S.venue = v.dataset.venue; S.race = null; store.set("jvenue", S.venue); render(); return; }
+    const rb = e.target.closest("[data-race]");
+    if (rb) { S.race = rb.dataset.race; render(); return; }
+    const go = e.target.closest("[data-go]");
+    if (go) {
+      if (go.dataset.day) { S.day = go.dataset.day; sel.value = S.day; }
+      const r = curDay().races.find((x) => x.rid === go.dataset.go);
+      if (r) { S.venue = r.venue; S.race = r.rid; }
+      if (location.hash === "#race") render(); else location.hash = "#race";
+      window.scrollTo(0, 0);
+    }
   });
   window.addEventListener("hashchange", render);
   render();
@@ -205,17 +336,19 @@ select { font: inherit; color: var(--fg); background: var(--surface); border: 1p
     let mcp = null;
     try { mcp = await window.claude.use("mcp"); } catch (e) { mcp = null; }
     if (!mcp) return;
-    const btn = $("refreshBtn"), msg = $("refreshMsg");
+    const btn = $("refreshBtn"), msg = $("updated");
     btn.hidden = false;
+    let busy = false;
     btn.addEventListener("click", async () => {
-      btn.disabled = true; btn.textContent = "お願い中…";
+      if (busy) return;
+      busy = true; btn.setAttribute("aria-disabled", "true"); btn.textContent = "お願い中…";
       try {
         await mcp.callTool("Claude Code Remote", "fire_trigger", { trigger_id: REFRESH_TRIGGER }, { cache: false });
         msg.textContent = "Claude に頼みました。1〜2分で新しくなります。";
         btn.textContent = "頼みました";
       } catch (e) {
-        msg.textContent = "うまく頼めませんでした。少しして、もう一度押すか、チャットで「更新して」と送ってください。";
-        btn.disabled = false; btn.textContent = "最新にする";
+        msg.textContent = "うまく頼めませんでした。少ししてもう一度押してください。";
+        busy = false; btn.removeAttribute("aria-disabled"); btn.textContent = "最新にする";
       }
     });
   })();

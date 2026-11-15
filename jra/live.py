@@ -262,7 +262,7 @@ def day_data(d: str) -> dict:
         races.append({**{k: r[k] for k in ("rid", "venue", "race_no", "post")},
                       "name": (snap or {}).get("name", ""), "course": (snap or {}).get("course", ""),
                       "at": (snap or {}).get("at"), "label": (snap or {}).get("label"),
-                      "horses": rows, "result": res, "picks": picks})
+                      "n": len((snap or {}).get("horses", [])), "horses": rows, "result": res, "picks": picks})
     return {"date": d, "races": races}
 
 
