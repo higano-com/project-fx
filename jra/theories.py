@@ -65,6 +65,16 @@ def load():
     d["prev_fin"] = g["finish"].shift(1)
     d["prev_ninki"] = g["ninki"].shift(1)
     d["days_off"] = (d.date - g["date"].shift(1)).dt.days
+    # 輸送: 調教師がふだん走らせる場から所属(東/西)を推定 → 遠征かどうか
+    EAST, WEST = {"中山", "東京", "福島", "新潟"}, {"京都", "阪神", "中京", "小倉"}
+    reg = d.venue.map(lambda v: 1 if v in EAST else (-1 if v in WEST else 0))
+    home = reg.groupby(d.trainer_id).transform("mean")
+    d["travel"] = np.where(reg == 0, 2, np.where(reg * np.sign(home) < 0, 1, 0))
+    d["kinryo_diff"] = d.weight - g["weight"].shift(1)
+    d["same_jockey"] = d.jockey_id == g["jockey_id"].shift(1)
+    gc = d.groupby(["jockey_id", "trainer_id"])
+    d["combo_runs"] = gc.cumcount()
+    d["combo_t3"] = (gc["hit"].cumsum() - d.hit) / d.combo_runs.replace(0, np.nan)
     # 市場から見た3着内確率と、いまのアプリの期待値
     d["ev_mkt"] = np.nan
     d["fav_odds"] = d.groupby("rid")["odds"].transform("min")
@@ -104,6 +114,13 @@ def theories(d):
     T["重・不良の1〜3番人気"] = d.baba.isin(["重", "不良"]) & d.ninki.le(3)
     T["1・2枠の4〜9番人気"] = d.waku.le(2) & d.ninki.between(4, 9)
     T["7・8枠の1〜3番人気"] = d.waku.ge(7) & d.ninki.le(3)
+    T["遠征馬(東の厩舎が西で/西が東で)"] = d.travel.eq(1)
+    T["遠征馬の1〜5番人気"] = d.travel.eq(1) & d.ninki.le(5)
+    T["遠征馬の6番人気以下"] = d.travel.eq(1) & d.ninki.ge(6)
+    T["地元馬の1〜5番人気"] = d.travel.eq(0) & d.ninki.le(5)
+    T["斤量が前走より2kg以上減った1〜5番人気"] = d.kinryo_diff.le(-2) & d.ninki.le(5)
+    T["騎手×調教師コンビ 3着内率40%以上(3回以上)"] = d.combo_runs.ge(3) & d.combo_t3.ge(0.4)
+    T["乗り替わりなし(前走と同じ騎手)の1〜5番人気"] = d.same_jockey & d.ninki.le(5)
     T["朝のレース(1〜4R)の1〜3番人気"] = d.race_no.le(4) & d.ninki.le(3)
     return T
 

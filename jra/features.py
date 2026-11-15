@@ -101,6 +101,22 @@ def history(d: pd.DataFrame) -> pd.DataFrame:
     gs = d.groupby(["horse_id", "surface", "dbin"], sort=False)
     d["spd_same_best"] = gs["spd"].transform(lambda s: s.shift(1).cummax())
 
+    # 斤量の増減、休み明けから何戦目か(叩き2戦目など)
+    d["kinryo_diff"] = d["weight"] - g["weight"].shift(1)
+    rest = (d["days_off"].isna() | (d["days_off"] >= 60)).astype(int)
+    d["since_rest"] = rest.groupby(d["horse_id"]).cumsum()
+    d["since_rest"] = d.groupby(["horse_id", "since_rest"]).cumcount() + 1  # 1 = 休み明け初戦
+    # 輸送: 厩舎の所属(美浦=東 / 栗東=西)を、その調教師がふだん走らせる場から推定し、遠征かどうかを見る
+    EAST, WEST = {"中山", "東京", "福島", "新潟"}, {"京都", "阪神", "中京", "小倉"}
+    reg = d["venue"].map(lambda v: 1 if v in EAST else (-1 if v in WEST else 0))
+    home = reg.groupby(d["trainer_id"]).transform("mean")
+    d["trainer_east"] = home
+    d["travel"] = np.where(reg == 0, 2, np.where(reg * np.sign(home) < 0, 1, 0)).astype(float)  # 0=地元 1=遠征 2=北海道
+    # 騎手×調教師のコンビの過去成績(その日より前)
+    gc = d.groupby(["jockey_id", "trainer_id"], sort=False)
+    d["combo_runs"] = gc.cumcount()
+    d["combo_t3"] = (gc["top3"].cumsum() - d["top3"] + 0.6) / (d["combo_runs"] + 3)
+
     # 騎手・調教師の直近365日の成績(その日自身は除く)。少数は平均寄せ
     for who in ("jockey_id", "trainer_id"):
         day = d.groupby([who, "date"]).agg(r=("won", "size"), w=("won", "sum"), t=("top3", "sum")).reset_index()
@@ -135,6 +151,7 @@ FEATURES = [
     "spd_best5_dev", "spd_best5_rank", "spd_avg3_dev", "spd_avg3_rank", "spd_same_best_dev",
     "spd_same_best_rank", "jockey_id_wr_dev", "jockey_id_wr_rank", "trainer_id_wr_dev",
     "avg3_pos_dev", "avg3_pos_rank", "n_front",
+    "kinryo_diff", "since_rest", "trainer_east", "travel", "combo_runs", "combo_t3",
 ]
 
 
