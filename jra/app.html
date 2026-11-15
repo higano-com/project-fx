@@ -262,7 +262,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     let resLine = "";
     if (res && r.pays && r.pays.length) {
       const combo = (kind, num) => num.split("-").map((x) => kind === "枠連" ? `<span class="uma sm W${x}">${x}</span>` : uma(+x, r.n, true)).join('<span class="arrow">' + (kind === "馬単" || kind === "3連単" ? "›" : "-") + "</span>");
-      resLine = `<div class="pays">${["複勝", "ワイド", "単勝", "枠連", "馬連", "馬単", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean).map((k) => `<div class="kb${k.kind === "3連単" ? " wide" : ""}"><div class="k">${esc(k.kind)}</div>${k.lines.map((l) => `<div class="pay">
+      resLine = `<div class="pays">${["単勝", "複勝", "枠連", "馬連", "ワイド", "馬単", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean).map((k) => `<div class="kb${k.kind === "3連単" ? " wide" : ""}"><div class="k">${esc(k.kind)}</div>${k.lines.map((l) => `<div class="pay">
         <span class="c">${combo(k.kind, l.num)}</span><span class="y">${l.yen.toLocaleString()}<small>円</small></span></div>`).join("")}</div>`).join("")}</div>`;
     }
     const maxp = Math.max(...r.horses.map((h) => h.p_top || 0), 0.01);
