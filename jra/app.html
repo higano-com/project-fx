@@ -78,16 +78,16 @@ button { font: inherit; color: inherit; }
 .rhead .info b { font-size: 1.05rem; } .rhead .info span { color: var(--muted); font-size: .85rem; }
 .rhead .info .rn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pays { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-@media (min-width: 560px) { .pays { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.kb { background: var(--accent-soft); border-radius: 8px; padding: 3px 5px 4px; min-width: 0; }
-.kb.wide { grid-column: auto; }
-@media (min-width: 560px) { .kb.wide { grid-column: auto; } }
+.kb { background: var(--accent-soft); border-radius: 8px; padding: 4px 7px 5px; min-width: 0; display: flex; flex-direction: column; }
+.kb.wide { grid-column: span 2; }
+.kb .k { font-weight: 700; color: var(--accent); font-size: .7rem; line-height: 1.4; }
 .kb .uma.sm { width: 19px; height: 19px; font-size: .68rem; border-radius: 4px; }
-.kb .k { font-weight: 700; color: var(--accent); font-size: .72rem; }
-.pay { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 4px; padding: 1px 0; }
-.pay .c { display: flex; align-items: center; gap: 1px; flex: none; }
+.pay { display: flex; flex-direction: column; align-items: stretch; gap: 1px; }
+.kb.wide .pay { flex-direction: row; align-items: center; justify-content: space-between; padding: 1px 0; }
+.kb.wide .pay + .pay { border-top: 1px solid #0000000f; }
+.pay .c { display: flex; align-items: center; gap: 1px; }
 .pay .c .arrow { color: var(--muted); font-size: .65rem; padding: 0 1px; }
-.pay .y { margin-left: auto; font-weight: 700; font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pay .y { text-align: right; font-weight: 700; font-size: .82rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pay .y small { font-size: .65rem; font-weight: 500; }
 .pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .pill.value { background: var(--gold); color: #fff; } .pill.closed { background: var(--line); color: var(--muted); }
@@ -262,7 +262,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     let resLine = "";
     if (res && r.pays && r.pays.length) {
       const combo = (kind, num) => num.split("-").map((x) => kind === "枠連" ? `<span class="uma sm W${x}">${x}</span>` : uma(+x, r.n, true)).join('<span class="arrow">' + (kind === "馬単" || kind === "3連単" ? "›" : "-") + "</span>");
-      resLine = `<div class="pays">${["単勝", "複勝", "枠連", "馬連", "ワイド", "馬単", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean).map((k) => `<div class="kb${k.kind === "3連単" ? " wide" : ""}"><div class="k">${esc(k.kind)}</div>${k.lines.map((l) => `<div class="pay">
+      resLine = `<div class="pays">${["単勝", "枠連", "馬連", "馬単", "複勝", "ワイド", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean).map((k) => `<div class="kb${["複勝", "ワイド", "3連複", "3連単"].includes(k.kind) ? " wide" : ""}"><div class="k">${esc(k.kind)}</div>${k.lines.map((l) => `<div class="pay">
         <span class="c">${combo(k.kind, l.num)}</span><span class="y">${l.yen.toLocaleString()}<small>円</small></span></div>`).join("")}</div>`).join("")}</div>`;
     }
     const maxp = Math.max(...r.horses.map((h) => h.p_top || 0), 0.01);
