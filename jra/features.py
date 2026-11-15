@@ -6,8 +6,13 @@
 """
 from pathlib import Path
 
+import sys
+
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import horsefeat as H  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "data" / "jra" / "runs.pkl"
@@ -152,11 +157,11 @@ FEATURES = [
     "spd_same_best_rank", "jockey_id_wr_dev", "jockey_id_wr_rank", "trainer_id_wr_dev",
     "avg3_pos_dev", "avg3_pos_rank", "n_front",
     "kinryo_diff", "since_rest", "trainer_east", "travel", "combo_runs", "combo_t3",
-]
+] + H.FEATS  # 血統・馬主・生産者・全出走歴(horsefeat.py)
 
 
 def dataset(until: str) -> pd.DataFrame:
-    d = history(speed(base(load()), until))
+    d = H.add(history(speed(base(load()), until)))
     for c in ("handicap", "female", "outer"):
         d[c] = d[c].astype(float)
     return d

@@ -84,6 +84,14 @@ def load():
         q /= q.sum()
         p = harville_top(q, int(sub.k.iloc[0]))
         d.loc[sub.index, "ev_mkt"] = p * sub.fuku_min.values
+    # 競走馬情報(血統・馬主・生産者・全出走歴)。取れている馬だけ値が入る
+    import sys
+    sys.path.insert(0, str(ROOT / "jra"))
+    import horsefeat as H
+    d = H.add(d)
+    # 所属(美浦/栗東)が分かる馬は、推定ではなく本当の所属で遠征を判定し直す
+    east = d.center_east.map({1.0: 1, 0.0: -1})
+    d["travel"] = np.where(east.notna() & (reg != 0), np.where(reg * east < 0, 1, 0), d.travel)
     return d[d.odds > 0]
 
 
@@ -122,6 +130,39 @@ def theories(d):
     T["騎手×調教師コンビ 3着内率40%以上(3回以上)"] = d.combo_runs.ge(3) & d.combo_t3.ge(0.4)
     T["乗り替わりなし(前走と同じ騎手)の1〜5番人気"] = d.same_jockey & d.ninki.le(5)
     T["朝のレース(1〜4R)の1〜3番人気"] = d.race_no.le(4) & d.ninki.le(3)
+    # ---- 競走馬情報から(血統・馬主・生産者・全出走歴) ----
+    top = d.ninki.le(3)
+    mid = d.ninki.between(4, 9)
+    new = d.cls.eq("新馬")
+    for nm, c in [("社台系生産(ノーザン・社台・追分)", d.shadai.eq(1)), ("社台系以外の生産", d.shadai.eq(0)),
+                  ("クラブ馬主", d.club.eq(1)), ("個人馬主", d.club.eq(0)),
+                  ("セリで買われた馬", d.sold.eq(1)), ("セレクトセール出身", d.select_sale.eq(1))]:
+        T[f"{nm}の1〜3番人気"] = c & top
+        T[f"{nm}の4〜9番人気"] = c & mid
+    T["新馬戦: 社台系生産の4番人気以下"] = new & d.shadai.eq(1) & d.ninki.ge(4)
+    T["新馬戦: 社台系以外の1〜3番人気"] = new & d.shadai.eq(0) & top
+    T["新馬戦: 父の同馬場3着内率が上位(≧35%)の4〜9番人気"] = new & d.sire_t3_surf.ge(0.35) & mid
+    T["新馬戦: 母の産駒成績が良い(≧40%)の4〜9番人気"] = new & d.dam_t3.ge(0.40) & mid
+    T["2歳戦: 早生まれ(1〜3月)の1〜5番人気"] = d.age.eq(2) & d.birth_month.le(3) & d.ninki.le(5)
+    T["2歳戦: 遅生まれ(5月以降)の1〜5番人気"] = d.age.eq(2) & d.birth_month.ge(5) & d.ninki.le(5)
+    T["初ダート: 父のダート3着内率≧35%"] = d.c_first_surface.eq(1) & d.surface.eq("ダート") & d.sire_t3_surf.ge(0.35)
+    T["初芝: 父の芝3着内率≧35%"] = d.c_first_surface.eq(1) & d.surface.eq("芝") & d.sire_t3_surf.ge(0.35)
+    T["初めての馬場(芝⇔ダート)の4〜9番人気"] = d.c_first_surface.eq(1) & mid
+    T["父の同馬場3着内率が上位(≧38%)の4〜9番人気"] = d.sire_t3_surf.ge(0.38) & mid
+    T["父の同距離帯3着内率が上位(≧38%)の4〜9番人気"] = d.sire_t3_dist.ge(0.38) & mid
+    T["母の父の同馬場3着内率が上位(≧38%)の4〜9番人気"] = d.damsire_t3_surf.ge(0.38) & mid
+    T["生産牧場の3着内率が上位(≧35%)の4〜9番人気"] = d.breeder_t3.ge(0.35) & mid
+    T["馬主の3着内率が上位(≧35%)の4〜9番人気"] = d.owner_t3.ge(0.35) & mid
+    T["地方帰り(前走が地方・海外)"] = d.c_prev_local.eq(1)
+    T["全成績の3着内率≧50%(5走以上)の4番人気以下"] = d.c_runs.ge(5) & d.c_t3rate.ge(0.5) & d.ninki.ge(4)
+    T["同じ馬場の3着内率≧50%(3走以上)の4番人気以下"] = d.c_surf_t3rate.ge(0.5) & d.c_runs.ge(3) & d.ninki.ge(4)
+    T["前走(全成績)1〜3着 → 今回4〜9番人気"] = d.c_prev_fin.le(3) & mid
+    T["前走(全成績)人気より大きく負けた(人気+5着以上)→ 今回1〜5番人気"] = (d.c_prev_fin - d.c_prev_ninki).ge(5) & d.ninki.le(5)
+    T["距離延長(+200m以上)の1〜5番人気"] = d.c_dist_change.ge(200) & d.ninki.le(5)
+    T["距離短縮(-200m以上)の1〜5番人気"] = d.c_dist_change.le(-200) & d.ninki.le(5)
+    T["中2週以内(14日以下)の1〜5番人気"] = d.c_days_off.le(14) & d.ninki.le(5)
+    T["半年以上の休み明け(全成績)の1〜5番人気"] = d.c_days_off.ge(180) & d.ninki.le(5)
+    T["キャリア10戦以上の古馬 1〜3番人気"] = d.c_runs.ge(10) & top
     return T
 
 
