@@ -104,6 +104,8 @@ button { font: inherit; color: inherit; }
 .horse .ev b { font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
 .horse .ev small { display: block; font-size: .65rem; color: var(--muted); }
 .horse.pick .ev b { color: var(--gold); }
+.mark { display: inline-block; font-weight: 700; color: var(--gold); margin-right: 3px; }
+.sub { color: var(--muted); font-size: .72rem; font-weight: 400; }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 3px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); }
 /* 期待値タブ */
@@ -197,6 +199,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   const isLatest = () => days.length && S.day === days[days.length - 1].date;
   const nowHM = () => { const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000); return t.toTimeString().slice(0, 5); };
   const picksOf = (r) => (r.result ? r.picks : r.horses.filter((h) => h.pick));
+  const mark = (h) => (h.top ? `<span class="mark" aria-label="本命候補">◎</span>` : "");
   const resTag = (p) => p.pay == null ? "" : p.pay > 0 ? `<span class="res hit">的中 ${p.pay}円</span>` : `<span class="res miss">はずれ</span>`;
   const oddsNote = (lab, at) => lab === "確定" ? "確定オッズ" : lab === "朝" ? `${esc(at)} 朝の参考値` : at ? `${esc(at)} のオッズ` : "オッズ未取得";
   const nextRace = (races) => { const now = nowHM(); return isLatest() ? races.find((r) => !r.result && r.post >= now) : null; };
@@ -214,12 +217,12 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
         <button class="btn evhead" type="button" data-go="${r.rid}"><b>${esc(r.venue)}${r.race_no}R</b><span class="t">${esc(r.post)}発走</span>
           ${r === nx ? `<span class="pill value">次</span>` : ""}<span class="go">›</span></button>
         ${ps.map((h) => `<div class="evrow">${uma(h.no, r.n)}
-          <div style="min-width:0"><b>${esc(h.name)}</b>
-            <div class="n">複勝${h.fmin}〜${h.fmax} ・ 3着内${pct(h.p_top)} ・ 単勝${h.tan}${(h.label || r.label) === "朝" ? " ・ 朝の参考値" : ""}</div></div>
+          <div style="min-width:0">${mark(h)}<b>${esc(h.name)}</b>
+            <div class="n">${h.top ? "" : "記録のみ ・ "}複勝${h.fmin}〜${h.fmax} ・ 3着内${pct(h.p_top)} ・ 単勝${h.tan}${(h.label || r.label) === "朝" ? " ・ 朝の参考値" : ""}</div></div>
           <div class="right"><b>${h.ev.toFixed(2)}</b>${resTag(h)}</div></div>`).join("")}
       </div>`;
     };
-    const note = `<p class="note">期待値 = 3着内の確率 × 複勝オッズの下限。1.0以上を表示(検証中)。</p>`;
+    const note = `<p class="note">期待値 = 3着内の確率 × 複勝オッズの下限。1.0以上を表示(検証中)。<b>◎ = 1.05以上の本命候補</b>(過去の検証で、前半・後半とも回収100%を超えたのはここから上だけ)。1.00〜1.05は記録のみ。</p>`;
     let html = "";
     if (live.length) html += `<div><p class="label">これから</p><div style="display:grid;gap:6px">${live.map(card).join("")}</div></div>`;
     if (done.length) html += `<div><p class="label">終わったレース</p><div style="display:grid;gap:6px">${done.map(card).join("")}</div></div>`;
@@ -252,7 +255,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const ps = picksOf(r);
     let pill = "";
     if (res) pill = ps.length ? (ps.some((p) => p.pay > 0) ? `<span class="pill hit">候補的中</span>` : `<span class="pill miss">候補はずれ</span>`) : `<span class="pill closed">確定</span>`;
-    else if (ps.length) pill = `<span class="pill value">候補${ps.length}頭</span>`;
+    else if (ps.length) pill = `<span class="pill value">${ps.some((p) => p.top) ? "◎あり ・ " : ""}候補${ps.length}頭</span>`;
     let resLine = "";
     if (res && r.pays && r.pays.length) {
       const rows = ["単勝", "複勝", "枠連", "馬連", "馬単", "ワイド", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean)
@@ -265,7 +268,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       const f = res && res[String(h.no)];
       const fin = f ? (f.status ? `<span class="fin">${esc(f.status)}</span>` : `<span class="fin${f.finish <= 3 ? " top" : ""}">${f.finish}着</span>`) : "";
       return `<div class="horse${h.pick ? " pick" : ""}">${uma(h.no, r.n)}
-        <div class="who"><div class="nm"><b>${esc(h.name)}</b>${fin}</div>
+        <div class="who"><div class="nm">${mark(h)}<b>${esc(h.name)}</b>${fin}</div>
           <div class="facts"><span>${esc(h.jockey)}</span><span>単勝 ${h.tan}倍</span><span>複勝 ${h.fmin ?? "-"}〜${h.fmax ?? "-"}</span><span>3着内 ${pct(h.p_top)}</span></div>
           <div class="bar"><i style="width:${((h.p_top || 0) / maxp * 100).toFixed(0)}%"></i></div></div>
         <div class="ev"><b>${h.ev != null ? h.ev.toFixed(2) : "-"}</b><small>期待値</small></div></div>`;
@@ -274,29 +277,33 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <div class="rhead"><div class="info"><b>${esc(r.venue)}${r.race_no}R ・ ${esc(r.post)}発走 ・ ${esc(r.course)}</b><span class="rn">${esc(r.name)}</span></div>${pill}</div>
       ${resLine}
       ${r.horses.length ? `<div class="horses">${rows}</div>` : `<p class="empty">まだオッズがありません。</p>`}
-      <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補</p></div>`;
+      <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補、◎は1.05以上の本命候補</p></div>`;
   }
 
   // ---------- 成績タブ ----------
   function renderSeiseki() {
     const all = [];
     for (const d of days) for (const r of d.races) for (const p of r.picks) if (p.pay != null) all.push({ ...p, date: d.date, r });
-    const n = all.length, hit = all.filter((p) => p.pay > 0).length, ret = all.reduce((s, p) => s + p.pay, 0), bal = ret - n * 100;
-    const sum = `<div class="summary">
+    const box = (ps, title) => {
+      const n = ps.length, hit = ps.filter((p) => p.pay > 0).length, ret = ps.reduce((s, p) => s + p.pay, 0), bal = ret - n * 100;
+      return `<div><p class="label">${title}</p><div class="summary">
       <div class="stat"><span>回収率</span><b>${n ? Math.round(ret / n) + "%" : "-"}</b></div>
       <div class="stat"><span>収支</span><b class="${bal >= 0 ? "plus" : "minus"}">${n ? (bal >= 0 ? "+" : "") + bal.toLocaleString() + "円" : "-"}</b></div>
       <div class="stat"><span>買った数(各100円)</span><b>${n}点</b></div>
-      <div class="stat"><span>的中</span><b>${hit}点${n ? ` <small style="font-size:.8rem">(${Math.round(hit / n * 100)}%)</small>` : ""}</b></div></div>`;
+      <div class="stat"><span>的中</span><b>${hit}点${n ? ` <small style="font-size:.8rem">(${Math.round(hit / n * 100)}%)</small>` : ""}</b></div></div></div>`;
+    };
+    const n = all.length;
+    const sum = box(all.filter((p) => p.top), "◎ 本命候補(期待値1.05以上)") + box(all, "候補全部(期待値1.00以上)");
     const byDay = days.slice().reverse().map((d) => {
       const ps = all.filter((p) => p.date === d.date);
       if (!ps.length) return "";
       const rt = ps.reduce((s, p) => s + p.pay, 0);
       return `<div class="list"><h3>${fmtDate(d.date)}<span>${ps.length}点 ・ 回収率 ${Math.round(rt / ps.length)}%</span></h3>
         ${ps.map((p) => `<button class="btn krow" type="button" data-day="${d.date}" data-go="${p.r.rid}"><span class="r">${esc(p.r.venue)}${p.r.race_no}R</span>${uma(p.no, p.r.n, true)}
-          <span class="nm">${esc(p.name)} <span style="color:var(--muted);font-size:.75rem">期待値${p.ev.toFixed(2)}</span></span>
+          <span class="nm">${mark(p)}${esc(p.name)} <span style="color:var(--muted);font-size:.75rem">期待値${p.ev.toFixed(2)}</span></span>
           <span class="y">${p.pay > 0 ? `<span class="res hit">${p.pay}円</span>` : `<span class="res miss">はずれ</span>`}</span></button>`).join("")}</div>`;
     }).join("");
-    const note = `<p class="note">締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
+    const note = `<p class="note">締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。◎は1.05以上(11/15以前の記録にも同じ基準で付け直しています)。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
     return `<div style="display:grid;gap:14px">${sum}${n ? byDay : `<p class="empty">まだ結果の出た候補がありません。</p>`}${note}</div>`;
   }
 

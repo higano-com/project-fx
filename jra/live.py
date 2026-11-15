@@ -28,7 +28,8 @@ LIVE = ROOT / "data" / "jra" / "live"
 HTML = ROOT / "data" / "jra" / "html"
 SITE = ROOT / "data" / "jra_site"
 PID = ROOT / "data" / "jra" / "live.pid"
-EV_TH = 1.0  # 複勝期待値がこれ以上なら「候補」
+EV_TH = 1.0  # 複勝期待値がこれ以上なら「候補」(成績は記録する)
+EV_TOP = 1.05  # これ以上は「◎本命候補」。7・8・11月の検証で、前半・後半とも回収100%を超えたのはここから上だけ
 SNAP_BEFORE = (20, 5)  # 発走の何分前にオッズを取るか
 RESULT_AFTER = 12  # 発走の何分後から結果を取りにいくか
 
@@ -214,7 +215,7 @@ def evaluate(snap: dict) -> list[dict]:
     for h, qi, pi in zip(hs, q, pt):
         ev = pi * h["fmin"] if h["fmin"] else None
         out.append({**h, "p_win": round(qi, 4), "p_top": round(pi, 4), "ev": round(ev, 3) if ev else None,
-                    "pick": bool(ev and ev >= EV_TH)})
+                    "pick": bool(ev and ev >= EV_TH), "top": bool(ev and round(ev, 2) >= EV_TOP)})  # 画面の表示(小数2桁)と合わせる
     return out
 
 
@@ -258,7 +259,7 @@ def day_data(d: str) -> dict:
                 if res:
                     rr = res.get(str(h["no"]), {})
                     pay = rr.get("fuku_pay", 0) if not rr.get("status") else 100  # 取消は返還
-                picks.append({"no": h["no"], "name": h["name"], "ev": h["ev"], "fmin": h["fmin"],
+                picks.append({"no": h["no"], "name": h["name"], "ev": h["ev"], "top": h["top"], "fmin": h["fmin"],
                               "fmax": h["fmax"], "tan": h["tan"], "p_top": h["p_top"], "pay": pay,
                               "at": dec["at"], "label": dec["label"]})
         races.append({**{k: r[k] for k in ("rid", "venue", "race_no", "post")},
