@@ -59,6 +59,19 @@ def race_info(page: str) -> dict:
     return info, tb
 
 
+def refunds(rp: str) -> list[dict]:
+    """払戻金の表(単勝〜3連単)。[{kind: "単勝", lines: [{num: "7", yen: 700, pop: 3}, ...]}, ...]"""
+    area = rp[rp.find('class="refund_area'):]
+    out = []
+    for kind, dd in re.findall(r"<dt>(.*?)</dt>\s*<dd>(.*?)</dd>", area, flags=re.S):
+        lines = []
+        for num, yen, pop in re.findall(r'class="num">(.*?)</div>\s*<div class="yen">([\d,]+).*?class="pop">(\d+)', dd, flags=re.S):
+            lines.append({"num": re.sub(r"<[^>]+>|\s", "", num), "yen": int(yen.replace(",", "")), "pop": int(pop)})
+        if lines:
+            out.append({"kind": re.sub(r"<[^>]+>|\s", "", kind), "lines": lines})
+    return out
+
+
 def parse_race(rid: str) -> list[dict]:
     rp = gzip.open(HTML / f"{rid}_r.html.gz", "rt", encoding="utf-8").read()
     op = gzip.open(HTML / f"{rid}_o.html.gz", "rt", encoding="utf-8").read()

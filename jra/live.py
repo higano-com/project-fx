@@ -248,6 +248,8 @@ def day_data(d: str) -> dict:
         dec = decision_snap(d, rid)
         rf = day_dir(d) / f"result_{rid}.json"
         res = json.loads(rf.read_text()) if rf.exists() else None
+        hf = HTML / f"{rid}_r.html.gz"
+        pays = P.refunds(gzip.open(hf, "rt", encoding="utf-8").read()) if res and hf.exists() else []
         rows = evaluate(snap) if snap else []
         picks = []
         for h in (evaluate(dec) if dec else []):
@@ -262,7 +264,7 @@ def day_data(d: str) -> dict:
         races.append({**{k: r[k] for k in ("rid", "venue", "race_no", "post")},
                       "name": (snap or {}).get("name", ""), "course": (snap or {}).get("course", ""),
                       "at": (snap or {}).get("at"), "label": (snap or {}).get("label"),
-                      "n": len((snap or {}).get("horses", [])), "horses": rows, "result": res, "picks": picks})
+                      "n": len((snap or {}).get("horses", [])), "horses": rows, "result": res, "pays": pays, "picks": picks})
     return {"date": d, "races": races}
 
 

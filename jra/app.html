@@ -73,6 +73,15 @@ button { font: inherit; color: inherit; }
 .rhead .big small { font-size: 1rem; }
 .rhead .info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 10em; }
 .rhead .info b { font-size: 1.05rem; } .rhead .info span { color: var(--muted); font-size: .85rem; }
+.rhead .info .rn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pays { border-radius: 10px; background: var(--accent-soft); padding: 4px 10px; }
+.pay { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto 4.6em; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid #0000000d; font-size: .85rem; }
+.pay:first-child { border-top: 0; }
+.pay .k { font-weight: 700; color: var(--accent); font-size: .78rem; }
+.pay .c { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.pay .c .arrow { color: var(--muted); font-size: .7rem; padding: 0 1px; }
+.pay .y { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.pay .p { color: var(--muted); font-size: .7rem; text-align: right; }
 .pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .pill.value { background: var(--gold); color: #fff; } .pill.closed { background: var(--line); color: var(--muted); }
 .pill.hit { background: var(--good-soft); color: var(--good); } .pill.miss { background: var(--line); color: var(--muted); }
@@ -246,9 +255,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     if (res) pill = ps.length ? (ps.some((p) => p.pay > 0) ? `<span class="pill hit">候補的中</span>` : `<span class="pill miss">候補はずれ</span>`) : `<span class="pill closed">確定</span>`;
     else if (ps.length) pill = `<span class="pill value">候補${ps.length}頭</span>`;
     let resLine = "";
-    if (res) {
-      const top = Object.entries(res).filter(([, v]) => v.finish && v.finish <= 3).sort((a, b) => a[1].finish - b[1].finish);
-      resLine = `<div class="result"><span class="t">結果</span>${top.map(([no, v]) => `${uma(+no, r.n, true)}<span class="num" style="font-size:.8rem;font-weight:700">${v.fuku_pay ? v.fuku_pay + "円" : ""}</span>`).join('<span class="arrow">›</span>')}<span style="margin-left:auto;font-size:.7rem;color:var(--muted)">複勝払戻</span></div>`;
+    if (res && r.pays && r.pays.length) {
+      const combo = (kind, num) => num.split("-").map((x) => kind === "枠連" ? `<span class="uma sm W${x}">${x}</span>` : uma(+x, r.n, true)).join('<span class="arrow">' + (kind === "馬単" || kind === "3連単" ? "›" : "-") + "</span>");
+      resLine = `<div class="pays">${r.pays.map((k) => k.lines.map((l, i) => `<div class="pay">
+        <span class="k">${i ? "" : esc(k.kind)}</span><span class="c">${combo(k.kind, l.num)}</span>
+        <span class="y">${l.yen.toLocaleString()}円</span><span class="p">${l.pop}番人気</span></div>`).join("")).join("")}</div>`;
     }
     const maxp = Math.max(...r.horses.map((h) => h.p_top || 0), 0.01);
     const rows = r.horses.map((h) => {
@@ -261,8 +272,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
         <div class="ev"><b>${h.ev != null ? h.ev.toFixed(2) : "-"}</b><small>期待値</small></div></div>`;
     }).join("");
     return `<div class="card">
-      <div class="rhead"><div class="big">${r.race_no}<small>R</small></div>
-        <div class="info"><b>${esc(r.venue)} ${esc(r.post)}発走</b><span>${esc(r.name)}</span><span>${esc(r.course)}</span></div>${pill}</div>
+      <div class="rhead"><div class="info"><b>${esc(r.venue)}${r.race_no}R ・ ${esc(r.post)}発走 ・ ${esc(r.course)}</b><span class="rn">${esc(r.name)}</span></div>${pill}</div>
       ${resLine}
       ${r.horses.length ? `<div class="horses">${rows}</div>` : `<p class="empty">まだオッズがありません。</p>`}
       <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補</p></div>`;
