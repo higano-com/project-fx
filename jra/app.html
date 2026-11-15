@@ -1,29 +1,19 @@
 <title>中央競馬 複勝AI</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 /* レイアウト: 上に日付と更新、場チップとレース番号、真ん中に1レースを大きく、下にタブバー。芝の緑と枠の8色が主役(ボートAIと同じ作り) */
 :root {
-  --bg: #eff4ee; --surface: #ffffff; --fg: #14241a; --muted: #5d6e62; --line: #d5e0d6;
+  --bg: #ffffff; --surface: #ffffff; --fg: #14241a; --muted: #5d6e62; --line: #d5e0d6;
   --accent: #1d6b3c; --accent-fg: #ffffff; --accent-soft: #dcede1;
   --hot: #c2410c; --hot-soft: #fde7da; --good: #1d6b3c; --good-soft: #dcefe2;
   --bad: #9b1c1c; --bad-soft: #fbe2e2; --nav: #ffffffee; --gold: #a16207; --gold-soft: #fbf0cf;
   --w1: #ffffff; --w1-fg: #111; --w2: #1c1c1c; --w2-fg: #fff; --w3: #e60012; --w3-fg: #fff; --w4: #0068b7; --w4-fg: #fff;
   --w5: #ffe100; --w5-fg: #111; --w6: #00984a; --w6-fg: #fff; --w7: #f39800; --w7-fg: #111; --w8: #f29ec0; --w8-fg: #111;
-  --display: "Dela Gothic One", "Hiragino Kaku Gothic StdN", "Yu Gothic", sans-serif;
+  --display: var(--body);
   --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
   --navh: 64px; color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0c1610; --surface: #13221a; --fg: #e5efe7; --muted: #93a99a; --line: #24382b;
-  --accent: #6fcf8f; --accent-fg: #0c1610; --accent-soft: #173323; --hot: #fb923c; --hot-soft: #3a2316;
-  --good: #6fcf8f; --good-soft: #15322a; --bad: #f87171; --bad-soft: #3a1717; --nav: #13221aee;
-  --gold: #eab308; --gold-soft: #3a3014; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #0c1610; --surface: #13221a; --fg: #e5efe7; --muted: #93a99a; --line: #24382b;
-  --accent: #6fcf8f; --accent-fg: #0c1610; --accent-soft: #173323; --hot: #fb923c; --hot-soft: #3a2316;
-  --good: #6fcf8f; --good-soft: #15322a; --bad: #f87171; --bad-soft: #3a1717; --nav: #13221aee;
-  --gold: #eab308; --gold-soft: #3a3014; color-scheme: dark; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
@@ -39,7 +29,7 @@ button { font: inherit; color: inherit; }
 .btn:focus-visible, select:focus-visible, nav.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 /* ヘッダー */
 .top { display: flex; align-items: center; gap: 10px; }
-.top h1 { font-family: var(--display); font-weight: 400; font-size: 1.35rem; margin: 0; line-height: 1.2; }
+.top h1 { font-family: var(--display); font-weight: 700; font-size: 1.35rem; margin: 0; line-height: 1.2; }
 .top .tag { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--gold-soft); color: var(--gold); }
 .top select { margin-left: auto; font: inherit; font-weight: 700; font-size: .95rem; padding: 7px 30px 7px 12px; border-radius: 10px;
   border: 1px solid var(--line); background: var(--surface); color: var(--fg); appearance: none;
@@ -56,8 +46,6 @@ button { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px #0002; flex: none; }
 .uma.sm { width: 22px; height: 22px; font-size: .75rem; border-radius: 5px; }
 .W1 { background: var(--w1); color: var(--w1-fg); box-shadow: inset 0 0 0 1px #0004; } .W2 { background: var(--w2); color: var(--w2-fg); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .W2 { box-shadow: inset 0 0 0 1px #fff5; } }
-:root[data-theme="dark"] .W2 { box-shadow: inset 0 0 0 1px #fff5; }
 .W3 { background: var(--w3); color: var(--w3-fg); } .W4 { background: var(--w4); color: var(--w4-fg); }
 .W5 { background: var(--w5); color: var(--w5-fg); } .W6 { background: var(--w6); color: var(--w6-fg); }
 .W7 { background: var(--w7); color: var(--w7-fg); } .W8 { background: var(--w8); color: var(--w8-fg); }
@@ -71,7 +59,7 @@ button { font: inherit; color: inherit; }
 /* レース番号 */
 .rgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .rbtn { position: relative; text-align: center; padding: 3px 0 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); line-height: 1.15; }
-.rbtn b { display: block; font-family: var(--display); font-weight: 400; font-size: .95rem; }
+.rbtn b { display: block; font-family: var(--display); font-weight: 700; font-size: .95rem; }
 .rbtn span { font-size: .68rem; color: var(--muted); }
 .rbtn.done { opacity: .5; }
 .rbtn.next { border-color: var(--hot); box-shadow: inset 0 0 0 1px var(--hot); }
@@ -81,7 +69,7 @@ button { font: inherit; color: inherit; }
 /* レース詳細 */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .rhead { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
-.rhead .big { font-family: var(--display); font-size: 2.1rem; line-height: 1; }
+.rhead .big { font-family: var(--display); font-weight: 700; font-size: 2.1rem; line-height: 1; }
 .rhead .big small { font-size: 1rem; }
 .rhead .info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 10em; }
 .rhead .info b { font-size: 1.05rem; } .rhead .info span { color: var(--muted); font-size: .85rem; }
@@ -103,7 +91,7 @@ button { font: inherit; color: inherit; }
 .horse .fin { font-weight: 700; font-size: .75rem; padding: 0 6px; border-radius: 999px; background: var(--line); color: var(--muted); }
 .horse .fin.top { background: var(--good-soft); color: var(--good); }
 .horse .ev { text-align: right; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.horse .ev b { font-family: var(--display); font-weight: 400; font-size: 1.15rem; }
+.horse .ev b { font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
 .horse .ev small { display: block; font-size: .65rem; color: var(--muted); }
 .horse.pick .ev b { color: var(--gold); }
 .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 3px; overflow: hidden; }
@@ -117,14 +105,14 @@ button { font: inherit; color: inherit; }
 .evrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
 .evrow .n { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .evrow .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.evrow .right b { font-family: var(--display); font-weight: 400; font-size: 1.25rem; color: var(--gold); line-height: 1.1; }
+.evrow .right b { font-family: var(--display); font-weight: 700; font-size: 1.25rem; color: var(--gold); line-height: 1.1; }
 .res { font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
 .res.hit { background: var(--good-soft); color: var(--good); } .res.miss { background: var(--line); color: var(--muted); }
 /* 成績タブ */
 .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 .stat span { font-size: .75rem; color: var(--muted); font-weight: 700; }
-.stat b { font-family: var(--display); font-weight: 400; font-size: 1.45rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat b { font-family: var(--display); font-weight: 700; font-size: 1.45rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat b.plus { color: var(--good); } .stat b.minus { color: var(--bad); }
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .list h3 { margin: 0; padding: 7px 12px; font-size: .85rem; background: var(--accent-soft); color: var(--accent); display: flex; gap: 8px; }
