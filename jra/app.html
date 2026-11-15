@@ -77,10 +77,10 @@ button { font: inherit; color: inherit; }
 .rhead .info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 10em; }
 .rhead .info b { font-size: 1.05rem; } .rhead .info span { color: var(--muted); font-size: .85rem; }
 .rhead .info .rn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pays { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.pays { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 @media (min-width: 560px) { .pays { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.kb { background: var(--accent-soft); border-radius: 8px; padding: 3px 6px 4px; min-width: 0; }
-.kb.wide { grid-column: span 2; }
+.kb { background: var(--accent-soft); border-radius: 8px; padding: 3px 5px 4px; min-width: 0; }
+.kb.wide { grid-column: auto; }
 @media (min-width: 560px) { .kb.wide { grid-column: auto; } }
 .kb .uma.sm { width: 19px; height: 19px; font-size: .68rem; border-radius: 4px; }
 .kb .k { font-weight: 700; color: var(--accent); font-size: .72rem; }
