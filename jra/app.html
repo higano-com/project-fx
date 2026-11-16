@@ -218,11 +218,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           ${r === nx ? `<span class="pill value">次</span>` : ""}<span class="go">›</span></button>
         ${ps.map((h) => `<div class="evrow">${uma(h.no, r.n)}
           <div style="min-width:0">${mark(h)}<b>${esc(h.name)}</b>
-            <div class="n">${h.top ? "" : "記録のみ ・ "}複勝${h.fmin}〜${h.fmax} ・ 3着内${pct(h.p_top)} ・ 単勝${h.tan}${(h.label || r.label) === "朝" ? " ・ 朝の参考値" : ""}</div></div>
+            <div class="n">複勝${h.fmin}〜${h.fmax} ・ 3着内${pct(h.p_top)} ・ 単勝${h.tan}${(h.label || r.label) === "朝" ? " ・ 朝の参考値" : ""}</div></div>
           <div class="right"><b>${h.ev.toFixed(2)}</b>${resTag(h)}</div></div>`).join("")}
       </div>`;
     };
-    const note = `<p class="note">期待値 = 3着内の確率 × 複勝オッズの下限。1.0以上を表示(検証中)。<b>◎ = 1.05以上の本命候補</b>(過去の検証で、前半・後半とも回収100%を超えたのはここから上だけ)。1.00〜1.05は記録のみ。</p>`;
+    const note = `<p class="note">期待値 = 3着内の確率 × 複勝オッズの下限。1.0以上を表示。<b>約1900レースの検証では、期待値が高い馬ほど回収率は上がる(0.7未満は約70% → 0.9以上で約100%)が、100%を安定して超える区切りは見つかっていない</b>。「普通に買うより損しにくい馬」の目安として見てください。</p>`;
     let html = "";
     if (live.length) html += `<div><p class="label">これから</p><div style="display:grid;gap:6px">${live.map(card).join("")}</div></div>`;
     if (done.length) html += `<div><p class="label">終わったレース</p><div style="display:grid;gap:6px">${done.map(card).join("")}</div></div>`;
@@ -255,7 +255,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     const ps = picksOf(r);
     let pill = "";
     if (res) pill = ps.length ? (ps.some((p) => p.pay > 0) ? `<span class="pill hit">候補的中</span>` : `<span class="pill miss">候補はずれ</span>`) : `<span class="pill closed">確定</span>`;
-    else if (ps.length) pill = `<span class="pill value">${ps.some((p) => p.top) ? "◎あり ・ " : ""}候補${ps.length}頭</span>`;
+    else if (ps.length) pill = `<span class="pill value">候補${ps.length}頭</span>`;
     let resLine = "";
     if (res && r.pays && r.pays.length) {
       const rows = ["単勝", "複勝", "枠連", "馬連", "馬単", "ワイド", "3連複", "3連単"].map((n) => r.pays.find((k) => k.kind === n)).filter(Boolean)
@@ -277,7 +277,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <div class="rhead"><div class="info"><b>${esc(r.venue)}${r.race_no}R ・ ${esc(r.post)}発走 ・ ${esc(r.course)}</b><span class="rn">${esc(r.name)}</span></div>${pill}</div>
       ${resLine}
       ${r.horses.length ? `<div class="horses">${rows}</div>` : `<p class="empty">まだオッズがありません。</p>`}
-      <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補、◎は1.05以上の本命候補</p></div>`;
+      <p class="note">${oddsNote(r.label, r.at)} ・ 金色の行が期待値1.0以上の候補</p></div>`;
   }
 
   // ---------- 成績タブ ----------
@@ -293,7 +293,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
       <div class="stat"><span>的中</span><b>${hit}点${n ? ` <small style="font-size:.8rem">(${Math.round(hit / n * 100)}%)</small>` : ""}</b></div></div></div>`;
     };
     const n = all.length;
-    const sum = box(all.filter((p) => p.top), "◎ 本命候補(期待値1.05以上)") + box(all, "候補全部(期待値1.00以上)");
+    const sum = box(all, "候補(期待値1.00以上)");
     const byDay = days.slice().reverse().map((d) => {
       const ps = all.filter((p) => p.date === d.date);
       if (!ps.length) return "";
@@ -303,7 +303,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
           <span class="nm">${mark(p)}${esc(p.name)} <span style="color:var(--muted);font-size:.75rem">期待値${p.ev.toFixed(2)}</span></span>
           <span class="y">${p.pay > 0 ? `<span class="res hit">${p.pay}円</span>` : `<span class="res miss">はずれ</span>`}</span></button>`).join("")}</div>`;
     }).join("");
-    const note = `<p class="note">締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。◎は1.05以上(11/15以前の記録にも同じ基準で付け直しています)。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
+    const note = `<p class="note">締切5分前のオッズで期待値1.0以上だった複勝を、各100円買ったとしたときの記録です。11/16に◎本命候補(1.05以上)は検証で再現しなかったのでやめました。数百点たまるまでは偶然の差が大きいので、回収率は参考程度に見てください。</p>`;
     return `<div style="display:grid;gap:14px">${sum}${n ? byDay : `<p class="empty">まだ結果の出た候補がありません。</p>`}${note}</div>`;
   }
 
