@@ -68,6 +68,8 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .st .cg{text-align:right;font-weight:700;white-space:nowrap}
 .st .br{height:6px;background:#12263d;border-radius:4px;overflow:hidden}
 .st .br div{height:6px;border-radius:4px}
+.st .seg{margin:4px 0 6px}
+.st .seg button{padding:7px 2px;font-size:13px;min-width:0}
 .st ul{margin:6px 0 4px;padding-left:18px}
 .st li{margin:3px 0}
 .lv2{font-size:13px;color:var(--mut);margin-top:5px;line-height:1.5}
@@ -438,39 +440,45 @@ const SD={ag:3,au:1,pt:1,cu:3,oil:2,dxy:2,jpy:2,eur:4,tnx:2};
 const COM=["ag","au","pt","cu","oil"], FX=["dxy","jpy","eur","tnx"];
 const col=v=>Math.abs(v)<0.005?"var(--tx)":v>0?"var(--up)":"var(--dn)";
 const ck=t=>`<span class="ck">${t}</span>`;
+// 期間ごとの「ほぼ横ばい」の幅（u：上げ下げ％　g：銀と金の差％　t：金利　mx：棒の最小の幅　tb：金利の棒の幅）
+const SMODE=[["m5","5分"],["m15","15分"],["h1","1時間"],["h4","4時間"],["d1","前日"]];
+const STH={m5:{u:.02,g:.02,t:.005,mx:.05,tb:.01},m15:{u:.03,g:.03,t:.01,mx:.08,tb:.02},h1:{u:.05,g:.05,t:.01,mx:.15,tb:.03},h4:{u:.05,g:.08,t:.02,mx:.2,tb:.05},d1:{u:.05,g:.1,t:.02,mx:.3,tb:.1}};
+let SM="d1",SDATA=null;try{const v=localStorage.getItem("stMode");if(STH[v])SM=v}catch(_){}
 function renderSt(d){
- const M={};for(const x of d.items)M[x.k]=x;
- // 銀は一番上の値段（現物）にそろえる。前日の値も同じだけずらす
- if(M.ag&&isFinite(NOWP)&&Math.abs(NOWP-M.ag.p)<1.5){const o=NOWP-M.ag.p;M.ag.p=NOWP;M.ag.prev+=o}
- for(const x of d.items){x.c=x.k==="tnx"?x.p-x.prev:(x.p/x.prev-1)*100}
+ SDATA=d;const T=STH[SM],M={};
+ for(const x0 of d.items){const ref=SM==="d1"?x0.prev:(x0.r||{})[SM];if(!ref)continue;
+  const x={...x0,ref};x.c=x.k==="tnx"?x.p-ref:(x.p/ref-1)*100;M[x.k]=x}
+ // 銀の値段の表示だけ、一番上の値段（現物）にそろえる。動き（％）は他と同じ先物で比べる
+ const showP=k=>k==="ag"&&isFinite(NOWP)&&Math.abs(NOWP-M.ag.p)<1.5?NOWP:M[k].p;
  const com=COM.filter(k=>M[k]).sort((a,b)=>M[b].c-M[a].c), fx=FX.filter(k=>M[k]);
- const mx=Math.max(0.3,...[...com,...fx].filter(k=>k!=="tnx").map(k=>Math.abs(M[k].c)));
- const row=(k,g)=>{const x=M[k],v=x.c,w=k==="tnx"?Math.min(100,Math.abs(v)/0.1*100):Math.abs(v)/mx*100;
-  return `<div class="sr${g?" gap":""}"><span class="nm">${x.n}</span><span class="pv">${x.p.toFixed(SD[k])}</span><span class="cg" style="color:${col(v)}">${sgn(v)}${k==="tnx"?"":"%"}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${col(v)}"></div></span></div>`};
- let h=com.map(k=>row(k,0)).join("")+fx.map((k,i)=>row(k,i===0)).join("");
+ const mx=Math.max(T.mx,...[...com,...fx].filter(k=>k!=="tnx").map(k=>Math.abs(M[k].c)));
+ const row=(k,g)=>{const x=M[k],v=x.c,w=k==="tnx"?Math.min(100,Math.abs(v)/T.tb*100):Math.abs(v)/mx*100;
+  return `<div class="sr${g?" gap":""}"><span class="nm">${x.n}</span><span class="pv">${showP(k).toFixed(SD[k])}</span><span class="cg" style="color:${col(v)}">${sgn(v)}${k==="tnx"?"":"%"}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${col(v)}"></div></span></div>`};
+ let h=`<div class="seg" id="stM">${SMODE.map(([k,n])=>`<button type="button" data-m="${k}" class="${k===SM?"on":""}">${n}</button>`).join("")}</div>`;
+ h+=com.length||fx.length?com.map(k=>row(k,0)).join("")+fx.map((k,i)=>row(k,i===0)).join(""):'<div class="lv2">この期間の値段がありません</div>';
  const L=[], a=M.ag;
  const num=v=>`<b style="color:${col(v)}">${sgn(v)}%</b>`;
- const up=v=>v>=0.05, dn=v=>v<=-0.05;
+ const up=v=>v>=T.u, dn=v=>v<=-T.u;
  if(a&&M.au){const g=a.c-M.au.c;
-  L.push(Math.abs(g)<0.1?ck("銀と金はほぼ同じ動き"):ck(`銀が金より${g>0?"強い":"弱い"}`)+" "+ck(`差 ${num(g)}`));
-  L.push(ck(`金銀比 ${(M.au.p/a.p).toFixed(1)}`)+" "+ck(`前日 ${(M.au.prev/a.prev).toFixed(1)}`))}
- const vs=(x,nm,lbl)=>{if(!a||!x)return;const u=x.c;
+  L.push(Math.abs(g)<T.g?ck("銀と金はほぼ同じ動き"):ck(`銀が金より${g>0?"強い":"弱い"}`)+" "+ck(`差 ${num(g)}`));
+  L.push(ck(`金銀比 ${(M.au.p/a.p).toFixed(1)}`)+" "+ck(`${SM==="d1"?"前日":SMODE.find(x=>x[0]===SM)[1]+"前"} ${(M.au.ref/a.ref).toFixed(1)}`))}
+ const vs=(x,nm)=>{if(!a||!x)return;const u=x.c;
   if(up(u)&&up(a.c))L.push(ck(`${nm}が上昇なのに銀も上昇`)+" "+ck(`<b>銀が強い</b>`));
   else if(dn(u)&&dn(a.c))L.push(ck(`${nm}が下落なのに銀も下落`)+" "+ck(`<b>銀が弱い</b>`));
-  else if(up(u)&&dn(a.c))L.push(ck(`${nm}は上昇 銀は下落`)+" "+ck(`${lbl}どおり`));
-  else if(dn(u)&&up(a.c))L.push(ck(`${nm}は下落 銀は上昇`)+" "+ck(`${lbl}どおり`));
+  else if(up(u)&&dn(a.c))L.push(ck(`${nm}は上昇 銀は下落`)+" "+ck(`いつもどおり`));
+  else if(dn(u)&&up(a.c))L.push(ck(`${nm}は下落 銀は上昇`)+" "+ck(`いつもどおり`));
   else L.push(ck(`${nm}はほぼ横ばい`))};
- vs(M.jpy,"ドル円","いつも");vs(M.dxy,"ドル指数","いつも");
+ vs(M.jpy,"ドル円");vs(M.dxy,"ドル指数");
  if(a&&M.tnx){const t=M.tnx.c;
-  if(t>=0.02&&up(a.c))L.push(ck("金利が上昇なのに銀も上昇")+" "+ck("<b>銀が強い</b>"));
-  else if(t<=-0.02&&dn(a.c))L.push(ck("金利が低下なのに銀も下落")+" "+ck("<b>銀が弱い</b>"))}
+  if(t>=T.t&&up(a.c))L.push(ck("金利が上昇なのに銀も上昇")+" "+ck("<b>銀が強い</b>"));
+  else if(t<=-T.t&&dn(a.c))L.push(ck("金利が低下なのに銀も下落")+" "+ck("<b>銀が弱い</b>"))}
  if(a&&M.cu){const c=M.cu.c;
   if(up(c)&&up(a.c))L.push(ck("銅も上昇")+" "+ck("工業金属に買い"));
   else if(dn(c)&&dn(a.c))L.push(ck("銅も下落")+" "+ck("工業金属が売られている"));
-  else if(Math.abs(c-a.c)>=0.3)L.push(ck(`銅とは逆の動き`))}
+  else if(Math.abs(c-a.c)>=T.g*3)L.push(ck(`銅とは逆の動き`))}
  if(a&&M.jpy)L.push(ck(`円建ての銀 ${num(a.c+M.jpy.c)}`));
  h+=`<ul>${L.map(x=>`<li>${x}</li>`).join("")}</ul>`;
- h+=`<div class="lv2">${new Date(d.t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 前日比</div>`;
+ h+=`<div class="lv2">${new Date(d.t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得 ${SM==="d1"?"前日比":SMODE.find(x=>x[0]===SM)[1]+"前から"}</div>`;
  document.getElementById("st").innerHTML=h;
 }
 async function strength(){
@@ -478,6 +486,8 @@ async function strength(){
  try{const r=await fetch("api/strength?_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!d.items||!d.items.length)throw 0;renderSt(d)}
  catch(e){el.innerHTML='<div class="lv2">取れませんでした</div>'}
 }
+document.getElementById("st").addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#stM button");if(!b||!SDATA)return;
+ SM=b.dataset.m;try{localStorage.setItem("stMode",SM)}catch(_){}renderSt(SDATA)});
 document.getElementById("stB").onclick=()=>{const el=document.getElementById("st"),b=document.getElementById("stB");
  el.hidden=!el.hidden;b.classList.toggle("on",!el.hidden);if(!el.hidden){el.innerHTML='<div class="lv2">取得中</div>';strength()}};
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#askC");if(!a)return;
