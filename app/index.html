@@ -70,7 +70,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .st .br div{height:6px;border-radius:4px}
 .st .seg{margin:4px 0 6px}
 .st .seg button{padding:7px 2px;font-size:13px;min-width:0}
-.st .sag{font-size:15px;padding:4px 0 2px}
+.st .sag{font-size:15px;padding:4px 0 6px;border-bottom:1px solid var(--mut)}
 .st .sh{font-size:12px;padding:2px 0 4px;border-bottom:1px solid var(--mut)}
 .st ul{margin:6px 0 4px;padding-left:18px}
 .st li{margin:3px 0}
@@ -466,7 +466,7 @@ function renderSt(d){
   return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv">${CN[k]&&CN[k][2]?"":showP(k).toFixed(SD[k])}</span><span class="cg" style="color:${cc}">${tiny?"ほぼ同じ":sgn(v)+(k==="tnx"?"":"%")}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${cc}"></div></span></div>`};
  let h=`<div class="seg" id="stM">${SMODE.map(([k,n])=>`<button type="button" data-m="${k}" class="${k===SM?"on":""}">${n}</button>`).join("")}</div>`;
  const pn=SM==="d1"?"前日から":SMODE.find(x=>x[0]===SM)[1]+"前から";
- if(rel)h+=`<div class="sag"><b>銀</b> ${showP("ag").toFixed(3)} <b style="color:${col(M.ag.c)}">${sgn(M.ag.c)}%</b> ${pn}</div><div class="sh">銀と比べて <span style="color:var(--up)">＋は銀より強い</span> <span style="color:var(--dn)">−は弱い</span></div>`;
+ if(rel)h+=`<div class="sag"><b>銀</b> ${showP("ag").toFixed(3)} <b style="color:${col(M.ag.c)}">${sgn(M.ag.c)}%</b> ${pn}</div>`;
  h+=com.length||fx.length?com.map(k=>row(k,0)).join("")+fx.map((k,i)=>row(k,i===0)).join("")+cty.map((k,i)=>row(k,i===0)).join(""):'<div class="lv2">この期間の値段がありません</div>';
  const L=[], a=M.ag;
  const num=v=>`<b style="color:${col(v)}">${sgn(v)}%</b>`;
