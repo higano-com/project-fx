@@ -85,8 +85,8 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">47.59</b><button id="lvR" type="button">更新</button></div>
-  <div class="lv2" id="lvS">20:41時点の値（固定）</div>
+  <div class="lv1"><b id="lvP">47.61</b><button id="lvR" type="button">更新</button></div>
+  <div class="lv2" id="lvS">20:42時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -176,7 +176,7 @@ const CINFO={
  oil:"原油は「在庫統計」「OPEC+」「地政学」で動きます。米国の金融指標の影響は銀・金より小さめです。"
 };
 const POS=[[50,51.535],[5,51.281],[35,51.586],[200,47.116]];
-let JPY=159.15, NOWP=47.59;
+let JPY=159.2, NOWP=47.61;
 // 売り時・買い時の目安（11/17 18:20 時点の分析）
 const LV=[
  {p:49.0,k:"sell",t:"売り（利確）",d:"11/13の安値付近。残りを減らす候補"},
@@ -211,10 +211,10 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/17 20:41）</b><br>当時の値 47.59（ドル円159.15）。19時台に47.30付近で下げ止まってから5分足の安値を切り上げ、三角もち合いの上限47.55を上に抜けてきた。ただし1時間足の確定はまだで、すぐ上には15時の戻り高値47.70がある。22:30の小売売上高まであと約2時間。",
+ all:{now:"<b>クロードの分析（11/17 20:42）</b><br>当時の値 47.61（ドル円159.20）。三角もち合いの上限47.55を上に抜け、5分足RSIは66まで上がって買いの勢いが強まっている。ただし1時間足の確定はまだで、すぐ上には15時の戻り高値47.70。22:30の小売売上高は予想+0.2%（前月+0.8%）で、12月の利上げはすでに約9割織り込み済み。",
   sc:[
    {n:"上放れ継続：47.70突破→47.99→建値48.49",p:40,c:"#ff5a5a",to:[47.70,47.99,48.489],
-    why:["もち合いの上限47.55を上抜け。5分足RSIは58で買いがやや優勢","日足RSIは31で売られすぎ圏に近く、下げ過ぎの戻りが出やすい","小売売上高が弱ければ利上げ観測が和らぎ追い風"],
+    why:["もち合いの上限47.55を上抜け。5分足RSIは66で買いが優勢","日足RSIは31で売られすぎ圏に近く、下げ過ぎの戻りが出やすい","利上げは約9割織り込み済みで、小売売上高が予想（+0.2%）を下回れば戻りが出やすい"],
     sign:"1時間足が47.55の上で確定→47.70も超える",
     plan:[
      {p:47.70,k:"hold",t:"1時間足で上抜け確定→損切りを上げる",a:"200枚の損切りを47.05→47.30へ。切られても200枚は約+5.9万"},
@@ -231,7 +231,7 @@ const TF={
      {p:47.27,k:"buy",t:"下ヒゲで止まれば押し目",a:"レンジの下限。ここで反発すれば200枚はそのまま持つ"},
      {p:47.05,k:"stop",t:"割れたら200枚を手じまい",a:"建値47.12のすぐ下。約-2.1万で撤退"}]},
    {n:"下放れ：47.27割れ→47.05→46.52",p:25,c:"#3fb6ff",to:[47.27,47.05,46.523],
-    why:["日足は高値・安値とも切り下がる下降トレンドが継続中","FRBが利上げに前向きな姿勢を示しており、銀には逆風","小売売上高が強ければドル高・金利上昇で一段安"],
+    why:["日足は高値・安値とも切り下がる下降トレンドが継続中","FRBが利上げに前向きな姿勢を示しており、銀には逆風","小売売上高が予想を大きく上回ると、0.5%利上げ観測が出てドル高・一段安"],
     sign:"1時間足が47.27の下で確定。47.05割れで加速",
     plan:[
      {p:47.27,k:"hold",t:"1時間足で割れて確定→戻りを待つ",a:"200枚はまだ約+4.9万。47.27に戻れなければ次で切る"},
@@ -394,8 +394,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='20:41時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"20:41時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='20:42時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"20:42時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:48.0, lo=A?A.S[0]:47.3;
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
@@ -408,7 +408,7 @@ async function live(){
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,Date.now(),true);renderScen();}
- catch(e){showLive(47.59,0,false);}
+ catch(e){showLive(47.61,0,false);}
  btn.textContent="更新";
 }
 document.getElementById("lvR").onclick=live;
