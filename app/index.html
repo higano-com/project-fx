@@ -439,7 +439,10 @@ const COM=["ag","au","pt","cu","oil"], FX=["dxy","jpy","eur","tnx"];
 const col=v=>Math.abs(v)<0.005?"var(--tx)":v>0?"var(--up)":"var(--dn)";
 const ck=t=>`<span class="ck">${t}</span>`;
 function renderSt(d){
- const M={};for(const x of d.items){x.c=x.k==="tnx"?x.p-x.prev:(x.p/x.prev-1)*100;M[x.k]=x}
+ const M={};for(const x of d.items)M[x.k]=x;
+ // 銀は一番上の値段（現物）にそろえる。前日の値も同じだけずらす
+ if(M.ag&&isFinite(NOWP)&&Math.abs(NOWP-M.ag.p)<1.5){const o=NOWP-M.ag.p;M.ag.p=NOWP;M.ag.prev+=o}
+ for(const x of d.items){x.c=x.k==="tnx"?x.p-x.prev:(x.p/x.prev-1)*100}
  const com=COM.filter(k=>M[k]).sort((a,b)=>M[b].c-M[a].c), fx=FX.filter(k=>M[k]);
  const mx=Math.max(0.3,...[...com,...fx].filter(k=>k!=="tnx").map(k=>Math.abs(M[k].c)));
  const row=(k,g)=>{const x=M[k],v=x.c,w=k==="tnx"?Math.min(100,Math.abs(v)/0.1*100):Math.abs(v)/mx*100;
@@ -457,7 +460,7 @@ function renderSt(d){
   else if(up(u)&&dn(a.c))L.push(ck(`${nm}は上昇 銀は下落`)+" "+ck(`${lbl}どおり`));
   else if(dn(u)&&up(a.c))L.push(ck(`${nm}は下落 銀は上昇`)+" "+ck(`${lbl}どおり`));
   else L.push(ck(`${nm}はほぼ横ばい`))};
- vs(M.jpy,"ドル円","いつもの動き");vs(M.dxy,"ドル指数","いつもの動き");
+ vs(M.jpy,"ドル円","いつも");vs(M.dxy,"ドル指数","いつも");
  if(a&&M.tnx){const t=M.tnx.c;
   if(t>=0.02&&up(a.c))L.push(ck("金利が上昇なのに銀も上昇")+" "+ck("<b>銀が強い</b>"));
   else if(t<=-0.02&&dn(a.c))L.push(ck("金利が低下なのに銀も下落")+" "+ck("<b>銀が弱い</b>"))}
