@@ -103,9 +103,9 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">47.68</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
+  <div class="lv1"><b id="lvP">47.67</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">23:35時点の値（固定）</div>
+  <div class="lv2" id="lvS">00:09時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -194,12 +194,14 @@ const CINFO={
  gold:"金は主に「金利・ドル」で動きます。利上げ観測が強まると下落、弱まると上昇しやすいです。",
  oil:"原油は「在庫統計」「OPEC+」「地政学」で動きます。米国の金融指標の影響は銀・金より小さめです。"
 };
-const POS=[[50,51.535],[5,51.281],[35,51.586],[200,47.116]];
-let JPY=159.33, NOWP=47.68;
+const POS=[[50,51.535],[5,51.281],[35,51.586],[200,47.116],[55,47.717]];
+// 小数3けたの値段（建値など）は3けたで出す
+const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
+let JPY=159.4, NOWP=47.67;
 // 売り時・買い時の目安（11/17 21:40 時点の分析）
 const LV=[
  {p:49.0,k:"sell",t:"売り（利確）",d:"11/13の安値付近。残りを減らす候補"},
- {p:48.489,k:"sell",t:"売り（建値で撤退）",d:"全体の建値。ナンピン分200枚を外す候補"},
+ {p:48.366,k:"sell",t:"売り（建値で撤退）",d:"全体の建値。200枚と買い増しの55枚を外す候補"},
  {p:48.05,k:"buy",t:"買い（上抜け確認後）",d:"今日の高値47.99を、1時間足で超えて確定し、押してきたところ"},
  {p:47.99,k:"sell",t:"売り（一部利確）",d:"今日の高値。21:45にここで跳ね返された"},
  {p:47.65,k:"buy",t:"買い（押し目）",d:"23時台に回復した線。押してここで止まれば押し目の候補"},
@@ -207,7 +209,7 @@ const LV=[
  {p:47.05,k:"stop",t:"損切り（200枚）",d:"割れたら200枚を手じまい。建値47.12のすぐ下"},
  {p:46.5,k:"stop",t:"損切り（全体）",d:"昨日の安値46.52割れ。全体の撤退ライン"}
 ];
-const BP0={m5:[47.80,47.45],h1:[47.99,47.27],h4:[47.99,46.81],d1:[49.00,46.52]};
+const BP0={m5:[47.80,47.60],h1:[47.88,47.27],h4:[47.99,46.81],d1:[49.00,46.52]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
  let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
@@ -224,7 +226,7 @@ function renderLv(){
  L.forEach((x,i)=>{
   if(!put&&x.p<p){h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;put=true}
   const c=x.k==="buy"?"var(--up)":"var(--dn)", d=x.p-p;
-  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span class="tx"><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.d)}</span><span class="ds">${d>=0?"+":""}${d.toFixed(2)}<br>${man(pl(x.p))}</span></div>`;
+  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${fx3(x.p)}</span><span class="tx"><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.d)}</span><span class="ds">${d>=0?"+":""}${d.toFixed(2)}<br>${man(pl(x.p))}</span></div>`;
  });
  if(!put)h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;
  document.getElementById("lvls").innerHTML=h;
@@ -234,29 +236,29 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/17 23:35）</b><br>当時の値 47.68（ドル円159.33）。23:15の鉱工業生産は-0.4%で、予想+0.1%を大きく下回った。設備稼働率も76.4%で予想より弱い。利上げの見方がやや後退し、銀は47.65を回復。今日の高値は47.99、安値は46.81。",
+ all:{now:"<b>クロードの分析（11/18 00:09）</b><br>当時の値 47.67（ドル円159.40）。建玉は345枚で、55枚を47.72で買い増し。全体の建値は48.366。23:40に47.88まで上げた後、押して47.66。今日の高値は47.99、安値は46.81。",
   sc:[
-   {n:"上抜け：47.99突破→建値48.49",p:40,c:"#ff5a5a",to:[47.99,48.489,49.0],
-    why:["鉱工業生産が予想を大きく下回り、利上げの見方がやや後退","47.27付近で2度止まり、下値は堅い","日足RSIは32で、売られすぎ圏に近い"],
+   {n:"上抜け：47.99突破→建値48.37",p:40,c:"#ff5a5a",to:[47.99,48.366,49.0],
+    why:["鉱工業生産が予想を大きく下回り、利上げの見方がやや後退","47.22で下げ止まり、23時台に47.88まで戻した","日足RSIは32で、売られすぎ圏に近い"],
     sign:"1時間足が47.99の上で確定",
     plan:[
-     {p:47.65,k:"hold",t:"上で確定→損切りを47.30へ",a:"200枚の損切りを上げる。切られても約+5.9万"},
-     {p:47.99,k:"sell",t:"200枚のうち100枚を利確",a:"今日の高値。約+13.9万を確定。残り100枚の損切りは47.65へ"},
-     {p:48.489,k:"sell",t:"残り100枚を利確",a:"全体の建値。約+21.9万を確定"},
-     {p:49.0,k:"hold",t:"90枚は持つ→損切りを48.40へ",a:"11/13の安値・急落前の節目"}]},
-   {n:"もち合い（47.65〜47.99）で様子見",p:35,c:"#f5b041",to:[47.65,47.99],
-    why:["47.99は21:45に跳ね返された今日の高値","1時間足RSIは49で中立","19日04:00のFOMC議事要旨を前に、大きく張りにくい"],
-    sign:"1時間足が47.65〜47.99の中で終わる",
+     {p:47.65,k:"hold",t:"上で確定→200枚の損切りを47.30へ",a:"切られても200枚は約+5.9万"},
+     {p:47.99,k:"sell",t:"200枚のうち100枚を利確",a:"今日の高値。約+13.9万。55枚は約+2.4万"},
+     {p:48.366,k:"sell",t:"残り100枚と55枚を利確する候補",a:"全体の建値。100枚は約+19.9万、55枚は約+5.7万"},
+     {p:49.0,k:"hold",t:"90枚は持つ→損切りを48.30へ",a:"11/13の安値・急落前の節目"}]},
+   {n:"もち合い（47.27〜47.99）で往復",p:35,c:"#f5b041",to:[47.27,47.99],
+    why:["23:40の47.88で上ヒゲ。今日の高値47.99の手前で止まった","1時間足RSIは50前後で中立","19日04:00のFOMC議事要旨を前に、大きく張りにくい"],
+    sign:"1時間足が47.27〜47.99の中で終わる",
     plan:[
      {p:47.99,k:"sell",t:"200枚のうち100枚を利確",a:"今日の高値。約+13.9万を確定"},
-     {p:47.65,k:"hold",t:"上で確定→損切りを47.30へ",a:"200枚の損切りを上げる。切られても約+5.9万"},
-     {p:47.27,k:"buy",t:"下ヒゲなら押し目",a:"2度止まった支え。200枚はそのまま持つ"}]},
+     {p:47.65,k:"hold",t:"上で確定→200枚の損切りを47.30へ",a:"切られても200枚は約+5.9万"},
+     {p:47.27,k:"buy",t:"下ヒゲなら押し目",a:"2度止まった支え。55枚は約-3.9万の含み損"}]},
    {n:"戻り売り：47.27割れ→47.05→46.81",p:25,c:"#3fb6ff",to:[47.27,47.05,46.81],
-    why:["米10年金利は5.145%で、高いまま","日足は高値・安値とも切り下がり、下降トレンドが継続中","47.99で2度目も止められると、戻り売りが出やすい"],
+    why:["米10年金利は5.145%で、高いまま","日足は高値・安値とも切り下がり、下降トレンドが継続中","47.99の手前で2度止められ、戻り売りが出やすい"],
     sign:"1時間足が47.27の下で確定",
     plan:[
-     {p:47.3,k:"stop",t:"損切りを上げていれば200枚を手じまい",a:"約+5.9万を確定"},
-     {p:47.05,k:"stop",t:"上げていなければここで200枚を手じまい",a:"建値47.12のすぐ下。約-2.1万"},
+     {p:47.25,k:"stop",t:"割れて確定→55枚を手じまい",a:"買い増し分を先に外す。約-4.1万"},
+     {p:47.05,k:"stop",t:"200枚を手じまい",a:"建値47.12のすぐ下。約-2.1万。損切りを47.30に上げていれば約+5.9万"},
      {p:46.5,k:"stop",t:"全体の撤退ライン（90枚も手じまい）",a:"今日の安値46.81の下、昨日の安値46.52割れ。90枚は約-72.3万"}]}]},
  m1:{span:"数分〜1時間",now:"47.33前後で横ばい。13:20台の押し目47.30のすぐ上。1分足では小さな戻り高値の切り下げが続き、買いも売りも勢いが弱い「様子見」状態。",
   sc:[
@@ -278,7 +280,7 @@ const TF={
   tip:"22:30前後は5分足が一気に50〜80セント動くことも。指標直前の新規エントリーは避けたい場面。"},
  h1:{span:"今夜〜明日",now:"46.52→47.99の反発の後の押し目局面。今の47.34は上げ幅の約57%押し。押し目買いゾーン（半値47.26〜61.8%押し47.08）に入りかけている。",
   sc:[
-   {n:"押し目完了→47.99再トライ→48.0突破",p:45,c:"#ff5a5a",to:[47.99,48.0,48.489],
+   {n:"押し目完了→47.99再トライ→48.0突破",p:45,c:"#ff5a5a",to:[47.99,48.0,48.366],
     why:["フィボナッチ半値〜61.8%は押し目買いが入りやすい定番ゾーン","1時間足では安値46.52→47.05と安値切り上げが残っている","ここで下ヒゲ陽線が出ると反発の合図"],
     sign:"47.08〜47.26で下ヒゲ→1時間足が47.50の上で確定"},
    {n:"押し目失敗→47.05割れ→46.52再テスト",p:55,c:"#3fb6ff",to:[47.05,46.523],
@@ -319,8 +321,8 @@ function renderScen(){
   <div class="bar"><div style="width:${s.p}%;background:${s.c}"></div></div>
   <ul>${s.why.map(x=>`<li>${BR(x)}</li>`).join("")}</ul>
   <div class="kv"><span>サイン：</span>${BR(s.sign)}</div>
-  <div class="tg">${s.to.map(p=>`<i>${p.toFixed(p<46.6&&p>46.5||p===48.489||p===46.008?3:2)} ${man(pl(p))}</i>`).join("")}</div>
-  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.a)}</span></div>`}).join("")}</div>`:""}
+  <div class="tg">${s.to.map(p=>`<i>${fx3(p)} ${man(pl(p))}</i>`).join("")}</div>
+  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${fx3(x.p)}</span><span><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.a)}</span></div>`}).join("")}</div>`:""}
  </div>`).join("");
  if(d.tip)h+=`<div class="note">💡 ${BR(d.tip)}</div>`;
  document.getElementById("scen").innerHTML=h;
@@ -388,7 +390,7 @@ function analyze(b,k,name,span,spot){
 }
 function buildAutoLv(p){
  const A=AUTO, L=[];const add=(v,k,t,d,side)=>{if(!isFinite(v))return;if(side==="up"&&v<=p)return;if(side==="dn"&&v>=p)return;if(L.some(x=>Math.abs(x.p-v)<0.05))return;L.push({p:+v.toFixed(3),k,t,d})};
- if(48.489>p)add(48.489,"sell","売り（建値で撤退）","全体の建値。ナンピン分200枚を外す候補","up");
+ if(AVG>p)add(AVG,"sell","売り（建値で撤退）","全体の建値。200枚と買い増しの55枚を外す候補","up");
  if(A.h4)A.h4.R.forEach((v,i)=>add(v,"sell",i?"売り（利確）":"売り（一部利確）","4時間足の山（戻りの壁）","up"));
  if(A.h1)add(A.h1.R[0],"sell","売り（一部利確）","1時間足の山（目先の壁）","up");
  if(A.h1)add(A.h1.R[0]+0.08,"buy","買い（上抜け確認後）",`1時間足が${f2(A.h1.R[0])}の上で確定し、押してきたところ`,"up");
@@ -415,9 +417,9 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='23:35時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"23:35時点の値（固定）";
- document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
+ if(!ok){document.getElementById("lvS").innerHTML='00:09時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"00:09時点の値（固定）";
+ document.getElementById("lvPL").innerHTML=`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:48.0, lo=A?A.S[0]:47.3;
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
  document.getElementById("lvZ").innerHTML=z;
@@ -429,7 +431,7 @@ async function live(){
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,Date.now(),true);renderScen();}
- catch(e){showLive(47.68,0,false);}
+ catch(e){showLive(47.67,0,false);}
  btn.textContent="更新";
  if(!document.getElementById("st").hidden)strength();
 }
