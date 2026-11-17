@@ -1,0 +1,34 @@
+name: 銀の足のデータを取得（クロードの定期分析用）
+# 価格を読んで data/silver に保存するだけ。注文・口座接続はしない
+on:
+  push:
+    branches: [claude/connection-check-m84res]
+    paths: ["data/REQUEST-silver.md", "scripts/fetch-silver.mjs", ".github/workflows/fetch-silver.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: fetch-silver
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: ツエルブデータから取得
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+        run: node scripts/fetch-silver.mjs
+      - name: data/silver を保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/silver
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "銀の足のデータを更新"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

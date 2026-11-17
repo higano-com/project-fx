@@ -170,7 +170,7 @@ const LV=[
  {p:46.5,k:"stop",t:"損切り（全体）",d:"今日の安値割れ。全体の撤退ライン"}
 ];
 function renderLv(){
- const p=NOWP, L=[...LV].sort((a,b)=>b.p-a.p);
+ const p=NOWP, L=[...(AUTO_LV||LV)].sort((a,b)=>b.p-a.p);
  let near=L.reduce((m,x,i)=>Math.abs(x.p-p)<Math.abs(L[m].p-p)?i:m,0), h="", put=false;
  L.forEach((x,i)=>{
   if(!put&&x.p<p){h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;put=true}
@@ -185,7 +185,7 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"現在値 <b>47.34</b>。今日は46.52で底打ち→47.99まで反発→48.0で止められて押し戻し中。今夜22:30小売売上高、19日04:00 FOMC議事要旨が控える。",
+ all:{now:"<b>クロードの分析（11/17 18:20）</b><br>当時の値 47.34。今日は46.52で底打ち→47.99まで反発→48.0で止められて押し戻し中。今夜22:30小売売上高、19日04:00 FOMC議事要旨が控える。",
   sc:[
    {n:"レンジで指標待ち（47.0〜48.0）",p:45,c:"#f5b041",to:[47.3,48.0],
     why:["4時間足で48.0に上ヒゲ＝当面の天井","47.3では買いが入り下げ止まり","重要指標が続き大きく張りにくい"],
@@ -250,7 +250,7 @@ const TF={
 };
 let tf="all";
 function renderScen(){
- const d=TF[tf];
+ const d=(tf!=="all"&&AUTO&&AUTO[tf])||TF[tf];
  let h=`<div class="now">${d.span?`<b>見通し期間：${d.span}</b><br>`:""}${d.now}</div>`;
  h+=d.sc.map(s=>`<div class="sc" style="border-left-color:${s.c}">
   <div class="t"><span class="n">${s.n}</span><span class="p" style="color:${s.c}">${s.p}%</span></div>
@@ -287,6 +287,63 @@ document.querySelectorAll("#cm button").forEach(b=>b.onclick=()=>{
 document.getElementById("showPast").onchange=renderEv;
 renderScen();renderLv();renderEv();setInterval(renderEv,60000);
 
+// ===== 開いたときの自動分析（足のデータから毎回計算する） =====
+var AUTO=null, AUTO_LV=null;
+const agg=(b,n)=>{const o=[];for(const x of b){const k=Math.floor(x[0]/(n*6e4));const l=o[o.length-1];
+ if(l&&l.k===k){l[2]=Math.max(l[2],x[2]);l[3]=Math.min(l[3],x[3]);l[4]=x[4]}else o.push(Object.assign([x[0],x[1],x[2],x[3],x[4]],{k}))}return o};
+function rsi(b,n=14){if(b.length<n+1)return 50;let g=0,l=0;for(let i=1;i<=n;i++){const d=b[i][4]-b[i-1][4];d>0?g+=d:l-=d}g/=n;l/=n;
+ for(let i=n+1;i<b.length;i++){const d=b[i][4]-b[i-1][4];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n}return l===0?100:100-100/(1+g/l)}
+function swings(b,k){const H=[],L=[];for(let i=k;i<b.length-k;i++){let h=true,lo=true;for(let j=i-k;j<=i+k;j++){if(b[j][2]>b[i][2])h=false;if(b[j][3]<b[i][3])lo=false}
+ if(h)H.push(b[i][2]);if(lo)L.push(b[i][3])}return{H,L}}
+const f2=v=>v.toFixed(2);
+function analyze(b,k,name,span){
+ if(!b||b.length<30)return null;
+ const last=b[b.length-1][4], r=rsi(b), {H,L}=swings(b,k);
+ const n=Math.min(20,b.length),ma=b.slice(-n).reduce((a,x)=>a+x[4],0)/n;
+ const atr=b.slice(-14).reduce((a,x)=>a+(x[2]-x[3]),0)/Math.min(14,b.length);
+ const hh=H.length>=2?H[H.length-1]>H[H.length-2]:null, hl=L.length>=2?L[L.length-1]>L[L.length-2]:null;
+ const trend=hh&&hl?"up":hh===false&&hl===false?"down":"flat";
+ const above=[...new Set(H.filter(x=>x>last+atr*0.15).map(x=>+x.toFixed(2)))].sort((a,b)=>a-b);
+ const below=[...new Set(L.filter(x=>x<last-atr*0.15).map(x=>+x.toFixed(2)))].sort((a,b)=>b-a);
+ const hi=Math.max(...b.slice(-60).map(x=>x[2])), lo=Math.min(...b.slice(-60).map(x=>x[3]));
+ const R1=above[0]??+(Math.max(hi,last+atr)).toFixed(2), R2=+Math.max(above[1]??0,R1+atr*0.5).toFixed(2);
+ const S1=below[0]??+(Math.min(lo,last-atr)).toFixed(2), S2=+Math.min(below[1]??1e9,S1-atr*0.5).toFixed(2);
+ let up=50; if(trend==="up")up+=10; if(trend==="down")up-=10; if(r>70)up-=8; if(r<30)up+=8; up+=last>ma?5:-5; up=Math.max(25,Math.min(75,up));
+ const tw={up:"高値・安値とも切り上げ（上昇の流れ）",down:"高値・安値とも切り下げ（下降の流れ）",flat:"高値・安値の向きがそろわない（もみ合い）"}[trend];
+ const rw=r>=70?`RSI ${r.toFixed(0)}：買われすぎ（反落に注意）`:r<=30?`RSI ${r.toFixed(0)}：売られすぎ（反発しやすい）`:`RSI ${r.toFixed(0)}：中立`;
+ const mw=last>ma?`直近${n}本の平均${f2(ma)}より上（買いがやや優勢）`:`直近${n}本の平均${f2(ma)}より下（売りがやや優勢）`;
+ return {span,auto:true,
+  now:`今 <b>${last.toFixed(3)}</b>。${tw}。${rw}。直近の山 ${f2(R1)}／谷 ${f2(S1)}。1本の平均の値幅は約${atr.toFixed(2)}ドル。`,
+  sc:[
+   {n:`上：${f2(R1)}突破→${f2(R2)}`,p:up,c:"#ff5a5a",to:[R1,R2],
+    why:[`${f2(R1)}は直近の山（戻りの壁）`,trend==="up"?"上昇の流れに沿う向き":trend==="down"?"下降の流れには逆らう向き（戻り売りに注意）":"もみ合いの上抜けを狙う形",r<=30?"売られすぎからの戻りが期待できる":r>=70?"買われすぎで伸びにくい面も":mw],
+    sign:`${name}が${f2(R1)}の上で確定`},
+   {n:`下：${f2(S1)}割れ→${f2(S2)}`,p:100-up,c:"#3fb6ff",to:[S1,S2],
+    why:[`${f2(S1)}は直近の谷（支え）`,trend==="down"?"下降の流れに沿う向き":trend==="up"?"上昇の流れには逆らう向き（押し目買いが入りやすい）":"もみ合いの下抜けを狙う形",r>=70?"買われすぎからの反落":r<=30?"売られすぎで下げ止まりやすい面も":mw],
+    sign:`${name}が${f2(S1)}の下で確定`}],
+  tip:`開いたときに${name}のデータから自動で計算した目安です（文章は機械的な説明）。`,
+  R:[R1,R2],S:[S1,S2]};
+}
+function buildAutoLv(p){
+ const A=AUTO, L=[];const add=(v,k,t,d,side)=>{if(!isFinite(v))return;if(side==="up"&&v<=p)return;if(side==="dn"&&v>=p)return;if(L.some(x=>Math.abs(x.p-v)<0.05))return;L.push({p:+v.toFixed(3),k,t,d})};
+ if(48.489>p)add(48.489,"sell","売り（建値で撤退）","全体の建値。ナンピン分200枚を外す候補","up");
+ if(A.h4)A.h4.R.forEach((v,i)=>add(v,"sell",i?"売り（利確）":"売り（一部利確）","4時間足の山（戻りの壁）","up"));
+ if(A.h1)add(A.h1.R[0],"sell","売り（一部利確）","1時間足の山（目先の壁）","up");
+ if(A.h1)add(A.h1.R[0]+0.08,"buy","買い（上抜け確認後）",`1時間足が${f2(A.h1.R[0])}の上で確定し、押してきたところ`,"up");
+ if(A.h1)add(A.h1.S[0],"buy","買い（押し目）","1時間足の谷。下ヒゲが出たら押し目買いの候補","dn");
+ if(A.h4)add(A.h4.S[0]-0.03,"stop","損切り（全体）","4時間足の谷割れ。全体の撤退ライン候補","dn");
+ if(A.h1&&A.h1.S[1])add(A.h1.S[1]-0.02,"stop","損切り（200枚）","1時間足の2つ目の谷割れ。200枚を手じまいする候補","dn");
+ return L;
+}
+async function getS(iv){const r=await fetch("api/series?symbol=XAG%2FUSD&interval="+iv,{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!d.values||!d.values.length)throw 0;return d.values}
+async function autoRun(){
+ const [m1,h1,d1]=await Promise.all([getS("1min"),getS("1h"),getS("1day")]);
+ AUTO={m1:analyze(m1.slice(-120),3,"1分足","数分〜1時間"),m5:analyze(agg(m1,5),3,"5分足","数時間"),
+  h1:analyze(h1.slice(-150),3,"1時間足","今日〜明日"),h4:analyze(agg(h1,240),2,"4時間足","数日"),d1:analyze(d1.slice(-150),3,"日足","数週間")};
+ AUTO_LV=buildAutoLv(m1[m1.length-1][4]);
+ return m1[m1.length-1];
+}
+
 // 開いたときに今の値段を取る（ホーム画面のシグナルだけ。取れないときは固定の値のまま）
 const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
@@ -301,7 +358,9 @@ async function getP(sym){const r=await fetch("api/price?symbol="+encodeURICompon
 async function live(){
  const btn=document.getElementById("lvR");btn.textContent="取得中";
  try{const [ag,jp]=await Promise.all([getP("XAG/USD"),getP("USD/JPY").catch(()=>null)]);
-  if(jp)JPY=jp.price;showLive(ag.price,ag.t,true);renderScen();}
+  if(jp)JPY=jp.price;
+  try{await autoRun()}catch(e){AUTO=null;AUTO_LV=null}
+  showLive(ag.price,ag.t,true);renderScen();}
  catch(e){showLive(47.336,0,false);}
  btn.textContent="更新";
 }
