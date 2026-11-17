@@ -356,7 +356,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();
  document.getElementById("lvP").textContent=p.toFixed(3);
- document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}（GMOと数セントずれることがあります）${AUTO?"・足は先物を現物に補正":""}`:"18:20時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='18:20時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}（GMOと数セントずれることがあります）${AUTO?"・足は先物を現物に補正":""}`:"18:20時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const z=p>=48.0?"48.0より上：<b>上昇シナリオ</b>に入っています":p>47.3?"47.3〜48.0の間：<b>レンジ</b>の中です":p>47.06?"47.3を割っています：<b>下落シナリオ</b>寄り":p>46.523?"47.06も割っています：<b>下落シナリオ</b>進行中":"今日の安値46.52を割っています：<b>要警戒</b>";
  document.getElementById("lvZ").innerHTML=z;
