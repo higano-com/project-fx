@@ -43,16 +43,14 @@ h2{font-size:var(--fs-l);margin:0 0 10px;font-weight:800}
 .page{display:none}.page.on{display:block}
 
 /* ブレイクポイント */
-.bp{display:grid;grid-template-columns:52px 1fr 1fr;row-gap:2px}
-.bp>div{padding:9px 0;border-bottom:1px solid var(--line)}
-.bp>div:nth-last-child(-n+3){border-bottom:0}
-.bp .h{font-size:var(--fs-s);padding-top:0}
-.bp .v{font-size:var(--fs-l);font-weight:800}
+.bp .bh,.bp .br{display:grid;grid-template-columns:64px 1fr 1fr;align-items:center}
+.bp .bh{font-size:var(--fs-s);padding-bottom:6px}
+.bp .br{padding:9px 0;border-top:1px solid var(--line)}
+.bp .k{font-weight:700}
+.bp .v{font-size:var(--fs-l);font-weight:800;line-height:1.25}
 .bp .v small{display:block;font-size:var(--fs-s);font-weight:600}
-.bp .k{font-weight:700;align-self:center}
-.be{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:var(--fs-s)}
+.be{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--line);font-size:var(--fs-s)}
 .be b{font-size:var(--fs-m)}
-
 /* 売り時・買い時 */
 .lvr{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:center;padding:11px 8px;border-radius:12px}
 .lvr+.lvr{border-top:1px solid var(--line);border-radius:0}
@@ -117,7 +115,7 @@ ul{margin:4px 0 8px;padding-left:18px;font-size:var(--fs-s);line-height:1.6}
 <div class="card">
   <div class="row" style="margin-bottom:6px"><h2 style="margin:0">ブレイクポイント</h2><a class="btn pri" id="askC" href="https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD" target="_blank" rel="noopener" style="text-decoration:none;color:#fff">クロードに更新を頼む</a></div>
   <div class="bp" id="bp"></div>
-  <div class="be" id="lvBE"></div>
+  <div class="be" id="lvBE" style="border-top:0"></div>
 </div>
 <div class="card">
   <h2>売り時・買い時</h2>
@@ -220,9 +218,10 @@ const LV=[
 const BP0={m5:[47.50,47.30],h1:[47.99,47.05],h4:[48.00,46.52],d1:[49.00,46.52]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
- let h='<div class="h"></div><div class="h">上抜け</div><div class="h">下抜け</div>';
+ let h='<div class="bh"><span></span><span>上抜け</span><span>下抜け</span></div>';
  for(const k of ["m5","h1","h4","d1"]){const A=AUTO&&AUTO[k];const u=A?A.R[0]:BP0[k][0],d=A?A.S[0]:BP0[k][1];
-  h+=`<div class="k">${nm[k]}</div><div class="v u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></div><div class="v d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></div>`}
+  h+=`<div class="br"><span class="k">${nm[k]}</span><span class="v u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></span><span class="v d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></span></div>`}
+ h+='<div style="border-top:1px solid var(--line)"></div>';
  document.getElementById("bp").innerHTML=h;
 }
 function renderLv(){
@@ -231,7 +230,7 @@ function renderLv(){
  L.forEach((x,i)=>{
   if(!put&&x.p<p){h+=`<div class="nowline">今 ${p.toFixed(3)}</div>`;put=true}
   const c=x.k==="buy"?"var(--up)":"var(--dn)", d=x.p-p;
-  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span class="tx"><b style="color:${c}">${x.t}</b><br>${x.d}</span><span class="ds">${man(pl(x.p))}${d>=0?"+":""}${d.toFixed(2)}</span></div>`;
+  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span class="tx"><b style="color:${c}">${x.t}</b>${x.d}</span><span class="ds">${man(pl(x.p))}${d>=0?"+":""}${d.toFixed(2)}</span></div>`;
  });
  if(!put)h+=`<div class="nowline">今 ${p.toFixed(3)}</div>`;
  document.getElementById("lvls").innerHTML=h;
