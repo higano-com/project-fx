@@ -61,6 +61,9 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .lvr.near{background:#1d3a5a;border-radius:8px;padding:7px 6px}
 .nowline{font-size:12px;color:var(--acc);text-align:center;padding:4px 0;border-bottom:1px dashed var(--acc)}
 .ask{display:block;text-align:center;margin-top:8px;background:#1e5a8a;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:700;text-decoration:none}
+.bp{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 10px;margin-top:8px;font-size:13px;align-items:center}
+.bp .h{color:var(--mut);font-size:12px}
+.bp .u{color:var(--up);font-weight:700}.bp .d{color:var(--dn);font-weight:700}
 .chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin:4px 0 8px}
 </style>
 </head>
@@ -72,6 +75,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
   <div class="lv2" id="lvS">18:20時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
+  <div class="bp" id="bp"></div>
   <a class="ask" id="askC" href="https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD" target="_blank" rel="noopener">クロードに分析の更新を頼む</a>
 </div>
 
@@ -169,6 +173,14 @@ const LV=[
  {p:47.05,k:"stop",t:"損切り（200枚）",d:"割れたら200枚を手じまい。建値47.12のすぐ下"},
  {p:46.5,k:"stop",t:"損切り（全体）",d:"今日の安値割れ。全体の撤退ライン"}
 ];
+const BP0={m5:[47.50,47.30],h1:[47.99,47.05],h4:[48.00,46.52],d1:[49.00,46.52]};
+function renderBp(){
+ const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
+ let h='<span class="h">ブレイク</span><span class="h">上抜け</span><span class="h">下抜け</span>';
+ for(const k of ["m5","h1","h4","d1"]){const A=AUTO&&AUTO[k];const u=A?A.R[0]:BP0[k][0],d=A?A.S[0]:BP0[k][1];
+  h+=`<span>${nm[k]}</span><span class="u">${u.toFixed(2)} <small>(${u-NOWP>=0?"+":""}${(u-NOWP).toFixed(2)})</small></span><span class="d">${d.toFixed(2)} <small>(${(d-NOWP).toFixed(2)})</small></span>`}
+ document.getElementById("bp").innerHTML=h;
+}
 function renderLv(){
  const p=NOWP, L=[...(AUTO_LV||LV)].sort((a,b)=>b.p-a.p);
  let near=L.reduce((m,x,i)=>Math.abs(x.p-p)<Math.abs(L[m].p-p)?i:m,0), h="", put=false;
@@ -284,7 +296,7 @@ function renderEv(){
 document.querySelectorAll("#cm button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#cm button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cur=b.dataset.c;renderEv();});
 document.getElementById("showPast").onchange=renderEv;
-renderScen();renderLv();renderEv();setInterval(renderEv,60000);
+renderScen();renderLv();renderBp();renderEv();setInterval(renderEv,60000);
 
 // ===== 開いたときの自動分析（足のデータから毎回計算する） =====
 var AUTO=null, AUTO_LV=null;
@@ -349,7 +361,7 @@ async function autoRun(spot){
 // 開いたときに今の値段を取る（ホーム画面のシグナルだけ。取れないときは固定の値のまま）
 const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
- NOWP=p;renderLv();
+ NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
  if(!ok){document.getElementById("lvS").innerHTML='18:20時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
  else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"18:20時点の値（固定）";
