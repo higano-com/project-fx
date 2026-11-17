@@ -21,3 +21,4 @@
 - 時間足ごとのシナリオ（`TF`）と、シルバー・金・原油が動きやすい指標（`EVENTS`）を書きかえて更新する。
 - 画面は project-fx-24u.pages.dev と、クロードのページ（https://claude.ai/artifact/By3RHL6gvN5wWBNLGHTFwf）の両方に出す。
 - 画面を直したら `app/sw.js` の番号を1つ上げる。
+- 一番上の「銀 現在値」は、開いたとき・アプリに戻ったとき・「更新」で、中継役 `functions/api/price.js`（ツエルブデータ、キーはクラウドフレアの TWELVEDATA_API_KEY）から銀とドル円を取る。クロードのページでは取れないので固定の値（18:20 時点）。

@@ -46,11 +46,25 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .evr .body{padding:0 10px 10px;font-size:13px;line-height:1.55}
 .evr .cd{color:var(--acc);font-size:12px}
 .evr .dir{color:var(--mut);font-size:12px;margin-top:4px}
+#live{padding:10px 12px}
+.lv1{display:flex;align-items:baseline;gap:10px}
+.lv1 .muted{color:var(--mut);font-size:13px}
+.lv1 b{font-size:26px}
+.lv1 button{margin-left:auto;background:#1e5a8a;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:13px}
+.lv2{font-size:13px;color:var(--mut);margin-top:3px}
+.lv2 b{color:var(--tx)}
 .chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin:4px 0 8px}
 </style>
 </head>
 <body>
 <div class="wrap">
+
+<div class="card" id="live">
+  <div class="lv1"><span class="muted">銀 現在値</span><b id="lvP">47.34</b><button id="lvR" type="button">更新</button></div>
+  <div class="lv2" id="lvS">18:20時点の値（固定）</div>
+  <div class="lv2" id="lvPL"></div>
+  <div class="lv2" id="lvZ"></div>
+</div>
 
 <div class="card">
   <h2>シルバー シナリオ</h2>
@@ -131,7 +145,8 @@ const CINFO={
  oil:"原油は「在庫統計」「OPEC+」「地政学」で動きます。米国の金融指標の影響は銀・金より小さめです。"
 };
 const POS=[[50,51.535],[5,51.281],[35,51.586],[200,47.116]];
-const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*1593,0);
+let JPY=159.3;
+const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
@@ -236,6 +251,27 @@ document.querySelectorAll("#cm button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#cm button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cur=b.dataset.c;renderEv();});
 document.getElementById("showPast").onchange=renderEv;
 renderScen();renderEv();setInterval(renderEv,60000);
+
+// 開いたときに今の値段を取る（ホーム画面のシグナルだけ。取れないときは固定の値のまま）
+const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
+function showLive(p,t,ok){
+ document.getElementById("lvP").textContent=p.toFixed(3);
+ document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}（GMOと数セントずれることがあります）`:"18:20時点の値（固定）";
+ document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
+ const z=p>=48.0?"48.0より上：<b>上昇シナリオ</b>に入っています":p>47.3?"47.3〜48.0の間：<b>レンジ</b>の中です":p>47.06?"47.3を割っています：<b>下落シナリオ</b>寄り":p>46.523?"47.06も割っています：<b>下落シナリオ</b>進行中":"今日の安値46.52を割っています：<b>要警戒</b>";
+ document.getElementById("lvZ").innerHTML=z;
+}
+async function getP(sym){const r=await fetch("api/price?symbol="+encodeURIComponent(sym),{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!isFinite(d.price))throw 0;return d}
+async function live(){
+ const btn=document.getElementById("lvR");btn.textContent="取得中";
+ try{const [ag,jp]=await Promise.all([getP("XAG/USD"),getP("USD/JPY").catch(()=>null)]);
+  if(jp)JPY=jp.price;showLive(ag.price,ag.t,true);renderScen();}
+ catch(e){showLive(47.336,0,false);}
+ btn.textContent="更新";
+}
+document.getElementById("lvR").onclick=live;
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")live()});
+live();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
