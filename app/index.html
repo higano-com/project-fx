@@ -12,7 +12,7 @@
 <style>
 :root{--bg:#0b1a2b;--card:#12263d;--line:#22405f;--tx:#e6eef7;--mut:#8aa2bb;--up:#ff5a5a;--dn:#3fb6ff;--acc:#f5b041}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;font-size:15px}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;font-size:15px;text-wrap:pretty;line-break:strict}
 .wrap{max-width:560px;margin:0 auto;padding:12px}
 h1{font-size:17px;margin:4px 0 10px}
 h2{font-size:15px;margin:0 0 8px;color:var(--acc)}
@@ -39,6 +39,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .pln .ps+.ps{border-top:1px solid var(--line)}
 .pln .pp{font-weight:700;font-size:13px}
 .pln .ds{text-align:right;white-space:nowrap}
+.ck{display:inline-block}
 .tg i{font-style:normal;font-size:12px;background:#0a1626;border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 /* indicators */
 .evr{border:1px solid var(--line);border-radius:9px;margin-bottom:5px;background:#0e2034}
@@ -181,7 +182,7 @@ let JPY=159.2, NOWP=47.61;
 const LV=[
  {p:49.0,k:"sell",t:"売り（利確）",d:"11/13の安値付近。残りを減らす候補"},
  {p:48.489,k:"sell",t:"売り（建値で撤退）",d:"全体の建値。ナンピン分200枚を外す候補"},
- {p:48.05,k:"buy",t:"買い（上抜け確認後）",d:"今日の高値47.99を1時間足で超えて確定し、押してきたところ"},
+ {p:48.05,k:"buy",t:"買い（上抜け確認後）",d:"今日の高値47.99を、1時間足で超えて確定し、押してきたところ"},
  {p:47.99,k:"sell",t:"売り（一部利確）",d:"今日の高値。200枚の一部を利確する候補"},
  {p:47.70,k:"sell",t:"売り（目先の壁）",d:"15時の戻り高値。ここで止まりやすい"},
  {p:47.27,k:"buy",t:"買い（押し目）",d:"今夜のもち合いの下限。下ヒゲが出たら押し目買いの候補"},
@@ -196,13 +197,16 @@ function renderBp(){
   h+=`<div class="r"><span class="k">${nm[k]}</span><span class="u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></span><span class="d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></span></div>`}
  document.getElementById("bp").innerHTML=h;
 }
+// 文が2つ以上なら「。」で改行する（1〜2文字だけ次の行に落ちるのを防ぐ）
+const BR=t=>String(t).replace(/。(?=.)/g,"。<br>").split(/(<[^>]+>)/).map(x=>x[0]==="<"||!x?x:
+ x.split(/(?<=[、→／])/).map(c=>`<span class="ck">${c}</span>`).join("")).join("");
 function renderLv(){
  const p=NOWP, L=[...(AUTO_LV||LV)].sort((a,b)=>b.p-a.p);
  let near=L.reduce((m,x,i)=>Math.abs(x.p-p)<Math.abs(L[m].p-p)?i:m,0), h="", put=false;
  L.forEach((x,i)=>{
   if(!put&&x.p<p){h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;put=true}
   const c=x.k==="buy"?"var(--up)":"var(--dn)", d=x.p-p;
-  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span class="tx"><b style="color:${c}">${x.t}</b><br>${x.d}</span><span class="ds">${d>=0?"+":""}${d.toFixed(2)}<br>${man(pl(x.p))}</span></div>`;
+  h+=`<div class="lvr ${i===near?"near":""}"><span class="pr" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span class="tx"><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.d)}</span><span class="ds">${d>=0?"+":""}${d.toFixed(2)}<br>${man(pl(x.p))}</span></div>`;
  });
  if(!put)h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;
  document.getElementById("lvls").innerHTML=h;
@@ -211,10 +215,10 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/17 20:42）</b><br>当時の値 47.61（ドル円159.20）。三角もち合いの上限47.55を上に抜け、5分足RSIは66まで上がって買いの勢いが強まっている。ただし1時間足の確定はまだで、すぐ上には15時の戻り高値47.70。22:30の小売売上高は予想+0.2%（前月+0.8%）で、12月の利上げはすでに約9割織り込み済み。",
+ all:{now:"<b>クロードの分析（11/17 20:42）</b><br>当時の値 47.61（ドル円159.20）。三角もち合いの上限47.55を上に抜け、5分足RSIは66まで上がり、買いの勢いが強まっている。ただし1時間足の確定はまだで、すぐ上には15時の戻り高値47.70。22:30の小売売上高は予想+0.2%（前月+0.8%）で、12月の利上げはすでに約9割織り込み済み。",
   sc:[
    {n:"上放れ継続：47.70突破→47.99→建値48.49",p:40,c:"#ff5a5a",to:[47.70,47.99,48.489],
-    why:["もち合いの上限47.55を上抜け。5分足RSIは66で買いが優勢","日足RSIは31で売られすぎ圏に近く、下げ過ぎの戻りが出やすい","利上げは約9割織り込み済みで、小売売上高が予想（+0.2%）を下回れば戻りが出やすい"],
+    why:["もち合いの上限47.55を上抜け。5分足RSIは66で買いが優勢","日足RSIは31で売られすぎ圏に近く、下げ過ぎの戻りが出やすい","利上げは約9割織り込み済み。小売売上高が予想（+0.2%）を下回れば、戻りが出やすい"],
     sign:"1時間足が47.55の上で確定→47.70も超える",
     plan:[
      {p:47.70,k:"hold",t:"1時間足で上抜け確定→損切りを上げる",a:"200枚の損切りを47.05→47.30へ。切られても200枚は約+5.9万"},
@@ -224,14 +228,14 @@ const TF={
      {p:50.0,k:"sell",t:"90枚の一部を利確・損切りを49.0へ",a:"心理的な節目。90枚は約-22.1万まで戻る"},
      {p:50.74,k:"sell",t:"90枚の残りを利確する候補",a:"4時間足の山。90枚は約-11.5万。建値51.54までは遠く、ここで減らす候補"}]},
    {n:"だまし→もち合いに戻る（47.27〜47.55）",p:35,c:"#f5b041",to:[47.27,47.55],
-    why:["1時間足が確定する前の上抜けは、だましで終わることも多い","1時間足のRSIは48で中立。47.70は15時に止められた戻り高値","22:30の小売売上高、19日04:00のFOMC議事要旨を前に大きく張りにくい"],
+    why:["1時間足が確定する前の上抜けは、だましで終わることも多い","1時間足のRSIは48で中立。47.70は15時に止められた戻り高値","22:30の小売売上高、19日04:00のFOMC議事要旨を前に、大きく張りにくい"],
     sign:"1時間足が47.55の下で終わり、47.70に届かない",
     plan:[
      {p:47.55,k:"hold",t:"1時間足が下で確定→買い増しはしない",a:"レンジに戻ったと見る。200枚の損切り47.05はそのまま"},
      {p:47.27,k:"buy",t:"下ヒゲで止まれば押し目",a:"レンジの下限。ここで反発すれば200枚はそのまま持つ"},
      {p:47.05,k:"stop",t:"割れたら200枚を手じまい",a:"建値47.12のすぐ下。約-2.1万で撤退"}]},
    {n:"下放れ：47.27割れ→47.05→46.52",p:25,c:"#3fb6ff",to:[47.27,47.05,46.523],
-    why:["日足は高値・安値とも切り下がる下降トレンドが継続中","FRBが利上げに前向きな姿勢を示しており、銀には逆風","小売売上高が予想を大きく上回ると、0.5%利上げ観測が出てドル高・一段安"],
+    why:["日足は高値・安値とも切り下がり、下降トレンドが継続中","FRBは利上げに前向きで、銀には逆風","小売売上高が予想を大きく上回ると、0.5%利上げ観測が出てドル高・一段安"],
     sign:"1時間足が47.27の下で確定。47.05割れで加速",
     plan:[
      {p:47.27,k:"hold",t:"1時間足で割れて確定→戻りを待つ",a:"200枚はまだ約+4.9万。47.27に戻れなければ次で切る"},
@@ -240,18 +244,18 @@ const TF={
  m1:{span:"数分〜1時間",now:"47.33前後で横ばい。13:20台の押し目47.30のすぐ上。1分足では小さな戻り高値の切り下げが続き、買いも売りも勢いが弱い「様子見」状態。",
   sc:[
    {n:"47.30で反発→47.40〜47.50",p:45,c:"#ff5a5a",to:[47.4,47.5],
-    why:["47.30は今日2度目の支え（13時台・18時台）","5分足RSIが40付近で売られすぎ手前","支えで陽線が連続すると短期筋の買い戻しが入りやすい"],
+    why:["47.30は今日2度目の支え（13時台・18時台）","5分足RSIが40付近で売られすぎ手前","支えで陽線が連続すると、短期筋の買い戻しが入りやすい"],
     sign:"1分足で47.40を実体で超える"},
    {n:"47.30割れ→47.25→47.10",p:55,c:"#3fb6ff",to:[47.25,47.1],
-    why:["1分・5分とも戻り高値の切り下げが継続","47.25は今日の上げ幅の半値（46.52→47.99）","欧州時間後半は米指標前の手じまい売りが出やすい"],
+    why:["1分・5分とも戻り高値の切り下げが継続","47.25は今日の上げ幅の半値（46.52→47.99）","欧州時間後半は、米指標前の手じまい売りが出やすい"],
     sign:"1分足が47.30を実体で割り、戻りが47.30で止められる"}],
   tip:"1分足はノイズが多いので、エントリーや決済の“タイミング”用。方向は5分・1時間で判断を。"},
  m5:{span:"数時間（今夜の米指標まで）",now:"14:30高値47.99から、47.62→47.55→47.50と戻り高値が切り下がる下降チャネル。RSIは40前後で中立〜やや弱い。",
   sc:[
-   {n:"チャネル上抜け：47.50超え→47.62→47.80",p:40,c:"#ff5a5a",to:[47.5,47.62,47.8],
-    why:["47.30が2度支えて“ダブルボトム”気味になれば反転の形","下降チャネルの上限47.50を抜けると売り方の買い戻し","22:30の小売売上高が弱ければ追い風"],
+   {n:"上抜け：47.50超え→47.62→47.80",p:40,c:"#ff5a5a",to:[47.5,47.62,47.8],
+    why:["47.30が2度支えて、“ダブルボトム”気味になれば反転の形","下降チャネルの上限47.50を抜けると、売り方の買い戻し","22:30の小売売上高が弱ければ追い風"],
     sign:"5分足で47.50を超えて確定し、押しが47.40で止まる"},
-   {n:"チャネル継続：47.30割れ→47.06→46.92",p:60,c:"#3fb6ff",to:[47.3,47.06,46.92],
+   {n:"継続：47.30割れ→47.06→46.92",p:60,c:"#3fb6ff",to:[47.3,47.06,46.92],
     why:["戻り高値が4回連続で切り下がっている","47.06は朝の安値、46.92はその下の節","小売売上高が強ければドル高で一段安"],
     sign:"47.30割れ後、47.30が戻りの壁になる（サポレジ転換）"}],
   tip:"22:30前後は5分足が一気に50〜80セント動くことも。指標直前の新規エントリーは避けたい場面。"},
@@ -261,47 +265,47 @@ const TF={
     why:["フィボナッチ半値〜61.8%は押し目買いが入りやすい定番ゾーン","1時間足では安値46.52→47.05と安値切り上げが残っている","ここで下ヒゲ陽線が出ると反発の合図"],
     sign:"47.08〜47.26で下ヒゲ→1時間足が47.50の上で確定"},
    {n:"押し目失敗→47.05割れ→46.52再テスト",p:55,c:"#3fb6ff",to:[47.05,46.523],
-    why:["47.05を割ると安値切り上げの形が崩れる","反発の起点が否定され“戻り売り”が勝った形になる","FOMC議事要旨（19日04:00）がタカ派なら加速"],
+    why:["47.05を割ると安値切り上げの形が崩れる","反発の起点が否定され、“戻り売り”が勝った形になる","FOMC議事要旨（19日04:00）がタカ派なら加速"],
     sign:"1時間足が47.05を下回って確定"}],
   tip:"1時間足の確定（毎時ちょうど）で判断すると、ヒゲに振り回されにくい。"},
  h4:{span:"数日（PCE・議事要旨まで）",now:"53台からの急落後、46.52で下げ止まり。48.0で上ヒゲをつけて跳ね返され、RSIは20台の売られすぎ圏から戻りかけ。",
   sc:[
    {n:"底固め→48.0突破→49.0〜50.0",p:35,c:"#ff5a5a",to:[48.0,49.0,50.0],
-    why:["RSIが売られすぎ圏から反転＝下げ過ぎの修正","49.0は急落前のもみ合い、50.0は心理的節目","PCE（25日）が弱ければ利上げ観測後退で戻りが加速"],
+    why:["RSIが売られすぎ圏から反転＝下げ過ぎの修正","49.0は急落前のもみ合い、50.0は心理的節目","PCE（25日）が弱ければ、利上げ観測後退で戻りが加速"],
     sign:"4時間足が48.0の上で確定し、48.0が支えに変わる"},
    {n:"レンジ継続：46.5〜48.0",p:35,c:"#f5b041",to:[46.523,48.0],
     why:["上は48.0、下は46.52と今日の値幅が明確な枠に","大型指標待ちで方向が出にくい"],
     sign:"枠の上限・下限で反発するかを確認"},
    {n:"下抜け：46.5割れ→46.0→45.0",p:30,c:"#3fb6ff",to:[46.523,46.008,45.0],
-    why:["4時間足の高値・安値切り下げは継続中","46.0付近は自分を含めロスカットが集まりやすい水準","割れると投げ売りが連鎖しやすい"],
+    why:["4時間足の高値・安値切り下げは継続中","46.0付近は、自分を含めロスカットが集まりやすい水準","割れると投げ売りが連鎖しやすい"],
     sign:"4時間足が46.5を割って確定"}],
   tip:"今の保有は4時間足〜日足の視点。日中の1分・5分の上下で判断を変えすぎないのがコツ。"},
  d1:{span:"数週間〜12月FOMC",now:"71.1の天井から下降トレンド。10月に約15%下落し、今日46.52と年初来の安値圏を更新。一方で日足RSIは前回安値より高く、強気ダイバージェンスが出ている。",
   sc:[
    {n:"底打ち反転→50〜52に戻す",p:35,c:"#ff5a5a",to:[50.0,51.54,52.0],
-    why:["RSIの強気ダイバージェンスは中期の底でよく出るサイン","工業需要（太陽光・電子部品）は根強く供給不足見通しも下支え","原油安が続けばインフレ懸念後退→金利の付かない銀に追い風"],
+    why:["RSIの強気ダイバージェンスは、中期の底でよく出るサイン","工業需要（太陽光・電子部品）は根強く供給不足見通しも下支え","原油安が続けばインフレ懸念後退→金利の付かない銀に追い風"],
     sign:"日足終値で49.0を回復、高値切り上げが出る"},
    {n:"下値探り継続→45〜44",p:40,c:"#3fb6ff",to:[45.0,44.0],
-    why:["高値・安値とも切り下がる下降トレンドが継続","12月利上げを高い確率で織り込む状況でドル高圧力","レバレッジ取引の投げ売りが続く可能性"],
+    why:["高値・安値とも切り下がる下降トレンドが継続","12月利上げを高い確率で織り込み、ドル高圧力","レバレッジ取引の投げ売りが続く可能性"],
     sign:"日足終値で46.5割れ"},
-   {n:"46〜50の大きなレンジで12月FOMC待ち",p:25,c:"#f5b041",to:[46.0,50.0],
-    why:["12/4雇用統計・12/10 FOMCで方向が決まるまで様子見"],
+   {n:"46〜50のレンジで12月FOMC待ち",p:25,c:"#f5b041",to:[46.0,50.0],
+    why:["12/4雇用統計・12/10 FOMCで、方向が決まるまで様子見"],
     sign:"FOMC後の日足で方向確認"}],
   tip:"60まで持つ前提なら、この時間軸が本命。日足で46.5割れが確定したら、撤退ラインを見直すタイミング。"}
 };
 let tf="all";
 function renderScen(){
  const d=(tf!=="all"&&AUTO&&AUTO[tf])||TF[tf];
- let h=`<div class="now">${d.span?`<b>見通し期間：${d.span}</b><br>`:""}${d.now}</div>`;
+ let h=`<div class="now">${d.span?`<b>見通し期間：${d.span}</b><br>`:""}${BR(d.now)}</div>`;
  h+=d.sc.map(s=>`<div class="sc" style="border-left-color:${s.c}">
-  <div class="t"><span class="n">${s.n}</span><span class="p" style="color:${s.c}">${s.p}%</span></div>
+  <div class="t"><span class="n">${BR(s.n)}</span><span class="p" style="color:${s.c}">${s.p}%</span></div>
   <div class="bar"><div style="width:${s.p}%;background:${s.c}"></div></div>
-  <ul>${s.why.map(x=>`<li>${x}</li>`).join("")}</ul>
-  <div class="kv"><span>サイン：</span>${s.sign}</div>
+  <ul>${s.why.map(x=>`<li>${BR(x)}</li>`).join("")}</ul>
+  <div class="kv"><span>サイン：</span>${BR(s.sign)}</div>
   <div class="tg">${s.to.map(p=>`<i>${p.toFixed(p<46.6&&p>46.5||p===48.489||p===46.008?3:2)} ${man(pl(p))}</i>`).join("")}</div>
-  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${i+1}. ${x.p.toFixed(x.p===48.489?3:2)}</span><span><b style="color:${c}">${x.t}</b><br>${x.a}</span></div>`}).join("")}</div>`:""}
+  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${i+1}. ${x.p.toFixed(x.p===48.489?3:2)}</span><span><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.a)}</span></div>`}).join("")}</div>`:""}
  </div>`).join("");
- if(d.tip)h+=`<div class="note">💡 ${d.tip}</div>`;
+ if(d.tip)h+=`<div class="note">💡 ${BR(d.tip)}</div>`;
  document.getElementById("scen").innerHTML=h;
 }
 document.querySelectorAll("#tf button").forEach(b=>b.onclick=()=>{
@@ -315,14 +319,14 @@ const fd=d=>`${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay
 const cd=ms=>{if(ms<0)return"発表済み";const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4);return h>=24?`あと${Math.floor(h/24)}日${h%24}時間`:`あと${h}時間${m}分`};
 function renderEv(){
  const now=Date.now(),past=document.getElementById("showPast").checked;
- document.getElementById("cNote").textContent=CINFO[cur];
+ document.getElementById("cNote").innerHTML=BR(CINFO[cur]);
  const open=new Set([...document.querySelectorAll(".evr[open]")].map(x=>x.dataset.id));
  const L=EVENTS.map((e,i)=>({...e,i,d:jst(e.at)})).filter(e=>e.imp[cur]>0&&(past||e.d.getTime()>now-2*36e5)).sort((a,b)=>a.d-b.d);
  const nx=L.findIndex(e=>e.d.getTime()>now-30*6e4);
  document.getElementById("evList").innerHTML=L.map((e,k)=>{const l=e.imp[cur];
   return `<details class="evr ${k===nx?"next":""}" data-id="${e.i}" ${open.has(String(e.i))?"open":""}><summary>
   <span class="dt">${fd(e.d)}</span><span class="nm">${k===nx?"▶ ":""}${e.name}</span><span class="st">${"★".repeat(l)}</span></summary>
-  <div class="body"><div class="cd">注意度：${LN[l]} ／ ${cd(e.d.getTime()-now)}</div>${e.why[cur]||""}<div class="dir">${e.dir}</div></div></details>`}).join("")||'<div class="note">該当なし</div>';
+  <div class="body"><div class="cd">注意度：${LN[l]} ／ ${cd(e.d.getTime()-now)}</div>${BR(e.why[cur]||"")}<div class="dir">${BR(e.dir)}</div></div></details>`}).join("")||'<div class="note">該当なし</div>';
 }
 document.querySelectorAll("#cm button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#cm button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cur=b.dataset.c;renderEv();});
