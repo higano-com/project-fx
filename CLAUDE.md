@@ -27,3 +27,4 @@
 - クロードの定期分析：`data/REQUEST-silver.md` を書きかえて送ると、ギットハブの自動作業（fetch-silver.yml）が `data/silver/` に足のデータ（CSV、日本時間）を保存する。それを読んで「総合」（`TF.all`）と固定の目安（`LV`）を書き直し、送る＋クロードのページ（シグナル）に公開する。
 - クラウドフレアの設定：本番ブランチ `claude/connection-check-m84res`、組み立て `sh scripts/build.sh`、出力 `dist`。build.sh を消すと更新が止まる（2026/11/13〜17 に止まっていた）。
 - 定期タスク「シグナル：銀の分析を更新」（trig_01U6bDcKvWzQKkauDVQvpQ4z。通知なし）が、毎日 7:37・16:37・21:37（日本時間）に「総合」と `LV` を書き直して公開する。
+- 「総合」タブの下の「クロードに分析の更新を頼む」ボタン：「シグナル更新して」をコピーして、この作業の会話（https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD）を開く。「シグナル更新して」と言われたら、定期タスクと同じ手順で「総合」と `LV` を作り直して公開する。

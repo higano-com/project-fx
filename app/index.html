@@ -60,6 +60,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .lvr .ds{font-size:12px;color:var(--mut);white-space:nowrap;text-align:right}
 .lvr.near{background:#1d3a5a;border-radius:8px;padding:7px 6px}
 .nowline{font-size:12px;color:var(--acc);text-align:center;padding:4px 0;border-bottom:1px dashed var(--acc)}
+.ask{display:block;text-align:center;margin-top:8px;background:#1e5a8a;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:700;text-decoration:none}
 .chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin:4px 0 8px}
 </style>
 </head>
@@ -260,6 +261,7 @@ function renderScen(){
   <div class="tg">${s.to.map(p=>`<i>${p.toFixed(p<46.6&&p>46.5||p===48.489||p===46.008?3:2)} ${man(pl(p))}</i>`).join("")}</div>
  </div>`).join("");
  if(d.tip)h+=`<div class="note">💡 ${d.tip}</div>`;
+ if(tf==="all")h+=`<a class="ask" id="askC" href="https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD" target="_blank" rel="noopener">クロードに分析の更新を頼む</a><div class="note" id="askN" style="text-align:center;margin-top:4px">押すと「シグナル更新して」をコピーして、クロードを開きます</div>`;
  document.getElementById("scen").innerHTML=h;
 }
 document.querySelectorAll("#tf button").forEach(b=>b.onclick=()=>{
@@ -369,6 +371,8 @@ async function live(){
  btn.textContent="更新";
 }
 document.getElementById("lvR").onclick=live;
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#askC");if(!a)return;
+ try{navigator.clipboard.writeText("シグナル更新して").then(()=>{const n=document.getElementById("askN");if(n)n.textContent="コピーしました。クロードで貼り付けて送ってください"}).catch(()=>{})}catch(_){}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")live()});
 live();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
