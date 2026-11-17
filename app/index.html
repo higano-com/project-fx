@@ -65,6 +65,10 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .bp .h{color:var(--mut);font-size:12px}
 .bp .u{color:var(--up);font-weight:700}.bp .d{color:var(--dn);font-weight:700}
 .chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin:4px 0 8px}
+
+/* 文字の色は1色。色をつけるのは数字と売り・買いだけ */
+.note,.lv2,.dir,.lvr .ds,.kv span,.dt,.evr .dt,.bp .h,.lv1 .muted,.cd,.evr .cd,.now b,h2{color:var(--tx)!important}
+.stars{color:var(--tx)}
 </style>
 </head>
 <body>
@@ -307,9 +311,9 @@ function rsi(b,n=14){if(b.length<n+1)return 50;let g=0,l=0;for(let i=1;i<=n;i++)
 function swings(b,k){const H=[],L=[];for(let i=k;i<b.length-k;i++){let h=true,lo=true;for(let j=i-k;j<=i+k;j++){if(b[j][2]>b[i][2])h=false;if(b[j][3]<b[i][3])lo=false}
  if(h)H.push(b[i][2]);if(lo)L.push(b[i][3])}return{H,L}}
 const f2=v=>v.toFixed(2);
-function analyze(b,k,name,span){
+function analyze(b,k,name,span,spot){
  if(!b||b.length<30)return null;
- const last=b[b.length-1][4], r=rsi(b), {H,L}=swings(b,k);
+ const last=isFinite(spot)?spot:b[b.length-1][4], r=rsi(b), {H,L}=swings(b,k);
  const n=Math.min(20,b.length),ma=b.slice(-n).reduce((a,x)=>a+x[4],0)/n;
  const atr=b.slice(-14).reduce((a,x)=>a+(x[2]-x[3]),0)/Math.min(14,b.length);
  const hh=H.length>=2?H[H.length-1]>H[H.length-2]:null, hl=L.length>=2?L[L.length-1]>L[L.length-2]:null;
@@ -352,8 +356,8 @@ async function autoRun(spot){
  let [m1,h1,d1]=await Promise.all([getS("1min"),getS("1h"),getS("1day")]);
  // 先物の足を、今の現物の値段に合わせて補正する
  BASIS=isFinite(spot)?spot-m1[m1.length-1][4]:0; m1=shift(m1,BASIS); h1=shift(h1,BASIS); d1=shift(d1,BASIS);
- AUTO={m1:analyze(m1.slice(-120),3,"1分足","数分〜1時間"),m5:analyze(agg(m1,5),3,"5分足","数時間"),
-  h1:analyze(h1.slice(-150),3,"1時間足","今日〜明日"),h4:analyze(agg(h1,240),2,"4時間足","数日"),d1:analyze(d1.slice(-150),3,"日足","数週間")};
+ AUTO={m1:analyze(m1.slice(-120),3,"1分足","数分〜1時間",spot),m5:analyze(agg(m1,5),3,"5分足","数時間",spot),
+  h1:analyze(h1.slice(-150),3,"1時間足","今日〜明日",spot),h4:analyze(agg(h1,240),2,"4時間足","数日",spot),d1:analyze(d1.slice(-150),3,"日足","数週間",spot)};
  AUTO_LV=buildAutoLv(m1[m1.length-1][4]);
  return m1[m1.length-1];
 }
