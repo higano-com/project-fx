@@ -56,7 +56,20 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .lv1{display:flex;align-items:baseline;gap:10px}
 .lv1 .muted{color:var(--mut);font-size:13px}
 .lv1 b{font-size:26px}
-.lv1 button{margin-left:auto;background:#1e5a8a;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:13px}
+.lv1 button{background:#1e5a8a;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:13px;align-self:center}
+.lv1 #stB{margin-left:auto}
+.lv1 #stB.on{background:#2f7bb8}
+.st{margin-top:10px;background:#0a1626;border-radius:10px;padding:6px 10px}
+.st .sr{display:grid;grid-template-columns:5.5em 1fr 4.6em 56px;gap:8px;align-items:center;padding:5px 0;font-size:13px}
+.st .sr+.sr{border-top:1px solid var(--line)}
+.st .sr.gap{border-top:1px solid var(--mut)}
+.st .nm{font-weight:700;white-space:nowrap}
+.st .pv{text-align:right;white-space:nowrap}
+.st .cg{text-align:right;font-weight:700;white-space:nowrap}
+.st .br{height:6px;background:#12263d;border-radius:4px;overflow:hidden}
+.st .br div{height:6px;border-radius:4px}
+.st ul{margin:6px 0 4px;padding-left:18px}
+.st li{margin:3px 0}
 .lv2{font-size:13px;color:var(--mut);margin-top:5px;line-height:1.5}
 .lv2 b{color:var(--tx)}
 .lvr{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -86,7 +99,8 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">47.61</b><button id="lvR" type="button">更新</button></div>
+  <div class="lv1"><b id="lvP">47.61</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
+  <div class="st" id="st" hidden></div>
   <div class="lv2" id="lvS">20:42時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
@@ -189,12 +203,12 @@ const LV=[
  {p:47.05,k:"stop",t:"損切り（200枚）",d:"割れたら200枚を手じまい。建値47.12のすぐ下"},
  {p:46.5,k:"stop",t:"損切り（全体）",d:"今日の安値46.52割れ。全体の撤退ライン"}
 ];
-const BP0={m5:[47.55,47.41],h1:[47.70,47.27],h4:[47.99,46.52],d1:[49.00,46.52]};
+const BP0={m5:[47.70,47.45],h1:[47.70,47.27],h4:[47.99,46.52],d1:[49.00,46.52]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
  let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
  for(const k of ["m5","h1","h4","d1"]){const A=AUTO&&AUTO[k];const u=A?A.R[0]:BP0[k][0],d=A?A.S[0]:BP0[k][1];
-  h+=`<div class="r"><span class="k">${nm[k]}</span><span class="u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></span><span class="d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></span></div>`}
+  h+=`<div class="r"><span class="k">${nm[k]}</span><span class="u">${u.toFixed(2)}<small>${sgn(u-NOWP)}</small></span><span class="d">${d.toFixed(2)}<small>${sgn(d-NOWP)}</small></span></div>`}
  document.getElementById("bp").innerHTML=h;
 }
 // 文が2つ以上なら「。」で改行する（1〜2文字だけ次の行に落ちるのを防ぐ）
@@ -211,6 +225,7 @@ function renderLv(){
  if(!put)h+=`<div class="nowline">― 今 ${p.toFixed(3)} ―</div>`;
  document.getElementById("lvls").innerHTML=h;
 }
+const sgn=v=>(v>=0?"+":"")+v.toFixed(2);
 const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
@@ -414,8 +429,54 @@ async function live(){
   showLive(ag.price,Date.now(),true);renderScen();}
  catch(e){showLive(47.61,0,false);}
  btn.textContent="更新";
+ if(!document.getElementById("st").hidden)strength();
 }
 document.getElementById("lvR").onclick=live;
+
+// ===== 強弱（主な通貨・商品の前日比） =====
+const SD={ag:3,au:1,pt:1,cu:3,oil:2,dxy:2,jpy:2,eur:4,tnx:2};
+const COM=["ag","au","pt","cu","oil"], FX=["dxy","jpy","eur","tnx"];
+const col=v=>Math.abs(v)<0.005?"var(--tx)":v>0?"var(--up)":"var(--dn)";
+const ck=t=>`<span class="ck">${t}</span>`;
+function renderSt(d){
+ const M={};for(const x of d.items){x.c=x.k==="tnx"?x.p-x.prev:(x.p/x.prev-1)*100;M[x.k]=x}
+ const com=COM.filter(k=>M[k]).sort((a,b)=>M[b].c-M[a].c), fx=FX.filter(k=>M[k]);
+ const mx=Math.max(0.3,...[...com,...fx].filter(k=>k!=="tnx").map(k=>Math.abs(M[k].c)));
+ const row=(k,g)=>{const x=M[k],v=x.c,w=k==="tnx"?Math.min(100,Math.abs(v)/0.1*100):Math.abs(v)/mx*100;
+  return `<div class="sr${g?" gap":""}"><span class="nm">${x.n}</span><span class="pv">${x.p.toFixed(SD[k])}</span><span class="cg" style="color:${col(v)}">${sgn(v)}${k==="tnx"?"":"%"}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${col(v)}"></div></span></div>`};
+ let h=com.map(k=>row(k,0)).join("")+fx.map((k,i)=>row(k,i===0)).join("");
+ const L=[], a=M.ag;
+ const num=v=>`<b style="color:${col(v)}">${sgn(v)}%</b>`;
+ const up=v=>v>=0.05, dn=v=>v<=-0.05;
+ if(a&&M.au){const g=a.c-M.au.c;
+  L.push(Math.abs(g)<0.1?ck("銀と金はほぼ同じ動き"):ck(`銀が金より${g>0?"強い":"弱い"}`)+" "+ck(`差 ${num(g)}`));
+  L.push(ck(`金銀比 ${(M.au.p/a.p).toFixed(1)}`)+" "+ck(`前日 ${(M.au.prev/a.prev).toFixed(1)}`))}
+ const vs=(x,nm,lbl)=>{if(!a||!x)return;const u=x.c;
+  if(up(u)&&up(a.c))L.push(ck(`${nm}が上昇なのに銀も上昇`)+" "+ck(`<b>銀が強い</b>`));
+  else if(dn(u)&&dn(a.c))L.push(ck(`${nm}が下落なのに銀も下落`)+" "+ck(`<b>銀が弱い</b>`));
+  else if(up(u)&&dn(a.c))L.push(ck(`${nm}は上昇 銀は下落`)+" "+ck(`${lbl}どおり`));
+  else if(dn(u)&&up(a.c))L.push(ck(`${nm}は下落 銀は上昇`)+" "+ck(`${lbl}どおり`));
+  else L.push(ck(`${nm}はほぼ横ばい`))};
+ vs(M.jpy,"ドル円","いつもの動き");vs(M.dxy,"ドル指数","いつもの動き");
+ if(a&&M.tnx){const t=M.tnx.c;
+  if(t>=0.02&&up(a.c))L.push(ck("金利が上昇なのに銀も上昇")+" "+ck("<b>銀が強い</b>"));
+  else if(t<=-0.02&&dn(a.c))L.push(ck("金利が低下なのに銀も下落")+" "+ck("<b>銀が弱い</b>"))}
+ if(a&&M.cu){const c=M.cu.c;
+  if(up(c)&&up(a.c))L.push(ck("銅も上昇")+" "+ck("工業金属に買い"));
+  else if(dn(c)&&dn(a.c))L.push(ck("銅も下落")+" "+ck("工業金属が売られている"));
+  else if(Math.abs(c-a.c)>=0.3)L.push(ck(`銅とは逆の動き`))}
+ if(a&&M.jpy)L.push(ck(`円建ての銀 ${num(a.c+M.jpy.c)}`));
+ h+=`<ul>${L.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+ h+=`<div class="lv2">${new Date(d.t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 前日比</div>`;
+ document.getElementById("st").innerHTML=h;
+}
+async function strength(){
+ const el=document.getElementById("st");
+ try{const r=await fetch("api/strength?_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!d.items||!d.items.length)throw 0;renderSt(d)}
+ catch(e){el.innerHTML='<div class="lv2">取れませんでした</div>'}
+}
+document.getElementById("stB").onclick=()=>{const el=document.getElementById("st"),b=document.getElementById("stB");
+ el.hidden=!el.hidden;b.classList.toggle("on",!el.hidden);if(!el.hidden){el.innerHTML='<div class="lv2">取得中</div>';strength()}};
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#askC");if(!a)return;
  try{navigator.clipboard.writeText("シグナル更新して").then(()=>{}).catch(()=>{})}catch(_){}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")live()});
