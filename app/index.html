@@ -445,7 +445,7 @@ const ck=t=>`<span class="ck">${t}</span>`;
 // 期間ごとの「ほぼ横ばい」の幅（u：上げ下げ％　g：銀と金の差％　t：金利　mx：棒の最小の幅　tb：金利の棒の幅）
 const SMODE=[["m5","5分"],["m15","15分"],["h1","1時間"],["h4","4時間"],["d1","前日"]];
 const STH={m5:{u:.02,g:.02,t:.005,mx:.05,tb:.01},m15:{u:.03,g:.03,t:.01,mx:.08,tb:.02},h1:{u:.05,g:.05,t:.01,mx:.15,tb:.03},h4:{u:.05,g:.08,t:.02,mx:.2,tb:.05},d1:{u:.05,g:.1,t:.02,mx:.3,tb:.1}};
-let SM="d1",SDATA=null,REL=false;try{const v=localStorage.getItem("stMode");if(STH[v])SM=v;REL=localStorage.getItem("stRel")==="1"}catch(_){}
+let SM="d1",SDATA=null;try{const v=localStorage.getItem("stMode");if(STH[v])SM=v}catch(_){}
 function renderSt(d){
  SDATA=d;const T=STH[SM],M={};
  const OFF={};
@@ -456,8 +456,8 @@ function renderSt(d){
   const x={...x0,ref};x.c=x.k==="tnx"?x.p-ref:(x.p/ref-1)*100;if(CN[x.k]&&CN[x.k][2])x.c=(ref/x.p-1)*100;M[x.k]=x}
  // 銀の値段の表示だけ、一番上の値段（現物）にそろえる。動き（％）は他と同じ先物で比べる
  const showP=k=>k==="ag"&&isFinite(NOWP)&&Math.abs(NOWP-M.ag.p)<1.5?NOWP:M[k].p;
- // 「銀と比べて」のときは、それぞれの動きから銀の動きを引いた差（＋なら銀より強い）。金利は比べられないので出さない
- const rel=REL&&!!M.ag, dv=k=>rel?M[k].c-M.ag.c:M[k].c;
+ // 強弱は銀と比べて出す：それぞれの動きから銀の動きを引いた差（＋なら銀より強い）。金利は比べられないので出さない
+ const rel=!!M.ag, dv=k=>rel?M[k].c-M.ag.c:M[k].c;
  const com=COM.filter(k=>M[k]).sort((a,b)=>dv(b)-dv(a)), fx=FX.filter(k=>(M[k]||OFF[k])&&!(rel&&k==="tnx")), cty=CTY.filter(k=>M[k]||OFF[k]);
  const mx=Math.max(T.mx,...[...com,...fx,...cty].filter(k=>k!=="tnx"&&M[k]).map(k=>Math.abs(dv(k))));
  const nmOf=k=>CN[k]?`${CN[k][0]} ${CN[k][1]}`:(M[k]||{}).n||OFF[k];
@@ -465,11 +465,11 @@ function renderSt(d){
   const x=M[k],v=dv(k),w=k==="tnx"?Math.min(100,Math.abs(v)/T.tb*100):Math.abs(v)/mx*100;
   return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv">${CN[k]&&CN[k][2]?"":showP(k).toFixed(SD[k])}</span><span class="cg" style="color:${col(v)}">${sgn(v)}${k==="tnx"?"":"%"}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${col(v)}"></div></span></div>`};
  let h=`<div class="seg" id="stM">${SMODE.map(([k,n])=>`<button type="button" data-m="${k}" class="${k===SM?"on":""}">${n}</button>`).join("")}</div>`;
- h+=`<div class="seg" id="stV"><button type="button" data-v="0" class="${REL?"":"on"}">そのまま</button><button type="button" data-v="1" class="${REL?"on":""}">銀と比べて</button></div>`;
  h+=com.length||fx.length?com.map(k=>row(k,0)).join("")+fx.map((k,i)=>row(k,i===0)).join("")+cty.map((k,i)=>row(k,i===0)).join(""):'<div class="lv2">この期間の値段がありません</div>';
  const L=[], a=M.ag;
  const num=v=>`<b style="color:${col(v)}">${sgn(v)}%</b>`;
  const up=v=>v>=T.u, dn=v=>v<=-T.u;
+ if(a)L.push(ck(`銀そのもの ${num(a.c)}`));
  if(a&&M.au){const g=a.c-M.au.c;
   L.push(Math.abs(g)<T.g?ck("銀と金はほぼ同じ動き"):ck(`銀が金より${g>0?"強い":"弱い"}`)+" "+ck(`差 ${num(g)}`));
   L.push(ck(`金銀比 ${(M.au.p/a.p).toFixed(1)}`)+" "+ck(`${SM==="d1"?"前日":SMODE.find(x=>x[0]===SM)[1]+"前"} ${(M.au.ref/a.ref).toFixed(1)}`))}
@@ -504,9 +504,8 @@ async function strength(){
  catch(e){el.innerHTML='<div class="lv2">取れませんでした</div>'}
 }
 document.getElementById("st").addEventListener("click",e=>{if(!SDATA||!e.target.closest)return;
- const b=e.target.closest("#stM button"),v=e.target.closest("#stV button");
- if(b){SM=b.dataset.m;try{localStorage.setItem("stMode",SM)}catch(_){}renderSt(SDATA)}
- if(v){REL=v.dataset.v==="1";try{localStorage.setItem("stRel",REL?"1":"0")}catch(_){}renderSt(SDATA)}});
+ const b=e.target.closest("#stM button");
+ if(b){SM=b.dataset.m;try{localStorage.setItem("stMode",SM)}catch(_){}renderSt(SDATA)}});
 document.getElementById("stB").onclick=()=>{const el=document.getElementById("st"),b=document.getElementById("stB");
  el.hidden=!el.hidden;b.classList.toggle("on",!el.hidden);if(!el.hidden){el.innerHTML='<div class="lv2">取得中</div>';strength()}};
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("#askC");if(!a)return;
