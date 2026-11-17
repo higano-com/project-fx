@@ -1,0 +1,13 @@
+name: シグナルの中継役を確かめる
+on:
+  push:
+    branches: [claude/connection-check-m84res]
+    paths: [".github/workflows/probe.yml"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 20
+          echo "結果 価格 $(curl -s https://project-fx-24u.pages.dev/api/price?symbol=XAG%2FUSD | head -c 120)"
+          echo "結果 画面 $(curl -s https://project-fx-24u.pages.dev/ | grep -c askC) $(curl -s https://project-fx-24u.pages.dev/sw.js | grep -o 'signal-[0-9]*' | head -1)"
