@@ -4,7 +4,9 @@
 // ・1分だけためておく。価格を読むだけ。注文に関わる処理はありません
 const SYM = [
   ["ag", "銀", "SI=F"], ["au", "金", "GC=F"], ["pt", "プラチナ", "PL=F"], ["cu", "銅", "HG=F"], ["oil", "原油", "CL=F"],
-  ["dxy", "ドル指数", "DX-Y.NYB"], ["jpy", "ドル円", "JPY=X"], ["eur", "ユーロドル", "EURUSD=X"], ["tnx", "米10年金利", "^TNX"]
+  ["dxy", "ドル指数", "DX-Y.NYB"], ["jpy", "ドル円", "JPY=X"], ["eur", "ユーロドル", "EURUSD=X"], ["tnx", "米10年金利", "^TNX"],
+  // 銀に関わる国（2026/11/17 の検証で銀と一緒に動く度合いが大きかったもの＋大口の産出国・消費国）
+  ["cnh", "人民元", "CNH=X"], ["sse", "上海株", "000001.SS"], ["aud", "豪ドル", "AUDUSD=X"], ["mxn", "メキシコペソ", "MXN=X"], ["inr", "インドルピー", "INR=X"]
 ];
 const BACK = { m5: 5, m15: 15, h1: 60, h4: 240 };
 const json = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...extra } });
@@ -36,7 +38,7 @@ async function one([k, n, s]) {
 
 export async function onRequestGet({ waitUntil }) {
   const cache = caches.default;
-  const cacheKey = new Request("https://signal-cache.internal/strength2");
+  const cacheKey = new Request("https://signal-cache.internal/strength3");
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
   const items = (await Promise.all(SYM.map(one))).filter(Boolean);
