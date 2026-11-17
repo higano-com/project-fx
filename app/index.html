@@ -51,7 +51,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .lv1 .muted{color:var(--mut);font-size:13px}
 .lv1 b{font-size:26px}
 .lv1 button{margin-left:auto;background:#1e5a8a;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:13px}
-.lv2{font-size:13px;color:var(--mut);margin-top:3px}
+.lv2{font-size:13px;color:var(--mut);margin-top:5px;line-height:1.5}
 .lv2 b{color:var(--tx)}
 .lvr{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
 .lvr .pr{font-weight:700;font-size:14px}
@@ -61,9 +61,14 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .lvr.near{background:#1d3a5a;border-radius:8px;padding:7px 6px}
 .nowline{font-size:12px;color:var(--acc);text-align:center;padding:4px 0;border-bottom:1px dashed var(--acc)}
 .ask{display:block;text-align:center;margin-top:8px;background:#1e5a8a;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:700;text-decoration:none}
-.bp{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 10px;margin-top:8px;font-size:13px;align-items:center}
-.bp .h{color:var(--mut);font-size:12px}
-.bp .u{color:var(--up);font-weight:700}.bp .d{color:var(--dn);font-weight:700}
+.bp{margin-top:10px;background:#0a1626;border-radius:10px;padding:4px 10px}
+.bp .r{display:grid;grid-template-columns:54px 1fr 1fr;align-items:baseline;padding:7px 0}
+.bp .r+.r{border-top:1px solid var(--line)}
+.bp .h{font-size:12px;font-weight:700;padding:6px 0 4px}
+.bp .k{font-size:13px;font-weight:700}
+.bp .u,.bp .d{font-size:16px;font-weight:800}
+.bp .u{color:var(--up)}.bp .d{color:var(--dn)}
+.bp small{font-size:12px;font-weight:600;margin-left:5px}
 .chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin:4px 0 8px}
 
 /* 文字の色は1色。色をつけるのは数字と売り・買いだけ */
@@ -180,9 +185,9 @@ const LV=[
 const BP0={m5:[47.50,47.30],h1:[47.99,47.05],h4:[48.00,46.52],d1:[49.00,46.52]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
- let h='<span class="h">ブレイク</span><span class="h">上抜け</span><span class="h">下抜け</span>';
+ let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
  for(const k of ["m5","h1","h4","d1"]){const A=AUTO&&AUTO[k];const u=A?A.R[0]:BP0[k][0],d=A?A.S[0]:BP0[k][1];
-  h+=`<span>${nm[k]}</span><span class="u">${u.toFixed(2)} <small>(${u-NOWP>=0?"+":""}${(u-NOWP).toFixed(2)})</small></span><span class="d">${d.toFixed(2)} <small>(${(d-NOWP).toFixed(2)})</small></span>`}
+  h+=`<div class="r"><span class="k">${nm[k]}</span><span class="u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></span><span class="d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></span></div>`}
  document.getElementById("bp").innerHTML=h;
 }
 function renderLv(){
