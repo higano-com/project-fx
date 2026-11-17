@@ -72,6 +72,8 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
   <div class="lv2" id="lvS">18:20時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
+  <a class="ask" id="askC" href="https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD" target="_blank" rel="noopener">クロードに分析の更新を頼む</a>
+  <div class="note" id="askN" style="text-align:center;margin-top:4px">押すと「シグナル更新して」をコピーして、クロードを開きます</div>
 </div>
 
 <div class="card">
@@ -261,7 +263,6 @@ function renderScen(){
   <div class="tg">${s.to.map(p=>`<i>${p.toFixed(p<46.6&&p>46.5||p===48.489||p===46.008?3:2)} ${man(pl(p))}</i>`).join("")}</div>
  </div>`).join("");
  if(d.tip)h+=`<div class="note">💡 ${d.tip}</div>`;
- if(tf==="all")h+=`<a class="ask" id="askC" href="https://claude.ai/code/session_01Ux6EqWKfM7fVzCw1xNz8nD" target="_blank" rel="noopener">クロードに分析の更新を頼む</a><div class="note" id="askN" style="text-align:center;margin-top:4px">押すと「シグナル更新して」をコピーして、クロードを開きます</div>`;
  document.getElementById("scen").innerHTML=h;
 }
 document.querySelectorAll("#tf button").forEach(b=>b.onclick=()=>{
