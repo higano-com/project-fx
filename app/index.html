@@ -35,7 +35,7 @@ h2{font-size:15px;margin:0 0 8px;color:var(--acc)}
 ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 .tg{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .pln{margin-top:8px;border-top:1px dashed var(--line);padding-top:4px}
-.pln .ps{display:grid;grid-template-columns:66px 1fr;gap:8px;align-items:center;padding:6px 0;font-size:12px;line-height:1.45}
+.pln .ps{display:grid;grid-template-columns:56px 1fr;gap:8px;align-items:center;padding:6px 0;font-size:12px;line-height:1.45}
 .pln .ps+.ps{border-top:1px solid var(--line)}
 .pln .pp{font-weight:700;font-size:13px}
 .pln .ds{text-align:right;white-space:nowrap}
@@ -320,7 +320,7 @@ function renderScen(){
   <ul>${s.why.map(x=>`<li>${BR(x)}</li>`).join("")}</ul>
   <div class="kv"><span>サイン：</span>${BR(s.sign)}</div>
   <div class="tg">${s.to.map(p=>`<i>${p.toFixed(p<46.6&&p>46.5||p===48.489||p===46.008?3:2)} ${man(pl(p))}</i>`).join("")}</div>
-  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${i+1}. ${x.p.toFixed(x.p===48.489?3:2)}</span><span><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.a)}</span></div>`}).join("")}</div>`:""}
+  ${s.plan?`<div class="pln">${s.plan.map((x,i)=>{const c=x.k==="buy"?"var(--up)":x.k==="hold"?"var(--tx)":"var(--dn)";return `<div class="ps"><span class="pp" style="color:${c}">${x.p.toFixed(x.p===48.489?3:2)}</span><span><b style="color:${c}">${BR(x.t)}</b><br>${BR(x.a)}</span></div>`}).join("")}</div>`:""}
  </div>`).join("");
  if(d.tip)h+=`<div class="note">💡 ${BR(d.tip)}</div>`;
  document.getElementById("scen").innerHTML=h;
