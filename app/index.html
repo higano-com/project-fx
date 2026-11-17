@@ -461,7 +461,7 @@ function renderSt(d){
  const com=COM.filter(k=>M[k]).sort((a,b)=>dv(b)-dv(a)), fx=FX.filter(k=>(M[k]||OFF[k])&&!(rel&&k==="tnx")), cty=CTY.filter(k=>M[k]||OFF[k]);
  const mx=Math.max(T.mx,...[...com,...fx,...cty].filter(k=>k!=="tnx"&&M[k]).map(k=>Math.abs(dv(k))));
  const nmOf=k=>CN[k]?`${CN[k][0]} ${CN[k][1]}`:(M[k]||{}).n||OFF[k];
- const row=(k,g)=>{if(!M[k])return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv"></span><span class="cg">時間外</span><span></span></div>`;if(rel&&k==="ag")return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv">${showP(k).toFixed(SD[k])}</span><span class="cg">0.00%</span><span></span></div>`;
+ const row=(k,g)=>{if(!M[k])return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv"></span><span class="cg">時間外</span><span></span></div>`;if(rel&&k==="ag")return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv">${showP(k).toFixed(SD[k])}</span><span class="cg">基準</span><span></span></div>`;
   const x=M[k],v=dv(k),w=k==="tnx"?Math.min(100,Math.abs(v)/T.tb*100):Math.abs(v)/mx*100;
   return `<div class="sr${g?" gap":""}"><span class="nm">${nmOf(k)}</span><span class="pv">${CN[k]&&CN[k][2]?"":showP(k).toFixed(SD[k])}</span><span class="cg" style="color:${col(v)}">${sgn(v)}${k==="tnx"?"":"%"}</span><span class="br"><div style="width:${w.toFixed(0)}%;background:${col(v)}"></div></span></div>`};
  let h=`<div class="seg" id="stM">${SMODE.map(([k,n])=>`<button type="button" data-m="${k}" class="${k===SM?"on":""}">${n}</button>`).join("")}</div>`;
@@ -469,6 +469,7 @@ function renderSt(d){
  const L=[], a=M.ag;
  const num=v=>`<b style="color:${col(v)}">${sgn(v)}%</b>`;
  const up=v=>v>=T.u, dn=v=>v<=-T.u;
+ if(a)L.push(ck(`銀そのもの ${num(a.c)}`));
  if(a&&M.au){const g=a.c-M.au.c;
   L.push(Math.abs(g)<T.g?ck("銀と金はほぼ同じ動き"):ck(`銀が金より${g>0?"強い":"弱い"}`)+" "+ck(`差 ${num(g)}`));
   L.push(ck(`金銀比 ${(M.au.p/a.p).toFixed(1)}`)+" "+ck(`${SM==="d1"?"前日":SMODE.find(x=>x[0]===SM)[1]+"前"} ${(M.au.ref/a.ref).toFixed(1)}`))}
