@@ -321,7 +321,7 @@ function analyze(b,k,name,span){
    {n:`下：${f2(S1)}割れ→${f2(S2)}`,p:100-up,c:"#3fb6ff",to:[S1,S2],
     why:[`${f2(S1)}は直近の谷（支え）`,trend==="down"?"下降の流れに沿う向き":trend==="up"?"上昇の流れには逆らう向き（押し目買いが入りやすい）":"もみ合いの下抜けを狙う形",r>=70?"買われすぎからの反落":r<=30?"売られすぎで下げ止まりやすい面も":mw],
     sign:`${name}が${f2(S1)}の下で確定`}],
-  tip:`開いたときに${name}のデータから自動で計算した目安です（文章は機械的な説明）。`,
+  tip:`開いたときに${name}のデータから自動で計算した目安です（銀先物の足を現物の値段に合わせて補正。文章は機械的な説明）。`,
   R:[R1,R2],S:[S1,S2]};
 }
 function buildAutoLv(p){
@@ -336,8 +336,12 @@ function buildAutoLv(p){
  return L;
 }
 async function getS(iv){const r=await fetch("api/series?symbol=XAG%2FUSD&interval="+iv,{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!d.values||!d.values.length)throw 0;return d.values}
-async function autoRun(){
- const [m1,h1,d1]=await Promise.all([getS("1min"),getS("1h"),getS("1day")]);
+var BASIS=0;
+const shift=(b,o)=>b.map(x=>[x[0],x[1]+o,x[2]+o,x[3]+o,x[4]+o]);
+async function autoRun(spot){
+ let [m1,h1,d1]=await Promise.all([getS("1min"),getS("1h"),getS("1day")]);
+ // 先物の足を、今の現物の値段に合わせて補正する
+ BASIS=isFinite(spot)?spot-m1[m1.length-1][4]:0; m1=shift(m1,BASIS); h1=shift(h1,BASIS); d1=shift(d1,BASIS);
  AUTO={m1:analyze(m1.slice(-120),3,"1分足","数分〜1時間"),m5:analyze(agg(m1,5),3,"5分足","数時間"),
   h1:analyze(h1.slice(-150),3,"1時間足","今日〜明日"),h4:analyze(agg(h1,240),2,"4時間足","数日"),d1:analyze(d1.slice(-150),3,"日足","数週間")};
  AUTO_LV=buildAutoLv(m1[m1.length-1][4]);
@@ -349,7 +353,7 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();
  document.getElementById("lvP").textContent=p.toFixed(3);
- document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}（GMOと数セントずれることがあります）`:"18:20時点の値（固定）";
+ document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}（GMOと数セントずれることがあります）${AUTO?"・足は先物を現物に補正":""}`:"18:20時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const z=p>=48.0?"48.0より上：<b>上昇シナリオ</b>に入っています":p>47.3?"47.3〜48.0の間：<b>レンジ</b>の中です":p>47.06?"47.3を割っています：<b>下落シナリオ</b>寄り":p>46.523?"47.06も割っています：<b>下落シナリオ</b>進行中":"今日の安値46.52を割っています：<b>要警戒</b>";
  document.getElementById("lvZ").innerHTML=z;
@@ -359,7 +363,7 @@ async function live(){
  const btn=document.getElementById("lvR");btn.textContent="取得中";
  try{const [ag,jp]=await Promise.all([getP("XAG/USD"),getP("USD/JPY").catch(()=>null)]);
   if(jp)JPY=jp.price;
-  try{await autoRun()}catch(e){AUTO=null;AUTO_LV=null}
+  try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,ag.t,true);renderScen();}
  catch(e){showLive(47.336,0,false);}
  btn.textContent="更新";

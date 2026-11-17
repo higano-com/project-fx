@@ -19,9 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: ツエルブデータから取得
-        env:
-          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+      - name: ヤフーとスイスクオートから取得
         run: node scripts/fetch-silver.mjs
       - name: data/silver を保存
         run: |
