@@ -43,24 +43,23 @@ h2{font-size:var(--fs-l);margin:0 0 10px;font-weight:800}
 .page{display:none}.page.on{display:block}
 
 /* ブレイクポイント */
-.bp{display:grid;grid-template-columns:52px 1fr 1fr;row-gap:2px}
-.bp>div{padding:9px 0;border-bottom:1px solid var(--line)}
-.bp>div:nth-last-child(-n+3){border-bottom:0}
-.bp .h{font-size:var(--fs-s);padding-top:0}
-.bp .v{font-size:var(--fs-l);font-weight:800}
-.bp .v small{display:block;font-size:var(--fs-s);font-weight:600}
-.bp .k{font-weight:700;align-self:center}
-.be{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:var(--fs-s)}
+.bp{margin-top:4px}
+.bp .bh,.bp .br{display:grid;grid-template-columns:56px 1fr 1fr;align-items:center;column-gap:8px}
+.bp .bh{font-size:var(--fs-s);font-weight:700;padding:0 0 6px}
+.bp .br{padding:10px 0;border-top:1px solid var(--line)}
+.bp .k{font-weight:700}
+.bp .v{font-size:var(--fs-l);font-weight:800;display:flex;align-items:baseline;gap:6px}
+.bp .v small{font-size:var(--fs-s);font-weight:600;opacity:.85}
+.be{display:flex;justify-content:space-between;margin-top:4px;padding-top:10px;border-top:1px solid var(--line);font-size:var(--fs-s)}
 .be b{font-size:var(--fs-m)}
-
 /* 売り時・買い時 */
 .lvr{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:center;padding:11px 8px;border-radius:12px}
 .lvr+.lvr{border-top:1px solid var(--line);border-radius:0}
 .lvr.near{background:var(--hl);border-radius:12px;border-top-color:transparent}
 .lvr.near+.lvr{border-top-color:transparent}
 .lvr .pr{font-size:var(--fs-l);font-weight:800}
-.lvr .tx{font-size:var(--fs-s);line-height:1.4}
-.lvr .tx b{display:block;font-size:var(--fs-m)}
+.lvr .tx{font-size:var(--fs-s);line-height:1.55}
+.lvr .tx b{display:block;font-size:var(--fs-m);margin-bottom:2px}
 .lvr .ds{text-align:right;font-size:var(--fs-s);white-space:nowrap}
 .lvr .ds b{display:block;font-size:var(--fs-m)}
 .nowline{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:var(--fs-s);font-weight:800}
@@ -72,7 +71,7 @@ h2{font-size:var(--fs-l);margin:0 0 10px;font-weight:800}
 .seg button.on{background:var(--hl);opacity:1}
 
 /* シナリオ */
-.now{font-size:var(--fs-m);line-height:1.6;margin-bottom:12px}
+.now{font-size:var(--fs-m);line-height:1.75;margin-bottom:14px;padding:12px;background:var(--card2);border-radius:12px}
 .now b{font-weight:800}
 .sc{background:var(--card2);border-radius:14px;padding:12px;margin-bottom:10px}
 .sc .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -80,8 +79,9 @@ h2{font-size:var(--fs-l);margin:0 0 10px;font-weight:800}
 .sc .p{font-size:var(--fs-l);font-weight:800}
 .bar{background:var(--line);border-radius:4px;height:4px;margin:8px 0}
 .bar div{height:4px;border-radius:4px}
-ul{margin:4px 0 8px;padding-left:18px;font-size:var(--fs-s);line-height:1.6}
-.kv{font-size:var(--fs-s)}
+ul{margin:6px 0 10px;padding-left:18px;font-size:var(--fs-s);line-height:1.7}
+li+li{margin-top:3px}
+.kv{font-size:var(--fs-s);line-height:1.6}
 .tg{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .tg i{font-style:normal;font-size:var(--fs-s);background:var(--hl);border-radius:8px;padding:4px 8px;font-weight:700}
 .note{font-size:var(--fs-s);line-height:1.5}
@@ -94,9 +94,9 @@ ul{margin:4px 0 8px;padding-left:18px;font-size:var(--fs-s);line-height:1.6}
 .evr .dt{font-size:var(--fs-s);white-space:nowrap}
 .evr .nm{font-size:var(--fs-m);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .evr .st{font-size:var(--fs-s);white-space:nowrap;letter-spacing:-1px}
-.evr .body{padding:0 12px 12px;font-size:var(--fs-s);line-height:1.6}
+.evr .body{padding:2px 12px 14px;font-size:var(--fs-s);line-height:1.75}
 .evr .cd{font-weight:700;margin-bottom:4px}
-.evr .dir{margin-top:6px}
+.evr .dir{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .chk{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);margin:0 0 10px}
 
 /* 下のタブ */
@@ -137,7 +137,7 @@ ul{margin:4px 0 8px;padding-left:18px;font-size:var(--fs-s);line-height:1.6}
 <section class="page" id="pg-ev">
 <div class="card">
   <div class="seg" id="cm"><button data-c="silver" class="on">シルバー</button><button data-c="gold">金</button><button data-c="oil">原油</button></div>
-  <div class="note" id="cNote" style="margin-bottom:8px"></div>
+  <div class="note" id="cNote" style="margin-bottom:10px;line-height:1.7"></div>
   <label class="chk"><input type="checkbox" id="showPast"> 終わった指標も表示</label>
   <div id="evList"></div>
 </div>
@@ -218,11 +218,12 @@ const LV=[
  {p:46.5,k:"stop",t:"損切り（全体）",d:"今日の安値割れ。全体の撤退ライン"}
 ];
 const BP0={m5:[47.50,47.30],h1:[47.99,47.05],h4:[48.00,46.52],d1:[49.00,46.52]};
+const para=t=>String(t||"").replace(/。(?!$)/g,"。<br>").replace(/。<br>\s*$/,"。");
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
- let h='<div class="h"></div><div class="h">上抜け</div><div class="h">下抜け</div>';
+ let h='<div class="bh"><span></span><span class="u">▲ 上抜け</span><span class="d">▼ 下抜け</span></div>';
  for(const k of ["m5","h1","h4","d1"]){const A=AUTO&&AUTO[k];const u=A?A.R[0]:BP0[k][0],d=A?A.S[0]:BP0[k][1];
-  h+=`<div class="k">${nm[k]}</div><div class="v u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></div><div class="v d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></div>`}
+  h+=`<div class="br"><span class="k">${nm[k]}</span><span class="v u">${u.toFixed(2)}<small>+${(u-NOWP).toFixed(2)}</small></span><span class="v d">${d.toFixed(2)}<small>${(d-NOWP).toFixed(2)}</small></span></div>`}
  document.getElementById("bp").innerHTML=h;
 }
 function renderLv(){
@@ -306,7 +307,7 @@ const TF={
 let tf="all";
 function renderScen(){
  const d=(tf!=="all"&&AUTO&&AUTO[tf])||TF[tf];
- let h=`<div class="now">${d.span?`<b>${d.span}の見通し</b><br>`:""}${d.now}</div>`;
+ let h=`<div class="now">${d.span?`<b>${d.span}の見通し</b><br>`:""}${para(d.now)}</div>`;
  h+=d.sc.map(s=>`<div class="sc" style="border-left-color:${s.c}">
   <div class="t"><span class="n">${s.n}</span><span class="p" style="color:${s.c}">${s.p}%</span></div>
   <div class="bar"><div style="width:${s.p}%;background:${s.c}"></div></div>
@@ -328,14 +329,14 @@ const fd=d=>`${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay
 const cd=ms=>{if(ms<0)return"発表済み";const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4);return h>=24?`あと${Math.floor(h/24)}日${h%24}時間`:`あと${h}時間${m}分`};
 function renderEv(){
  const now=Date.now(),past=document.getElementById("showPast").checked;
- document.getElementById("cNote").textContent=CINFO[cur];
+ document.getElementById("cNote").innerHTML=para(CINFO[cur]);
  const open=new Set([...document.querySelectorAll(".evr[open]")].map(x=>x.dataset.id));
  const L=EVENTS.map((e,i)=>({...e,i,d:jst(e.at)})).filter(e=>e.imp[cur]>0&&(past||e.d.getTime()>now-2*36e5)).sort((a,b)=>a.d-b.d);
  const nx=L.findIndex(e=>e.d.getTime()>now-30*6e4);
  document.getElementById("evList").innerHTML=L.map((e,k)=>{const l=e.imp[cur];
   return `<details class="evr ${k===nx?"next":""}" data-id="${e.i}" ${open.has(String(e.i))?"open":""}><summary>
   <span class="dt">${fd(e.d)}</span><span class="nm">${k===nx?"▶ ":""}${e.name}</span><span class="st">${"★".repeat(l)}</span></summary>
-  <div class="body"><div class="cd">注意度：${LN[l]} ／ ${cd(e.d.getTime()-now)}</div>${e.why[cur]||""}<div class="dir">${e.dir}</div></div></details>`}).join("")||'<div class="note">該当なし</div>';
+  <div class="body"><div class="cd">注意度：${LN[l]} ／ ${cd(e.d.getTime()-now)}</div>${para(e.why[cur])}<div class="dir">${String(e.dir).replace(" ／ ","<br>")}</div></div></details>`}).join("")||'<div class="note">該当なし</div>';
 }
 document.querySelectorAll("#cm button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#cm button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cur=b.dataset.c;renderEv();});
