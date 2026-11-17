@@ -364,18 +364,18 @@ function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
  if(!ok){document.getElementById("lvS").innerHTML='18:20時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"18:20時点の値（固定）";
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"18:20時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`290枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const z=p>=48.0?"48.0より上：<b>上昇シナリオ</b>に入っています":p>47.3?"47.3〜48.0の間：<b>レンジ</b>の中です":p>47.06?"47.3を割っています：<b>下落シナリオ</b>寄り":p>46.523?"47.06も割っています：<b>下落シナリオ</b>進行中":"今日の安値46.52を割っています：<b>要警戒</b>";
  document.getElementById("lvZ").innerHTML=z;
 }
-async function getP(sym){const r=await fetch("api/price?symbol="+encodeURIComponent(sym),{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!isFinite(d.price))throw 0;return d}
+async function getP(sym){const r=await fetch("api/price?symbol="+encodeURIComponent(sym)+"&_="+Date.now(),{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json();if(!isFinite(d.price))throw 0;return d}
 async function live(){
  const btn=document.getElementById("lvR");btn.textContent="取得中";
  try{const [ag,jp]=await Promise.all([getP("XAG/USD"),getP("USD/JPY").catch(()=>null)]);
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
-  showLive(ag.price,ag.t,true);renderScen();}
+  showLive(ag.price,Date.now(),true);renderScen();}
  catch(e){showLive(47.336,0,false);}
  btn.textContent="更新";
 }
