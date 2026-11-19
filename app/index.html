@@ -103,9 +103,9 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">45.33</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
+  <div class="lv1"><b id="lvP">45.02</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">16:38時点の値（固定）</div>
+  <div class="lv2" id="lvS">21:08時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -155,10 +155,10 @@ const EVENTS=[
   why:{silver:"12月の利上げ観測が高い中で、どれだけ利上げに前向きだったかが分かる。タカ派なら銀には強い逆風。発表が深夜4時なので、寝ている間に動くリスクあり。",
        gold:"利上げ姿勢の強さが金の方向を左右する。",oil:"景気見通し経由で間接的に影響。"},
   dir:"タカ派（利上げに前向き）→銀・金下落 ／ ハト派→上昇"},
- {at:"2026-11-20T22:30",name:"米・新規失業保険申請件数",imp:{silver:2,gold:2,oil:1},
+ {at:"2026-11-19T22:30",name:"米・新規失業保険申請件数",imp:{silver:2,gold:2,oil:1},
   why:{silver:"毎週木曜の雇用指標。大きくぶれた時だけ反応。",gold:"同左。",oil:"影響は小さい。"},
   dir:"申請増（雇用悪化）→銀・金上昇しやすい"},
- {at:"2026-11-20T23:45",name:"米・PMI速報値（11月）※例年の日程",imp:{silver:3,gold:2,oil:2},
+ {at:"2026-11-23T23:45",name:"米・PMI速報値（11月）※予定",imp:{silver:3,gold:2,oil:2},
   why:{silver:"製造業の景況感。工業用途の多い銀は金より反応しやすい。",gold:"景気・金利観測経由で影響。",oil:"景気・需要見通しの目安。"},
   dir:"強い→工業需要期待（銀↑）と利上げ観測（銀↓）が綱引き"},
  {at:"2026-11-25T22:30",name:"米・PCE物価（10月）＋GDP改定値（7-9月）",imp:{silver:5,gold:5,oil:2},
@@ -200,21 +200,19 @@ const CINFO={
 const POS=[[80,46.109],[200,45.793],[11,45.915]];
 // 小数3けたの値段（建値など）は3けたで出す
 const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
-let JPY=159.68, NOWP=45.33;
+let JPY=159.93, NOWP=45.02;
 // 売り時・買い時の目安（11/19 16:38 時点の分析）
 const LV=[
- {p:46.3,k:"sell",t:"売り（戻りの壁）",d:"18日夕方のもみ合い"},
- {p:45.75,k:"sell",t:"売り（戻りの壁）",d:"朝の高値"},
- {p:45.45,k:"sell",t:"売り（戻りの壁）",d:"夕方の高値"},
- {p:45.1,k:"buy",t:"買い（支え）",d:"夕方の安値"},
- {p:44.857,k:"stop",t:"ロスカット（80枚）",d:"12時台に下回った。口座で確かめる"},
- {p:44.7,k:"buy",t:"買い（支え）",d:"12時台の戻りの起点"},
- {p:44.663,k:"stop",t:"ロスカット（11枚）",d:"12時台に下回った。口座で確かめる"},
- {p:44.541,k:"stop",t:"ロスカット（200枚）",d:"12時台に下回った。口座で確かめる"},
- {p:44.4,k:"buy",t:"買い（支え）",d:"12時の安値"},
- {p:44.1,k:"stop",t:"逆指値の候補",d:"44.4の下。割れたら手じまい"}
+ {p:45.9,k:"sell",t:"売り（戻りの壁）",d:"朝の高値"},
+ {p:45.5,k:"sell",t:"売り（戻りの壁）",d:"午後に何度も止められた"},
+ {p:45.25,k:"sell",t:"売り（目先の壁）",d:"夕方の支え。割れた後は壁"},
+ {p:44.9,k:"buy",t:"買い（支え）",d:"20時台の安値"},
+ {p:44.857,k:"stop",t:"ロスカット（80枚）",d:"下回った可能性。口座で確かめる"},
+ {p:44.663,k:"stop",t:"ロスカット（11枚）",d:"下回った可能性。口座で確かめる"},
+ {p:44.541,k:"stop",t:"ロスカット（200枚）",d:"下回った可能性。口座で確かめる"},
+ {p:44.5,k:"buy",t:"買い（支え）",d:"12時の安値"}
 ];
-const BP0={m5:[45.45,45.1],h1:[45.75,45.1],h4:[45.75,44.4],d1:[47.5,44.4]};
+const BP0={m5:[45.15,44.95],h1:[45.25,44.9],h4:[45.5,44.5],d1:[47.5,44.5]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
  let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
@@ -241,30 +239,17 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/19 16:38）</b><br>当時の値 45.33（ドル円159.68）。12時台に44.4前後まで急落した。3つのロスカットを下回った可能性が高い。口座で建玉が残っているか、確かめてください。今は45.1〜45.5で戻り待ち。",
+ all:{now:"<b>クロードの分析（11/19 21:08）</b><br>当時の値 45.02（ドル円159.93）。12時台に44.5前後まで急落し、3つのロスカットを下回った可能性が高い。20時台にまた45.0まで下げた。金と銅もそろって下げ、ドルはやや強い。22:30に新規失業保険申請件数。",
   sc:[
-   {n:"もち合い（45.1〜45.75）",p:45,c:"#f5b041",to:[45.1,45.75],
-    why:["12時の急落は、1時間ほどで戻した","日足RSIは29で、売られすぎ","大きな米指標は20日夜まで無い"],
-    sign:"1時間足が45.1〜45.75の中で終わる",
-    plan:[
-     {p:45.75,k:"sell",t:"戻りの壁。買いは控える",a:"朝の高値。ここで止まりやすい"},
-     {p:45.1,k:"hold",t:"支え。下ヒゲなら様子見",a:"夕方の安値"},
-     {p:44.4,k:"buy",t:"買うなら、少なめの候補",a:"12時の安値。逆指値は44.1。100枚なら約-4.8万"}]},
-   {n:"下落：45.1割れ→44.7→44.4",p:35,c:"#3fb6ff",to:[45.1,44.7,44.4],
-    why:["日足・4時間足は、山も谷も切り下がる","議事要旨がタカ派で、利上げ観測が強い","金も14か月ぶりの安値で、重い"],
-    sign:"1時間足が45.1の下で確定",
-    plan:[
-     {p:45.1,k:"hold",t:"割れて確定→買いは見送り",a:"夕方の安値"},
-     {p:44.7,k:"hold",t:"止まるか確かめる",a:"12時台の戻りの起点"},
-     {p:44.4,k:"buy",t:"下ヒゲで戻すなら、少なめの買い候補",a:"逆指値は44.1。100枚なら約-4.8万"},
-     {p:44.1,k:"stop",t:"割れたら手じまい",a:"逆指値の注文を、口座に入れておく"}]},
-   {n:"戻り：45.75突破→46.3",p:20,c:"#ff5a5a",to:[45.75,46.0,46.3],
-    why:["4時間足RSIは30で、売られすぎ","急落の安値から、1ドル近く戻した","ドル高が一服すれば、金と一緒に戻る"],
-    sign:"1時間足が45.75の上で確定",
-    plan:[
-     {p:45.75,k:"buy",t:"上で確定→少なめの買い候補",a:"逆指値は45.3。100枚なら約-7.2万"},
-     {p:46.0,k:"sell",t:"半分を利確する候補",a:"50枚で約+2.0万。残りの逆指値は45.75へ"},
-     {p:46.3,k:"sell",t:"残りを利確する候補",a:"18日夕方のもみ合い。50枚で約+4.4万"}]}]},
+   {n:"下押し：44.9割れ→44.5",p:40,c:"#3fb6ff",to:[44.9,44.5],
+    why:["20時台に1時間で-0.6%。金と銅もそろって下げた","日足は山も谷も切り下がり、下降が続く","12時の安値44.5前後が、次の目安"],
+    sign:"1時間足が44.9の下で確定"},
+   {n:"もち合い（44.9〜45.5）",p:40,c:"#f5b041",to:[44.9,45.5],
+    why:["12時に44.5前後で止まり、その後は45.0〜45.5","1時間足RSIは41で中立","22:30の新規失業保険申請件数を待つ"],
+    sign:"1時間足が44.9〜45.5の中で終わる"},
+   {n:"戻り：45.5超え→45.9",p:20,c:"#ff5a5a",to:[45.5,45.9],
+    why:["4時間足は売られすぎ近く","失業保険の申請が増えれば、利上げの見方が後退","45.5は午後に何度も止められた壁"],
+    sign:"1時間足が45.5の上で確定"}]},
  m1:{span:"数分〜1時間",now:"47.33前後で横ばい。13:20台の押し目47.30のすぐ上。1分足では小さな戻り高値の切り下げが続き、買いも売りも勢いが弱い「様子見」状態。",
   sc:[
    {n:"47.30で反発→47.40〜47.50",p:45,c:"#ff5a5a",to:[47.4,47.5],
@@ -422,8 +407,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='16:38時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"16:38時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='21:08時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"21:08時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:BP0.h1[0], lo=A?A.S[0]:BP0.h1[1];
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
@@ -436,7 +421,7 @@ async function live(){
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,Date.now(),true);renderScen();}
- catch(e){showLive(45.33,0,false);}
+ catch(e){showLive(45.02,0,false);}
  btn.textContent="更新";
  if(!document.getElementById("st").hidden)strength();
 }
