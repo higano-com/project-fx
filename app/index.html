@@ -105,7 +105,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="card" id="live">
   <div class="lv1"><b id="lvP">41.17</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">21:38時点の値（固定）</div>
+  <div class="lv2" id="lvS">07:38時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -201,7 +201,7 @@ const POS=[[80,46.109],[200,45.793],[11,45.915]];
 // 小数3けたの値段（建値など）は3けたで出す
 const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
 let JPY=158.56, NOWP=41.17;
-// 売り時・買い時の目安（11/21 21:38 時点の分析）
+// 売り時・買い時の目安（11/22 07:38 時点の分析）
 const LV=[
  {p:42.9,k:"sell",t:"売り（戻りの壁）",d:"19時台の山"},
  {p:42.59,k:"sell",t:"売り（戻りの壁）",d:"0時台の戻り高値"},
@@ -239,7 +239,7 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/21 21:38）</b><br>当時の値 41.17（ドル円158.56）。土曜の夜で市場は休み、値は金曜の終わりのまま。16:38から、値もニュースも変わりはない。今週は約6.6ドルの下げで、14か月ぶりの安値。12月の利上げの見方とドル高が、まだ重い。日足のRSIは22、4時間足は18で、売られすぎ。3つのロスカットは下回ったまま。建玉は口座で確かめる。月曜の朝は、窓を開けて始まることがある。週の山場は、水曜夜のPCE物価",
+ all:{now:"<b>クロードの分析（11/22 07:38）</b><br>当時の値 41.17（ドル円158.56）。日曜の朝で、市場は休み。値は金曜の終わりのまま。きのうの夜から、値もニュースも変わりはない。今週は約6.6ドルの下げで、14か月ぶりの安値。12月の利上げの見方とドル高が、まだ重い。日足のRSIは22、4時間足は18で、売られすぎ。3つのロスカットは下回ったまま。建玉は口座で確かめる。月曜の朝は、窓を開けて始まることがある。週の山場は、水曜夜のPCE物価",
   sc:[
    {n:"もち合い（40.71〜41.64）",p:45,c:"#f5b041",to:[40.71,41.64],
     why:["5時台の40.71のあと、小さく戻した","日足も4時間足も、売られすぎ","41.64は3時台に止められた所"],
@@ -407,8 +407,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='21:38時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"21:38時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='07:38時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"07:38時点の値（固定）";
  document.getElementById("lvPL").innerHTML=`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:BP0.h1[0], lo=A?A.S[0]:BP0.h1[1];
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
