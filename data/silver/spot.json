@@ -1,5 +1,5 @@
 {
- "at": "2026-11-22T12:38:27.155Z",
+ "at": "2026-11-22T22:38:47.491Z",
  "spot": {
   "XAG/USD": {
    "spreadProfile": "premium",
@@ -12,8 +12,8 @@
    "spreadProfile": "premium",
    "bidSpread": 0.65,
    "askSpread": 0.65,
-   "bid": 158.556,
-   "ask": 158.578
+   "bid": 158.534,
+   "ask": 158.635
   }
  }
 }
