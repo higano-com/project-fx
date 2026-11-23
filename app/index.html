@@ -103,7 +103,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">43.07</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
+  <div class="lv1"><b id="lvP">43.37</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
   <div class="lv2" id="lvS">7:38時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
@@ -204,7 +204,7 @@ const CINFO={
 const POS=[];
 // 小数3けたの値段（建値など）は3けたで出す
 const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
-let JPY=158.95, NOWP=43.07;
+let JPY=159.02, NOWP=43.37;
 // 売り時・買い時の目安（11/24 7:38 時点の分析）
 const LV=[
  {p:44.2,k:"sell",t:"売り（戻りの壁）",d:"23日夜の急騰の高値"},
@@ -241,7 +241,7 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/24 7:38）</b><br>当時の値 43.07（ドル円158.95）。夜中の急騰は44.1で止まり、じわじわ下げた。42.9で2度買われ、今は43.0前後で小動き。4時間足は戻り高値が下がっている。日足はまだ下げの流れの中。7時〜8時は取引が止まる時間。水曜22:30にPCE物価がある。",
+ all:{now:"<b>クロードの分析（11/24 7:38）</b><br>当時の値 43.37（ドル円159.02）。夜中の急騰は44.1で止まり、じわじわ下げた。42.9で2度買われ、今は43.0前後で小動き。4時間足は戻り高値が下がっている。日足はまだ下げの流れの中。水曜22:30にPCE物価がある。",
   sc:[
    {n:"もち合い（42.9〜43.8）",p:45,c:"#f5b041",to:[42.9,43.8],
     why:["42.9で2度、買いが入って止まった","43.3より上では、売りが出て戻されている","PCE物価の前で、大きく張りにくい"],
@@ -423,7 +423,7 @@ async function live(){
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,Date.now(),true);renderScen();}
- catch(e){showLive(43.07,0,false);}
+ catch(e){showLive(43.37,0,false);}
  btn.textContent="更新";
  if(!document.getElementById("st").hidden)strength();
 }
