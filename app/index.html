@@ -103,9 +103,9 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="wrap">
 
 <div class="card" id="live">
-  <div class="lv1"><b id="lvP">42.37</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
+  <div class="lv1"><b id="lvP">42.68</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">14:26時点の値（固定）</div>
+  <div class="lv2" id="lvS">15:06時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -201,17 +201,17 @@ const CINFO={
 const POS=[];
 // 小数3けたの値段（建値など）は3けたで出す
 const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
-let JPY=158.97, NOWP=42.37;
+let JPY=158.93, NOWP=42.68;
 // 売り時・買い時の目安（11/23 7:40 時点の分析）
 const LV=[
+ {p:43.5,k:"sell",t:"売り（戻りの壁）",d:"19日に下げた途中の値段帯"},
  {p:43.0,k:"sell",t:"売り（戻りの壁）",d:"心理的な節目"},
- {p:42.4,k:"sell",t:"売り（目先の壁）",d:"朝の高値。2度目の挑戦"},
+ {p:42.7,k:"sell",t:"売り（目先の壁）",d:"14時台の高値"},
+ {p:42.4,k:"buy",t:"買い（押し目）",d:"抜けた朝の高値。押して止まれば候補"},
  {p:42.0,k:"buy",t:"買い（支え）",d:"12時台に戻した所"},
- {p:41.4,k:"buy",t:"買い（支え）",d:"11時台の安値。下ヒゲで戻した"},
- {p:41.1,k:"buy",t:"買い（支え）",d:"金曜の終わりの値。窓埋めの目安"},
- {p:40.6,k:"buy",t:"買い（支え）",d:"金曜の安値。1年ぶりの安値"}
+ {p:41.4,k:"buy",t:"買い（支え）",d:"11時台の安値"}
 ];
-const BP0={m5:[42.45,42.15],h1:[42.4,42.0],h4:[42.4,41.4],d1:[44.98,40.6]};
+const BP0={m5:[42.72,42.5],h1:[42.7,42.4],h4:[43.0,41.4],d1:[44.98,40.6]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
  let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
@@ -238,17 +238,17 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/23 14:26）</b><br>当時の値 42.37（ドル円158.97）。11時台に41.4まで押したが、下ヒゲで戻し、朝の高値42.4付近まで来た。金も銀も前日比+2.7%前後。米10年金利は4.91%と低いまま。今夜23:45にPMI、水曜22:30にPCE物価。",
+ all:{now:"<b>クロードの分析（11/23 15:06）</b><br>当時の値 42.68（ドル円158.93）。朝の高値42.4を上に抜け、14時台の1時間足が上で確定した。11時台の安値41.4から、3時間で約1.3ドル戻した。銀が金より強く、銀そのものへの買い。今夜23:45にPMI、水曜22:30にPCE物価。",
   sc:[
-   {n:"もち合い（41.4〜42.4）",p:45,c:"#f5b041",to:[41.4,42.4],
-    why:["朝の高値42.4と、11時台の安値41.4の間","1時間足RSIは50で中立","今夜のPMIまで、大きな材料はない"],
-    sign:"1時間足が41.4〜42.4の中で終わる"},
-   {n:"上抜け：42.4突破→43.0",p:35,c:"#ff5a5a",to:[42.4,43.0],
-    why:["11時台の41.4で下ヒゲ。押し目で買われた","金も銀も前日比+2.7%前後で、そろって強い","米10年金利は4.91%と、低いまま"],
-    sign:"1時間足が42.4の上で確定"},
-   {n:"押し戻し：42.0割れ→41.4",p:20,c:"#3fb6ff",to:[42.0,41.4],
-    why:["42.4は、朝に止められた壁","日足は山も谷も切り下がり、下降が続く","銅は4時間で-0.6%と、まだ弱い"],
-    sign:"1時間足が42.0の下で確定"}]},
+   {n:"上昇継続：42.7突破→43.0",p:40,c:"#ff5a5a",to:[42.7,43.0],
+    why:["朝の高値42.4を抜け、1時間足が上で確定","銀が金より強い。売っていた人の買い戻しも出ている","米10年金利は4.91%と、低いまま"],
+    sign:"1時間足が42.7の上で確定"},
+   {n:"押し目：42.4まで押して止まる",p:40,c:"#f5b041",to:[42.4,42.7],
+    why:["3時間で約1.3ドル上げ、一度押しやすい","抜けた42.4が、今度は支えになりやすい","今夜のPMIの前に、利確の売りも出やすい"],
+    sign:"42.4で下ヒゲを付けて止まる"},
+   {n:"だまし：42.4割れ→42.0",p:20,c:"#3fb6ff",to:[42.4,42.0],
+    why:["日足は、まだ下降の流れの中での戻り","43.0は心理的な節目で、売りが待つ","銅は前日比+1%と、銀ほど強くない"],
+    sign:"1時間足が42.4の下で確定"}]},
  m1:{span:"数分〜1時間",now:"47.33前後で横ばい。13:20台の押し目47.30のすぐ上。1分足では小さな戻り高値の切り下げが続き、買いも売りも勢いが弱い「様子見」状態。",
   sc:[
    {n:"47.30で反発→47.40〜47.50",p:45,c:"#ff5a5a",to:[47.4,47.5],
@@ -406,8 +406,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='14:26時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"14:26時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='15:06時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"15:06時点の値（固定）";
  document.getElementById("lvPL").innerHTML=!POS.length?"":`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:BP0.h1[0], lo=A?A.S[0]:BP0.h1[1];
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
@@ -420,7 +420,7 @@ async function live(){
   if(jp)JPY=jp.price;
   try{await autoRun(ag.price)}catch(e){AUTO=null;AUTO_LV=null}
   showLive(ag.price,Date.now(),true);renderScen();}
- catch(e){showLive(42.37,0,false);}
+ catch(e){showLive(42.68,0,false);}
  btn.textContent="更新";
  if(!document.getElementById("st").hidden)strength();
 }
