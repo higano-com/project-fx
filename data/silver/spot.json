@@ -1,19 +1,19 @@
 {
- "at": "2026-11-24T07:38:23.198Z",
+ "at": "2026-11-24T12:38:39.406Z",
  "spot": {
   "XAG/USD": {
    "spreadProfile": "premium",
    "bidSpread": 17.5,
    "askSpread": 17.5,
-   "bid": 42.3881,
-   "ask": 42.44
+   "bid": 42.4385,
+   "ask": 42.4815
   },
   "USD/JPY": {
    "spreadProfile": "premium",
    "bidSpread": 0.65,
    "askSpread": 0.65,
-   "bid": 159.325,
-   "ask": 159.342
+   "bid": 159.16,
+   "ask": 159.176
   }
  }
 }
