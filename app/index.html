@@ -105,7 +105,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="card" id="live">
   <div class="lv1"><b id="lvP">40.19</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">16:38時点の値（固定）</div>
+  <div class="lv2" id="lvS">16:40時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -204,18 +204,18 @@ const CINFO={
 const POS=[];
 // 小数3けたの値段（建値など）は3けたで出す
 const fx3=p=>p.toFixed(Math.abs(p*100-Math.round(p*100))>1e-6?3:2);
-let JPY=159.03, NOWP=40.19;
-// 売り時・買い時の目安（11/25 7:38 時点の分析。現物の値段）
+let JPY=159.25, NOWP=40.19;
+// 売り時・買い時の目安（11/25 16:40 時点の分析。現物の値段）
 const LV=[
- {p:43.95,k:"sell",t:"売り（戻りの壁）",d:"きのう9時台の高値"},
- {p:42.65,k:"sell",t:"売り（戻りの壁）",d:"きのう16時台・22時台の戻り高値"},
  {p:42.2,k:"sell",t:"売り（戻りの壁）",d:"0時台の急な下げの始まり"},
- {p:41.8,k:"sell",t:"売り（戻りの壁）",d:"きのう18時台の安値。割れたので今は壁"},
- {p:41.1,k:"sell",t:"売り（目先の壁）",d:"2〜3時台の戻り高値"},
- {p:40.65,k:"buy",t:"買い（目先の支え）",d:"1時・5時・6時台に3度止まった安値"},
- {p:40.0,k:"buy",t:"買い（支え）",d:"40ドルちょうどの節目"}
+ {p:41.4,k:"sell",t:"売り（戻りの壁）",d:"今日11時台の高値"},
+ {p:41.1,k:"sell",t:"売り（戻りの壁）",d:"2〜3時台・10時台の戻り高値"},
+ {p:40.65,k:"sell",t:"売り（戻りの壁）",d:"夜中に3度止まった安値。割れたので今は壁"},
+ {p:40.45,k:"sell",t:"売り（目先の壁）",d:"15〜16時台の戻り高値"},
+ {p:40.05,k:"buy",t:"買い（目先の支え）",d:"14時台・16時台に2度止まった安値"},
+ {p:39.5,k:"buy",t:"買い（支え）",d:"40ドルの下の次の節目"}
 ];
-const BP0={m5:[40.9,40.65],h1:[41.1,40.65],h4:[42.65,40.65],d1:[43.95,40.65]};
+const BP0={m5:[40.45,40.05],h1:[40.65,40.05],h4:[41.4,40.05],d1:[43.95,40.05]};
 function renderBp(){
  const nm={m5:"5分",h1:"1時間",h4:"4時間",d1:"日足"};
  let h='<div class="r h"><span>ブレイク</span><span class="u" style="font-size:12px">▲ 上抜け</span><span class="d" style="font-size:12px">▼ 下抜け</span></div>';
@@ -242,17 +242,17 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/25 16:38）</b><br>当時の値 40.19（ドル円159.03）。0時台に42.2から40.9まで急に下げた。その後は40.65〜41.1の中でもみ合う。40.65では3度、買いが入って止まった。10:20すぎに一度割ったが、すぐ40.8に戻した。10:50ごろに41.1を超えたが、11:40すぎから売られ、12時すぎに40.65を少し割ったが、また40.8に戻した。13時すぎに再び40.65を試したが、また止まった。14:25すぎについに40.65を割り、夜中の安値40.58も下回った。16:20すぎに先物が一時40.0を割ったが、すぐ40.2台に戻した。日足は下げの流れで、RSIは26と売られすぎ。利上げ観測で、金属がまとめて売られている。今夜22:30のPCE物価と、GDP改定値が次の山場。",
+ all:{now:"<b>クロードの分析（11/25 16:40）</b><br>当時の値 40.19（ドル円159.25）。14時台に40.65を割り、40.05まで下げた。その後は40.05〜40.45で小さくもみ合う。日足は下げの流れで、RSIは26と売られすぎ。利上げ観測とドル高で、金属がまとめて売られている。今夜22:30のPCE物価とGDP改定値が山場。",
   sc:[
-   {n:"もち合い（40.65〜41.1）",p:45,c:"#f5b041",to:[40.65,41.1],
-    why:["40.65で3度、買いが入って止まった","41.1の上は、3時台に売られた","PCE物価の前で、大きく動きにくい"],
-    sign:"1時間足が40.65〜41.1の中で終わる"},
-   {n:"戻り：41.1突破→41.8",p:30,c:"#ff5a5a",to:[41.1,41.8],
-    why:["日足のRSIは26で、売られすぎ","40.65で谷がそろい、下げが鈍った","PCEが弱ければ、利上げ観測が下がる"],
-    sign:"1時間足が41.1の上で確定"},
-   {n:"下げ再開：40.65割れ→40.0",p:25,c:"#3fb6ff",to:[40.65,40.0],
-    why:["日足は山も谷も下がっている","21日の安値40.78を割り、安値を更新","PCEが強ければ、もう一段の下げ"],
-    sign:"1時間足が40.65の下で確定"}]},
+   {n:"もち合い（40.05〜40.65）",p:40,c:"#f5b041",to:[40.05,40.65],
+    why:["40.05で2度、下げが止まった","40.65は割れた支えで、今は壁","PCE物価の前で、大きく動きにくい"],
+    sign:"1時間足が40.05〜40.65の中で終わる"},
+   {n:"下げ再開：40.0割れ→39.5",p:35,c:"#3fb6ff",to:[40.0,39.5],
+    why:["日足も4時間足も、山と谷が下がる","14か月ぶりの安値で、下に節目が少ない","PCEが強ければ、利上げ観測が強まる"],
+    sign:"1時間足が40.0の下で確定"},
+   {n:"戻り：40.65回復→41.1",p:25,c:"#ff5a5a",to:[40.65,41.1],
+    why:["日足のRSIは26で、売られすぎ","40ドルちょうどで、買いが入りやすい","PCEが弱ければ、利上げ観測が下がる"],
+    sign:"1時間足が40.65の上で確定"}]},
  m1:{span:"数分〜1時間",now:"47.33前後で横ばい。13:20台の押し目47.30のすぐ上。1分足では小さな戻り高値の切り下げが続き、買いも売りも勢いが弱い「様子見」状態。",
   sc:[
    {n:"47.30で反発→47.40〜47.50",p:45,c:"#ff5a5a",to:[47.4,47.5],
@@ -410,8 +410,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='16:38時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"16:38時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='16:40時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"16:40時点の値（固定）";
  document.getElementById("lvPL").innerHTML=!POS.length?"":`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:BP0.h1[0], lo=A?A.S[0]:BP0.h1[1];
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
