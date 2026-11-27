@@ -1,5 +1,5 @@
-// 番号 1009：画面を新しくしたら1つ上げる。いつも最新の画面を取りに行く（電波がない時だけ前の画面）
-const V = "signal-1009";
+// 番号 1010：画面を新しくしたら1つ上げる。いつも最新の画面を取りに行く（電波がない時だけ前の画面）
+const V = "signal-1010";
 self.addEventListener("install", e => { self.skipWaiting(); e.waitUntil(caches.open(V).then(c => c.addAll(["./", "index.html"]))); });
 self.addEventListener("activate", e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", e => {
