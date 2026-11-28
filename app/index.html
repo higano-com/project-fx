@@ -105,7 +105,7 @@ ul{margin:4px 0;padding-left:18px;font-size:13px;line-height:1.55}
 <div class="card" id="live">
   <div class="lv1"><b id="lvP">43.7</b><button id="lvR" type="button">更新</button><button id="stB" type="button">強弱</button></div>
   <div class="st" id="st" hidden></div>
-  <div class="lv2" id="lvS">10:58時点の値（固定）</div>
+  <div class="lv2" id="lvS">11:04時点の値（固定）</div>
   <div class="lv2" id="lvPL"></div>
   <div class="lv2" id="lvZ"></div>
   <div class="bp" id="bp"></div>
@@ -243,7 +243,7 @@ const pl=p=>POS.reduce((a,[n,b])=>a+(p-b)*n*10*JPY,0);
 const man=v=>Math.abs(v)<500?`<b>±0</b>`:`<b class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${(v/1e4).toFixed(1)}万</b>`;
 
 const TF={
- all:{now:"<b>クロードの分析（11/28 10:58）</b><br>当時の値 43.7（ドル円159.56）。25日夜に38.6まで急落し、その後は買い戻しが続いた。27日は41.3前後から44.4まで上げ、約7%高。夜は43.1台まで押した後、43.7で週を終えた。感謝祭の薄商いでの急な上げで、売りの買い戻しが中心。次に動くのは月曜の朝8時ごろから。日曜夜のOPEC+次第で、窓を開けて始まることがある。",
+ all:{now:"<b>クロードの分析（11/28 11:04）</b><br>当時の値 43.7（ドル円159.56）。25日夜に38.6まで急落し、その後は買い戻しが続いた。27日は41.3前後から44.4まで上げ、約7%高。夜は43.1台まで押した後、43.7で週を終えた。感謝祭の薄商いでの急な上げで、売りの買い戻しが中心。次に動くのは月曜の朝8時ごろから。日曜夜のOPEC+次第で、窓を開けて始まることがある。",
   sc:[
    {n:"高値もみ合い（43.0〜44.5）",p:40,c:"#f5b041",to:[43.0,44.5],
     why:["1日で3ドル近く上げ、1時間足RSIは約69","薄商いの上げで、続く買いはまだ見えない","12/4の雇用統計まで、大きな材料が少ない"],
@@ -411,8 +411,8 @@ const AVG=POS.reduce((a,[n,b])=>a+n*b,0)/POS.reduce((a,[n])=>a+n,0);
 function showLive(p,t,ok){
  NOWP=p;renderLv();renderBp();
  document.getElementById("lvP").textContent=p.toFixed(3);
- if(!ok){document.getElementById("lvS").innerHTML='10:58時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
- else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"10:58時点の値（固定）";
+ if(!ok){document.getElementById("lvS").innerHTML='11:04時点の値（固定）<br><a href="https://project-fx-24u.pages.dev/" target="_blank" rel="noopener" style="color:var(--acc);font-weight:700">リアルタイムで動く方のシグナルを開く →</a>';}
+ else document.getElementById("lvS").textContent=ok?`${new Date(t).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} 取得・ドル円${JPY.toFixed(2)}`:"11:04時点の値（固定）";
  document.getElementById("lvPL").innerHTML=!POS.length?"":`${POS.reduce((a,[n])=>a+n,0)}枚の損益 ${man(pl(p))} ／ 建値${AVG.toFixed(3)}まで <b>${(AVG-p>=0?"+":"")+(AVG-p).toFixed(3)}</b>`;
  const A=AUTO&&AUTO.h1, hi=A?A.R[0]:BP0.h1[0], lo=A?A.S[0]:BP0.h1[1];
  const z=p>=hi?`1時間足の${hi.toFixed(2)}を上抜け：<b>上昇シナリオ</b>`:p<=lo?`1時間足の${lo.toFixed(2)}を下抜け：<b>下落シナリオ</b>`:`${lo.toFixed(2)}〜${hi.toFixed(2)}の間：<b>レンジ</b>の中です`;
